@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenRails Monitor — Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0a0c0f;
+  --panel:    #0f1318;
+  --border:   #1e2a38;
+  --accent:   #e8b84b;
+  --accent2:  #4b9fe8;
+  --green:    #3ecf6e;
+  --amber:    #e8b84b;
+  --red:      #e84b4b;
+  --text:     #c8d4e0;
+  --muted:    #4a5a6a;
+  --mono:     'Share Tech Mono', monospace;
+  --sans:     'Barlow Condensed', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Scanlines overlay ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none; z-index: 9999;
+}
+
+/* ── Header ── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 2rem;
+  height: 64px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(90deg, #0a0c0f 0%, #0d1520 100%);
+  position: sticky; top: 0; z-index: 100;
+}
+
+.logo {
+  display: flex; align-items: center; gap: 12px;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  border: 2px solid var(--accent);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 18px; color: var(--accent);
+  box-shadow: 0 0 12px rgba(232,184,75,0.3);
+}
+.logo h1 {
+  font-size: 1.4rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+}
+.logo span { color: var(--accent); }
+
+nav { display: flex; gap: 0.5rem; }
+.nav-btn {
+  padding: 0.4rem 1.2rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--sans); font-size: 0.85rem; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer; border-radius: 3px;
+  transition: all 0.15s;
+  text-decoration: none; display: inline-block;
+}
+.nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+.nav-btn.primary {
+  background: var(--accent); color: #000; border-color: var(--accent);
+}
+.nav-btn.primary:hover { background: #f0c855; }
+
+/* ── Main Layout ── */
+main { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+
+/* ── Hero strip ── */
+.hero {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 2rem; gap: 1rem;
+}
+.hero-title {
+  font-size: 2.8rem; font-weight: 900; letter-spacing: 0.05em;
+  text-transform: uppercase; line-height: 1;
+  color: #fff;
+}
+.hero-title span { color: var(--accent); }
+
+.ticker {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--muted);
+  border: 1px solid var(--border); padding: 0.4rem 0.8rem; border-radius: 3px;
+  white-space: nowrap;
+}
+#ticker-text { color: var(--accent2); }
+
+/* ── Table ── */
+.table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 6px; overflow: hidden;
+  background: var(--panel);
+}
+
+.table-header-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.9rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(232,184,75,0.04);
+}
+.table-header-bar h2 {
+  font-size: 0.8rem; font-weight: 700; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--accent);
+}
+.live-dot {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 0.7rem; color: var(--green);
+}
+.live-dot::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+table { width: 100%; border-collapse: collapse; }
+
+thead th {
+  font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted);
+  padding: 0.7rem 1.2rem; text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+thead th:nth-child(2), thead th:nth-child(3) { text-align: center; }
+thead th:last-child { text-align: right; }
+
+tbody tr {
+  border-bottom: 1px solid rgba(30,42,56,0.6);
+  transition: background 0.1s;
+}
+tbody tr:hover { background: rgba(232,184,75,0.04); }
+tbody tr:last-child { border-bottom: none; }
+
+tbody td {
+  padding: 0.85rem 1.2rem;
+  font-size: 1rem; font-weight: 400;
+}
+
+/* Rank column */
+td.rank {
+  font-family: var(--mono); font-size: 0.75rem;
+  color: var(--muted); width: 48px;
+}
+tr:nth-child(1) td.rank { color: #ffd700; font-weight: 700; }
+tr:nth-child(2) td.rank { color: #c0c0c0; font-weight: 700; }
+tr:nth-child(3) td.rank { color: #cd7f32; font-weight: 700; }
+
+/* Username column */
+td.username {
+  font-weight: 700; color: #fff; font-size: 1.05rem;
+}
+.sub-info {
+  font-family: var(--mono); font-size: 0.65rem; color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Score column */
+td.score { text-align: center; }
+.score-val {
+  font-family: var(--mono); font-size: 1.4rem; font-weight: 400;
+  line-height: 1;
+}
+.score-grade {
+  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; margin-top: 2px;
+}
+.grade-ex  { color: var(--green); }
+.grade-bu  { color: var(--accent2); }
+.grade-su  { color: var(--amber); }
+.grade-ins { color: var(--red); }
+
+/* Servizio column */
+td.servizio {
+  text-align: center;
+  font-size: 0.9rem; color: var(--text);
+  max-width: 280px;
+}
+.serv-tag {
+  display: inline-block;
+  background: rgba(75,159,232,0.1);
+  border: 1px solid rgba(75,159,232,0.25);
+  color: var(--accent2);
+  font-family: var(--mono); font-size: 0.68rem;
+  padding: 0.2rem 0.6rem; border-radius: 3px;
+}
+
+/* Date column */
+td.date {
+  text-align: right;
+  font-family: var(--mono); font-size: 0.68rem; color: var(--muted);
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 4rem 2rem;
+}
+.empty-state .big { font-size: 3rem; margin-bottom: 1rem; opacity: 0.3; }
+.empty-state p { color: var(--muted); font-family: var(--mono); font-size: 0.8rem; }
+
+/* Loading skeleton */
+.skeleton { animation: shimmer 1.5s infinite; }
+@keyframes shimmer {
+  0%   { opacity: 0.4; }
+  50%  { opacity: 0.8; }
+  100% { opacity: 0.4; }
+}
+.skel-row td { padding: 1.1rem 1.2rem; }
+.skel-bar {
+  height: 12px; border-radius: 3px;
+  background: var(--border);
+  display: inline-block;
+}
+
+/* ── User info banner ── */
+#user-banner {
+  display: none;
+  margin-bottom: 1.5rem;
+  padding: 0.8rem 1.2rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--panel);
+  border-radius: 4px;
+  font-family: var(--mono); font-size: 0.78rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+#user-banner .welcome { color: var(--accent); }
+#user-banner .token-box {
+  color: var(--muted); font-size: 0.65rem;
+  cursor: pointer; transition: color 0.15s;
+}
+#user-banner .token-box:hover { color: var(--accent2); }
+#user-banner .token-val {
+  color: var(--accent2);
+  letter-spacing: 0.05em;
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 1000; align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  border-radius: 6px; width: 100%; max-width: 420px;
+  padding: 2rem; position: relative;
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.modal h2 {
+  font-size: 1.5rem; font-weight: 900; text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 0.3rem;
+}
+.modal .subtitle {
+  font-family: var(--mono); font-size: 0.7rem; color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+.modal-close {
+  position: absolute; top: 1rem; right: 1rem;
+  background: none; border: none; color: var(--muted);
+  font-size: 1.2rem; cursor: pointer;
+}
+.modal-close:hover { color: var(--text); }
+
+.form-field { margin-bottom: 1rem; }
+.form-field label {
+  display: block; font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 0.4rem;
+}
+.form-field input {
+  width: 100%; padding: 0.6rem 0.8rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--text); font-family: var(--mono); font-size: 0.85rem;
+  border-radius: 3px; outline: none; transition: border-color 0.15s;
+}
+.form-field input:focus { border-color: var(--accent); }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+.submit-btn {
+  width: 100%; padding: 0.75rem;
+  background: var(--accent); color: #000;
+  border: none; font-family: var(--sans); font-size: 1rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: pointer; border-radius: 3px; margin-top: 0.5rem;
+  transition: background 0.15s;
+}
+.submit-btn:hover { background: #f0c855; }
+.submit-btn:disabled { background: var(--muted); cursor: not-allowed; }
+
+.form-msg {
+  font-family: var(--mono); font-size: 0.72rem;
+  text-align: center; margin-top: 0.8rem; min-height: 1.2em;
+}
+.form-msg.ok  { color: var(--green); }
+.form-msg.err { color: var(--red); }
+
+.form-switch {
+  text-align: center; margin-top: 1rem;
+  font-family: var(--mono); font-size: 0.72rem; color: var(--muted);
+}
+.form-switch a { color: var(--accent2); cursor: pointer; }
+.form-switch a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🚂</div>
+    <h1>Open<span>Rails</span> Monitor</h1>
+  </div>
+  <nav>
+    <span id="nav-username" style="display:none; align-items:center; gap:.5rem; font-family:var(--mono); font-size:.78rem; color:var(--accent); margin-right:.5rem;"></span>
+    <button class="nav-btn" id="btn-login" onclick="openModal('login')">Accedi</button>
+    <button class="nav-btn primary" id="btn-register" onclick="openModal('register')">Registrati</button>
+    <button class="nav-btn" id="btn-profile" style="display:none" onclick="openModal('profile')">Il mio profilo</button>
+    <button class="nav-btn" id="btn-logout" style="display:none" onclick="doLogout()">Esci</button>
+  </nav>
+</header>
+
+<main>
+  <!-- User banner (token API) -->
+  <div id="user-banner" style="display:none">
+    <span>
+      <span class="welcome" id="banner-welcome"></span>
+      &nbsp;—&nbsp; il tuo API token per l'exe:
+      <span class="token-val" id="banner-token"></span>
+    </span>
+    <span class="token-box" onclick="copyToken()" title="Copia token">📋 copia</span>
+  </div>
+
+  <div class="hero">
+    <div class="hero-title">Leader<span>board</span></div>
+    <div class="ticker">SISTEMA: ONLINE &nbsp;|&nbsp; <span id="ticker-text">CARICAMENTO...</span></div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-header-bar">
+      <h2>Classifiche piloti — punteggio massimo</h2>
+      <div class="live-dot">LIVE</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Username</th>
+          <th>Punteggio</th>
+          <th>Ultimo Servizio</th>
+          <th>Data</th>
+        </tr>
+      </thead>
+      <tbody id="lb-body">
+        <!-- skeleton -->
+        <tr class="skel-row skeleton">
+          <td><div class="skel-bar" style="width:20px"></div></td>
+          <td><div class="skel-bar" style="width:120px"></div></td>
+          <td style="text-align:center"><div class="skel-bar" style="width:60px"></div></td>
+          <td style="text-align:center"><div class="skel-bar" style="width:180px"></div></td>
+          <td style="text-align:right"><div class="skel-bar" style="width:80px"></div></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- ── LOGIN MODAL ── -->
+<div class="modal-overlay" id="modal-login">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('login')">✕</button>
+    <h2>Accedi</h2>
+    <p class="subtitle">// inserisci le tue credenziali</p>
+    <div class="form-field">
+      <label>Username o Email</label>
+      <input type="text" id="login-user" placeholder="macchinista42">
+    </div>
+    <div class="form-field">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="••••••••">
+    </div>
+    <button class="submit-btn" onclick="doLogin()">Accedi</button>
+    <div class="form-msg" id="login-msg"></div>
+    <div class="form-switch">Non hai un account? <a onclick="switchModal('login','register')">Registrati</a></div>
+  </div>
+</div>
+
+<!-- ── REGISTER MODAL ── -->
+<div class="modal-overlay" id="modal-register">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('register')">✕</button>
+    <h2>Registrati</h2>
+    <p class="subtitle">// crea il tuo account pilota</p>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Nome</label>
+        <input type="text" id="reg-nome" placeholder="Mario">
+      </div>
+      <div class="form-field">
+        <label>Cognome</label>
+        <input type="text" id="reg-cognome" placeholder="Rossi">
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Username</label>
+      <input type="text" id="reg-user" placeholder="macchinista42">
+    </div>
+    <div class="form-field">
+      <label>Email</label>
+      <input type="email" id="reg-email" placeholder="mario@ferrovie.it">
+    </div>
+    <div class="form-field">
+      <label>Password (min. 6 caratteri)</label>
+      <input type="password" id="reg-pass" placeholder="••••••••">
+    </div>
+    <button class="submit-btn" onclick="doRegister()">Crea account</button>
+    <div class="form-msg" id="reg-msg"></div>
+    <div class="form-switch">Hai già un account? <a onclick="switchModal('register','login')">Accedi</a></div>
+  </div>
+</div>
+
+<!-- ── PROFILE MODAL ── -->
+<div class="modal-overlay" id="modal-profile">
+  <div class="modal" style="max-width:500px">
+    <button class="modal-close" onclick="closeModal('profile')">✕</button>
+    <h2>Il mio profilo</h2>
+    <p class="subtitle" id="profile-subtitle">// caricamento...</p>
+    <div id="profile-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin:1.2rem 0">
+    </div>
+    <div style="margin-bottom:1rem">
+      <div style="font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Il tuo API token (per il file .exe)</div>
+      <div id="profile-token" style="font-family:var(--mono);font-size:.75rem;color:var(--accent2);background:rgba(75,159,232,.08);border:1px solid rgba(75,159,232,.2);padding:.5rem .8rem;border-radius:3px;word-break:break-all"></div>
+    </div>
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Ultime sessioni</div>
+    <div id="profile-sessions" style="font-family:var(--mono);font-size:.72rem;color:var(--muted);max-height:200px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<script>
+// ── State ──
+let currentUser = null;
+
+// ── Modals ──
+function openModal(name) {
+  document.getElementById('modal-'+name).classList.add('open');
+}
+function closeModal(name) {
+  document.getElementById('modal-'+name).classList.remove('open');
+}
+function switchModal(from, to) {
+  closeModal(from); openModal(to);
+}
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); });
+});
+
+// ── Auth ──
+async function doRegister() {
+  const btn = document.querySelector('#modal-register .submit-btn');
+  const msg = document.getElementById('reg-msg');
+  btn.disabled = true; msg.textContent = 'Registrazione in corso...'; msg.className = 'form-msg';
+  const body = {
+    nome:     document.getElementById('reg-nome').value.trim(),
+    cognome:  document.getElementById('reg-cognome').value.trim(),
+    username: document.getElementById('reg-user').value.trim(),
+    email:    document.getElementById('reg-email').value.trim(),
+    password: document.getElementById('reg-pass').value,
+  };
+  try {
+    const r = await fetch('/api/register', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d = await r.json();
+    if(d.ok) {
+      msg.textContent = '✓ Registrazione completata! Accedi ora.';
+      msg.className = 'form-msg ok';
+      setTimeout(() => switchModal('register','login'), 1500);
+    } else {
+      msg.textContent = '✗ ' + d.error;
+      msg.className = 'form-msg err';
+    }
+  } catch(e) { msg.textContent = '✗ Errore di rete'; msg.className = 'form-msg err'; }
+  btn.disabled = false;
+}
+
+async function doLogin() {
+  const btn = document.querySelector('#modal-login .submit-btn');
+  const msg = document.getElementById('login-msg');
+  btn.disabled = true; msg.textContent = 'Accesso in corso...'; msg.className = 'form-msg';
+  const body = {
+    username: document.getElementById('login-user').value.trim(),
+    password: document.getElementById('login-pass').value,
+  };
+  try {
+    const r = await fetch('/api/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d = await r.json();
+    if(d.ok) {
+      msg.textContent = '✓ Benvenuto!'; msg.className = 'form-msg ok';
+      setTimeout(() => { closeModal('login'); checkMe(); loadLeaderboard(); }, 800);
+    } else {
+      msg.textContent = '✗ ' + d.error; msg.className = 'form-msg err';
+    }
+  } catch(e) { msg.textContent = '✗ Errore di rete'; msg.className = 'form-msg err'; }
+  btn.disabled = false;
+}
+
+async function doLogout() {
+  await fetch('/api/logout', {method:'POST'});
+  currentUser = null; updateNav(); loadLeaderboard();
+}
+
+async function checkMe() {
+  const r = await fetch('/api/me'); const d = await r.json();
+  if(d.logged_in) { currentUser = d; updateNav(); }
+  else { currentUser = null; updateNav(); }
+}
+
+function updateNav() {
+  const loggedIn = !!currentUser;
+  document.getElementById('btn-login').style.display     = loggedIn ? 'none' : '';
+  document.getElementById('btn-register').style.display  = loggedIn ? 'none' : '';
+  document.getElementById('btn-profile').style.display   = loggedIn ? '' : 'none';
+  document.getElementById('btn-logout').style.display    = loggedIn ? '' : 'none';
+  const nu = document.getElementById('nav-username');
+  if(loggedIn) { nu.style.display='flex'; nu.textContent='👤 '+currentUser.username; }
+  else { nu.style.display='none'; }
+
+  const banner = document.getElementById('user-banner');
+  if(loggedIn) {
+    banner.style.display = 'flex';
+    document.getElementById('banner-welcome').textContent = 'Ciao, '+currentUser.nome+'!';
+    document.getElementById('banner-token').textContent = currentUser.api_token;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+function copyToken() {
+  if(!currentUser) return;
+  navigator.clipboard.writeText(currentUser.api_token);
+  const el = document.querySelector('.token-box');
+  el.textContent = '✓ copiato!';
+  setTimeout(() => el.textContent = '📋 copia', 1500);
+}
+
+// ── Profile Modal ──
+async function openProfileModal() {
+  openModal('profile');
+  const r = await fetch('/api/me'); const d = await r.json();
+  if(!d.logged_in) return;
+  document.getElementById('profile-subtitle').textContent = '// '+d.nome+' '+d.cognome+' · '+d.email;
+  document.getElementById('profile-token').textContent = d.api_token;
+  const statsEl = document.getElementById('profile-stats');
+  const grade = sc => sc>=90?'Eccellente':sc>=70?'Buono':sc>=40?'Sufficiente':'Insufficiente';
+  statsEl.innerHTML = `
+    <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.15);border-radius:4px;padding:.8rem;text-align:center">
+      <div style="font-size:1.6rem;font-family:var(--mono);color:var(--accent)">${d.runs}</div>
+      <div style="font-size:.65rem;color:var(--muted);margin-top:3px">CORSE</div>
+    </div>
+    <div style="background:rgba(62,207,110,.07);border:1px solid rgba(62,207,110,.15);border-radius:4px;padding:.8rem;text-align:center">
+      <div style="font-size:1.6rem;font-family:var(--mono);color:var(--green)">${d.best_score}</div>
+      <div style="font-size:.65rem;color:var(--muted);margin-top:3px">BEST SCORE</div>
+    </div>
+    <div style="background:rgba(75,159,232,.07);border:1px solid rgba(75,159,232,.15);border-radius:4px;padding:.8rem;text-align:center">
+      <div style="font-size:1.6rem;font-family:var(--mono);color:var(--accent2)">${d.avg_score}</div>
+      <div style="font-size:.65rem;color:var(--muted);margin-top:3px">MEDIA</div>
+    </div>`;
+  const sr = await fetch('/api/my_sessions'); const sd = await sr.json();
+  const sessEl = document.getElementById('profile-sessions');
+  if(!sd.length) { sessEl.textContent = 'Nessuna sessione ancora registrata.'; return; }
+  sessEl.innerHTML = sd.map(s => `
+    <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--accent2)">${s.ultimo_servizio||'—'}</span>
+      <span style="color:var(--text)">${Math.round(s.punteggio||0)}/100</span>
+      <span style="color:var(--muted)">${(s.registrata_at||'').slice(0,10)}</span>
+    </div>`).join('');
+}
+document.getElementById('btn-profile').addEventListener('click', openProfileModal);
+
+// ── Leaderboard ──
+function scoreColor(sc) {
+  if(sc>=90) return 'var(--green)';
+  if(sc>=70) return 'var(--accent2)';
+  if(sc>=40) return 'var(--amber)';
+  return 'var(--red)';
+}
+function gradeClass(g) {
+  if(!g) return '';
+  const l = g.toLowerCase();
+  if(l.includes('ecc')) return 'grade-ex';
+  if(l.includes('buo') || l.includes('dis')) return 'grade-bu';
+  if(l.includes('suf') || l.includes('med')) return 'grade-su';
+  return 'grade-ins';
+}
+function rankLabel(i) {
+  if(i===0) return '🥇';
+  if(i===1) return '🥈';
+  if(i===2) return '🥉';
+  return `#${i+1}`;
+}
+function fmtDate(s) {
+  if(!s) return '—';
+  return s.slice(0,10);
+}
+
+async function loadLeaderboard() {
+  const r = await fetch('/api/leaderboard');
+  const rows = await r.json();
+  const body = document.getElementById('lb-body');
+  document.getElementById('ticker-text').textContent = rows.length + ' PILOTI IN CLASSIFICA';
+
+  if(!rows.length) {
+    body.innerHTML = `<tr><td colspan="5">
+      <div class="empty-state">
+        <div class="big">🚂</div>
+        <p>Nessuna sessione registrata ancora.<br>Avvia il monitor, completa una corsa e i dati appariranno qui!</p>
+      </div></td></tr>`;
+    return;
+  }
+
+  body.innerHTML = rows.map((row, i) => `
+    <tr>
+      <td class="rank">${rankLabel(i)}</td>
+      <td class="username">
+        ${row.username}
+        <div class="sub-info">${row.corse} cors${row.corse===1?'a':'e'}</div>
+      </td>
+      <td class="score">
+        <div class="score-val" style="color:${scoreColor(row.punteggio)}">${Math.round(row.punteggio)}<span style="font-size:.7em;opacity:.6">/100</span></div>
+        <div class="score-grade ${gradeClass(row.grade)}">${row.grade||''}</div>
+      </td>
+      <td class="servizio">
+        <span class="serv-tag">${row.ultimo_servizio||'—'}</span>
+      </td>
+      <td class="date">${fmtDate(row.data)}</td>
+    </tr>`).join('');
+}
+
+// ── Init ──
+checkMe();
+loadLeaderboard();
+setInterval(loadLeaderboard, 30000);
+</script>
+</body>
+</html>
