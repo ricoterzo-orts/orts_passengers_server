@@ -36,6 +36,11 @@ def init_db():
             created_at    TEXT    DEFAULT (datetime('now'))
         );
 
+        CREATE TABLE IF NOT EXISTS heartbeats (
+            user_id     INTEGER PRIMARY KEY REFERENCES users(id),
+            last_seen   TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS sessions (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id     INTEGER NOT NULL REFERENCES users(id),
@@ -198,9 +203,13 @@ def api_leaderboard():
                 s.ultimo_servizio,
                 s.grade,
                 COUNT(s.id)         AS corse,
-                s.registrata_at     AS data
+                CASE
+                    WHEN h.last_seen >= datetime('now', '-2 minutes')
+                    THEN 1 ELSE 0
+                END                 AS online
             FROM sessions s
             JOIN users u ON u.id = s.user_id
+            LEFT JOIN heartbeats h ON h.user_id = s.user_id
             GROUP BY s.user_id
             ORDER BY punteggio DESC
             LIMIT 100
@@ -273,6 +282,34 @@ def api_submit():
               penalita, completamento, durata_min, grade))
 
     return jsonify({"ok": True, "message": "Sessione registrata!"})
+
+# ─────────────────────────────────────────────────────────
+#  API heartbeat (dal .exe, ogni 60s mentre è aperto)
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/heartbeat", methods=["POST"])
+def api_heartbeat():
+    """
+    Chiamato dal .exe ogni 60 secondi per segnalare che è online.
+    Header richiesto: X-API-Token: <token>
+    """
+    token = request.headers.get("X-API-Token", "").strip()
+    if not token:
+        return jsonify({"ok": False, "error": "Token mancante"}), 401
+
+    with get_db() as conn:
+        user = conn.execute("SELECT id FROM users WHERE api_token=?", (token,)).fetchone()
+    if not user:
+        return jsonify({"ok": False, "error": "Token non valido"}), 401
+
+    with get_db() as conn:
+        conn.execute("""
+            INSERT INTO heartbeats (user_id, last_seen)
+            VALUES (?, datetime('now'))
+            ON CONFLICT(user_id) DO UPDATE SET last_seen=datetime('now')
+        """, (user["id"],))
+
+    return jsonify({"ok": True})
 
 # ─────────────────────────────────────────────────────────
 
