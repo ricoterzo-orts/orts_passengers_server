@@ -84,6 +84,11 @@ td.score{text-align:center}
 .g-suf{color:var(--amber)}
 .g-ins{color:var(--red)}
 td.servizio{text-align:center}
+.online-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse-dot 2s infinite}
+.offline-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--dimgrey)}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(.85)}}
+.online-lbl{font-family:var(--mono);font-size:9px;color:var(--green);font-weight:bold;letter-spacing:.05em;margin-left:5px;vertical-align:middle}
+.offline-lbl{font-family:var(--mono);font-size:9px;color:var(--dimgrey);margin-left:5px;vertical-align:middle}
 .serv-pill{display:inline-block;background:rgba(206,27,38,.08);border:1px solid rgba(206,27,38,.2);color:var(--accent2);font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:2px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 td.date{text-align:right;font-family:var(--mono);font-size:10px;color:var(--grey)}
 .empty-state{text-align:center;padding:48px 20px;font-family:var(--mono);font-size:11px;color:var(--grey)}
@@ -176,7 +181,7 @@ td.date{text-align:right;font-family:var(--mono);font-size:10px;color:var(--grey
           <th>#</th><th>Username</th>
           <th class="c">Punteggio</th>
           <th class="c">Ultimo Servizio</th>
-          <th class="r">Data</th>
+          <th class="c">Online</th>
         </tr>
       </thead>
       <tbody id="lb-body">
@@ -351,7 +356,11 @@ async function loadLeaderboard(){
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
         </td>
         <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
-        <td class="date">${(row.data||'').slice(0,10)}</td>
+        <td style="text-align:center">
+          ${row.online
+            ? '<span class="online-dot"></span><span class="online-lbl">ONLINE</span>'
+            : '<span class="offline-dot"></span><span class="offline-lbl">offline</span>'}
+        </td>
       </tr>`).join('');
   }catch{document.getElementById('lb-body').innerHTML=`<tr><td colspan="5"><div class="empty-state"><div>Errore caricamento dati.</div></div></td></tr>`;}
 }
