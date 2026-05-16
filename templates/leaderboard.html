@@ -141,7 +141,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .live-stops-table tr.passed td{color:var(--dimgrey)}
 .live-stops-table tr.current td{background:rgba(0,122,61,.06);color:var(--white);font-family:var(--font-md);font-weight:500}
 .live-stops-table tr.current td:first-child::before{content:'→ ';color:var(--green)}
-.dly-ok{color:var(--green)}.dly-bad{color:var(--red)}
+.dly-ok{color:var(--green)}.dly-bad{color:var(--red)}.dly-amber{color:var(--amber)}
 
 /* ── CLASSIFICA AFFIDABILITÀ ── */
 .lb-section{margin-bottom:24px}
@@ -497,8 +497,16 @@ async function loadLeaderboard(){
 // ── Online cards ──
 function comfortClass(c){return c>=70?'comfort-hi':c>=40?'comfort-mid':'comfort-lo';}
 function comfortColor(c){return c>=70?'var(--green)':c>=40?'var(--amber)':'var(--red)';}
-function dlyClass(d){return Math.abs(d||0)<=2?'dly-ok':'dly-bad';}
-function dlyText(d){if(!d||Math.abs(d)<0.1)return'Puntuale';return(d>0?'+':'')+parseFloat(d).toFixed(1)+' min';}
+function dlyClass(d){
+  const v=Math.abs(d||0);
+  if(v===0||d===null||d===undefined)return'dly-ok';
+  if(v<2)return'dly-amber';
+  return'dly-bad';
+}
+function dlyText(d){
+  if(!d||Math.abs(d)<0.1)return'0';
+  return(d>0?'+':'')+Math.round(d);
+}
 
 function renderOnlineCards(users){
   const sec=document.getElementById('online-section');
@@ -526,7 +534,7 @@ function renderOnlineCards(users){
           <div class="instrument-lbl">km/h</div>
         </div>
         <div class="instrument">
-          <div class="instrument-val ${dlyClass(dly)}">${dlyText(dly)}</div>
+          <div class="instrument-val ${dlyClass(dly)}">${dlyText(dly)} min</div>
           <div class="instrument-lbl">Ritardo</div>
         </div>
         <div class="instrument">
