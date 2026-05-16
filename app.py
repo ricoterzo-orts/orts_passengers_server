@@ -10,10 +10,11 @@ import hashlib, os, secrets, re
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 # ─────────────────────────────────────────────────────────
-# Database
+#  Database
 # ─────────────────────────────────────────────────────────
 
 def get_db():
@@ -35,72 +36,77 @@ def init_db():
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id SERIAL PRIMARY KEY,
-                    nome TEXT NOT NULL,
-                    cognome TEXT NOT NULL,
-                    username TEXT NOT NULL UNIQUE,
-                    email TEXT NOT NULL UNIQUE,
-                    password_hash TEXT NOT NULL,
-                    api_token TEXT NOT NULL UNIQUE,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                );
-                CREATE TABLE IF NOT EXISTS live_sessions (
-                    user_id INTEGER PRIMARY KEY REFERENCES users(id),
-                    speed_kmh REAL DEFAULT 0,
-                    comfort_live REAL DEFAULT 100,
-                    delay_min REAL DEFAULT 0,
-                    next_station TEXT DEFAULT '',
-                    consist TEXT DEFAULT '',
-                    sim_time TEXT DEFAULT '',
-                    activity_name TEXT DEFAULT '',
-                    updated_at TIMESTAMPTZ DEFAULT NOW()
-                );
-                CREATE TABLE IF NOT EXISTS heartbeats (
-                    user_id INTEGER PRIMARY KEY REFERENCES users(id),
-                    last_seen TIMESTAMPTZ NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS speed_history (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL REFERENCES users(id),
-                    speed_kmh REAL NOT NULL,
-                    sim_time TEXT DEFAULT '',
-                    recorded_at TIMESTAMPTZ DEFAULT NOW()
-                );
-                CREATE TABLE IF NOT EXISTS live_stations (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL REFERENCES users(id),
-                    station_name TEXT NOT NULL,
-                    arrival TEXT DEFAULT '',
-                    departure TEXT DEFAULT '',
-                    delay_min REAL DEFAULT 0,
-                    passed BOOLEAN DEFAULT FALSE,
-                    is_current BOOLEAN DEFAULT FALSE,
-                    sort_order INTEGER DEFAULT 0,
-                    updated_at TIMESTAMPTZ DEFAULT NOW()
-                );
-                CREATE TABLE IF NOT EXISTS sessions (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL REFERENCES users(id),
-                    punteggio REAL NOT NULL,
-                    ultimo_servizio TEXT NOT NULL,
-                    frenate_brusche INTEGER DEFAULT 0,
-                    accel_brusche INTEGER DEFAULT 0,
-                    penalita REAL DEFAULT 0.0,
-                    completamento INTEGER DEFAULT 0,
-                    durata_min REAL DEFAULT 0.0,
-                    grade TEXT DEFAULT '',
-                    registrata_at TIMESTAMPTZ DEFAULT NOW()
-                );
+            CREATE TABLE IF NOT EXISTS users (
+                id            SERIAL PRIMARY KEY,
+                nome          TEXT    NOT NULL,
+                cognome       TEXT    NOT NULL,
+                username      TEXT    NOT NULL UNIQUE,
+                email         TEXT    NOT NULL UNIQUE,
+                password_hash TEXT    NOT NULL,
+                api_token     TEXT    NOT NULL UNIQUE,
+                created_at    TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS live_sessions (
+                user_id         INTEGER PRIMARY KEY REFERENCES users(id),
+                speed_kmh       REAL    DEFAULT 0,
+                comfort_live    REAL    DEFAULT 100,
+                delay_min       REAL    DEFAULT 0,
+                next_station    TEXT    DEFAULT '',
+                consist         TEXT    DEFAULT '',
+                sim_time        TEXT    DEFAULT '',
+                activity_name   TEXT    DEFAULT '',
+                updated_at      TIMESTAMPTZ DEFAULT NOW()
+            );
+
+            CREATE TABLE IF NOT EXISTS heartbeats (
+                user_id     INTEGER PRIMARY KEY REFERENCES users(id),
+                last_seen   TIMESTAMPTZ NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS speed_history (
+                id          SERIAL PRIMARY KEY,
+                user_id     INTEGER NOT NULL REFERENCES users(id),
+                speed_kmh   REAL    NOT NULL,
+                sim_time    TEXT    DEFAULT '',
+                recorded_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
+            CREATE TABLE IF NOT EXISTS live_stations (
+                id              SERIAL PRIMARY KEY,
+                user_id         INTEGER NOT NULL REFERENCES users(id),
+                station_name    TEXT    NOT NULL,
+                arrival         TEXT    DEFAULT '',
+                departure       TEXT    DEFAULT '',
+                delay_min       REAL    DEFAULT 0,
+                passed          BOOLEAN DEFAULT FALSE,
+                is_current      BOOLEAN DEFAULT FALSE,
+                sort_order      INTEGER DEFAULT 0,
+                updated_at      TIMESTAMPTZ DEFAULT NOW()
+            );
+
+            CREATE TABLE IF NOT EXISTS sessions (
+                id              SERIAL PRIMARY KEY,
+                user_id         INTEGER NOT NULL REFERENCES users(id),
+                punteggio       REAL    NOT NULL,
+                ultimo_servizio TEXT    NOT NULL,
+                frenate_brusche INTEGER DEFAULT 0,
+                accel_brusche   INTEGER DEFAULT 0,
+                penalita        REAL    DEFAULT 0.0,
+                completamento   INTEGER DEFAULT 0,
+                durata_min      REAL    DEFAULT 0.0,
+                grade           TEXT    DEFAULT '',
+                registrata_at   TIMESTAMPTZ DEFAULT NOW()
+            );
             """)
-            conn.commit()
+        conn.commit()
 
 init_db()
 
 def migrate_db():
     """Aggiunge colonne mancanti a tabelle esistenti (migrazioni sicure)."""
     migrations = [
+        # live_sessions: aggiungi comfort_live se mancante
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_live REAL DEFAULT 100""",
+        # live_sessions: aggiungi tutte le colonne nel caso la tabella fosse vecchia
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS speed_kmh REAL DEFAULT 0""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS delay_min REAL DEFAULT 0""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS next_station TEXT DEFAULT ''""",
@@ -115,13 +121,13 @@ def migrate_db():
                 try:
                     cur.execute(sql)
                 except Exception:
-                    pass
-            conn.commit()
+                    pass  # colonna già esistente o altro errore non bloccante
+        conn.commit()
 
 migrate_db()
 
 # ─────────────────────────────────────────────────────────
-# Utility
+#  Utility
 # ─────────────────────────────────────────────────────────
 
 def hash_password(pw: str) -> str:
@@ -139,7 +145,7 @@ def validate_email(email: str) -> bool:
     return bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email))
 
 # ─────────────────────────────────────────────────────────
-# Pagine HTML
+#  Pagine HTML
 # ─────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -164,12 +170,12 @@ def profile_page():
     return render_template("profile.html")
 
 # ─────────────────────────────────────────────────────────
-# API Auth
+#  API Auth
 # ─────────────────────────────────────────────────────────
 
 @app.route("/api/register", methods=["POST"])
 def api_register():
-    data = request.get_json(force=True) or {}
+    data     = request.get_json(force=True) or {}
     nome     = (data.get("nome",     "") or "").strip()
     cognome  = (data.get("cognome",  "") or "").strip()
     username = (data.get("username", "") or "").strip()
@@ -194,7 +200,7 @@ def api_register():
                     "VALUES (%s,%s,%s,%s,%s,%s)",
                     (nome, cognome, username, email, hash_password(password), token)
                 )
-                conn.commit()
+            conn.commit()
         return jsonify({"ok": True, "message": "Registrazione completata!"})
     except psycopg2.errors.UniqueViolation as e:
         msg = str(e)
@@ -204,7 +210,7 @@ def api_register():
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
-    data = request.get_json(force=True) or {}
+    data     = request.get_json(force=True) or {}
     username = (data.get("username", "") or "").strip()
     password = data.get("password", "") or ""
 
@@ -222,7 +228,7 @@ def api_login():
     if not user:
         return jsonify({"ok": False, "error": "Credenziali non valide"}), 401
 
-    session["user_id"] = user["id"]
+    session["user_id"]  = user["id"]
     session["username"] = user["username"]
     return jsonify({"ok": True, "username": user["username"]})
 
@@ -235,7 +241,6 @@ def api_logout():
 def api_me():
     if "user_id" not in session:
         return jsonify({"logged_in": False})
-
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM users WHERE id=%s", (session["user_id"],))
@@ -247,7 +252,6 @@ def api_me():
                 "FROM sessions WHERE user_id=%s", (user["id"],)
             )
             stats = fetchone(cur)
-
     return jsonify({
         "logged_in":  True,
         "username":   user["username"],
@@ -262,46 +266,7 @@ def api_me():
     })
 
 # ─────────────────────────────────────────────────────────
-# API eliminazione profilo
-# ─────────────────────────────────────────────────────────
-
-@app.route("/api/delete_profile", methods=["POST"])
-def api_delete_profile():
-    if "user_id" not in session:
-        return jsonify({"ok": False, "error": "Non autenticato"}), 401
-
-    data     = request.get_json(force=True) or {}
-    password = data.get("password", "") or ""
-
-    if not password:
-        return jsonify({"ok": False, "error": "Inserisci la password per confermare"}), 400
-
-    user_id = session["user_id"]
-
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT password_hash FROM users WHERE id=%s", (user_id,))
-            user = fetchone(cur)
-
-    if not user or user["password_hash"] != hash_password(password):
-        return jsonify({"ok": False, "error": "Password non corretta"}), 401
-
-    # Elimina in ordine per rispettare i vincoli di foreign key
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM live_stations  WHERE user_id=%s", (user_id,))
-            cur.execute("DELETE FROM speed_history  WHERE user_id=%s", (user_id,))
-            cur.execute("DELETE FROM live_sessions  WHERE user_id=%s", (user_id,))
-            cur.execute("DELETE FROM heartbeats     WHERE user_id=%s", (user_id,))
-            cur.execute("DELETE FROM sessions       WHERE user_id=%s", (user_id,))
-            cur.execute("DELETE FROM users          WHERE id=%s",      (user_id,))
-            conn.commit()
-
-    session.clear()
-    return jsonify({"ok": True, "message": "Profilo eliminato con successo."})
-
-# ─────────────────────────────────────────────────────────
-# API Leaderboard
+#  API Leaderboard
 # ─────────────────────────────────────────────────────────
 
 @app.route("/api/leaderboard")
@@ -311,14 +276,14 @@ def api_leaderboard():
             cur.execute("""
                 SELECT
                     u.username,
-                    MAX(s.punteggio) AS punteggio,
+                    MAX(s.punteggio)    AS punteggio,
                     s.ultimo_servizio,
                     s.grade,
-                    COUNT(s.id) AS corse,
+                    COUNT(s.id)         AS corse,
                     CASE
                         WHEN h.last_seen >= NOW() - INTERVAL '2 minutes'
                         THEN 1 ELSE 0
-                    END AS online,
+                    END                 AS online,
                     ls.speed_kmh,
                     ls.delay_min,
                     ls.next_station,
@@ -343,7 +308,6 @@ def api_leaderboard():
 def api_my_sessions():
     if "user_id" not in session:
         return jsonify({"ok": False, "error": "Non autenticato"}), 401
-
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -357,7 +321,7 @@ def api_my_sessions():
     return jsonify(rows)
 
 # ─────────────────────────────────────────────────────────
-# API ricezione dati dall'EXE
+#  API ricezione dati dall'EXE
 # ─────────────────────────────────────────────────────────
 
 @app.route("/api/submit", methods=["POST"])
@@ -365,12 +329,10 @@ def api_submit():
     token = request.headers.get("X-API-Token", "").strip()
     if not token:
         return jsonify({"ok": False, "error": "Token mancante"}), 401
-
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM users WHERE api_token=%s", (token,))
             user = fetchone(cur)
-
     if not user:
         return jsonify({"ok": False, "error": "Token non valido"}), 401
 
@@ -391,35 +353,46 @@ def api_submit():
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO sessions
-                    (user_id, punteggio, ultimo_servizio, frenate_brusche, accel_brusche,
-                     penalita, completamento, durata_min, grade)
+                  (user_id, punteggio, ultimo_servizio, frenate_brusche, accel_brusche,
+                   penalita, completamento, durata_min, grade)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (user["id"], punteggio, ultimo_servizio, frenate, accel,
                   penalita, completamento, durata_min, grade))
-            conn.commit()
+        conn.commit()
     return jsonify({"ok": True, "message": "Sessione registrata!"})
 
 # ─────────────────────────────────────────────────────────
-# API heartbeat (dal .exe, ogni 60s)
+#  API heartbeat (dal .exe, ogni 60s)
 # ─────────────────────────────────────────────────────────
 
 @app.route("/api/heartbeat", methods=["POST"])
 def api_heartbeat():
+    """
+    Chiamato dal .exe ogni 30s con dati live.
+    Header: X-API-Token: <token>
+    Body JSON (opzionale):
+      {
+        "speed_kmh": 120.5,
+        "delay_min": 2.3,
+        "next_station": "Firenze SMN",
+        "consist": "E464.001",
+        "sim_time": "14:32",
+        "activity_name": "Roma → Firenze"
+      }
+    """
     token = request.headers.get("X-API-Token", "").strip()
     if not token:
         return jsonify({"ok": False, "error": "Token mancante"}), 401
-
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT id FROM users WHERE api_token=%s", (token,))
             user = fetchone(cur)
-
     if not user:
         return jsonify({"ok": False, "error": "Token non valido"}), 401
 
-    data         = request.get_json(force=True) or {}
-    speed_kmh    = float(data.get("speed_kmh",    0)   or 0)
-    delay_min    = float(data.get("delay_min",    0)   or 0)
+    data = request.get_json(force=True) or {}
+    speed_kmh    = float(data.get("speed_kmh",   0) or 0)
+    delay_min    = float(data.get("delay_min",   0) or 0)
     next_station = str(data.get("next_station",  "") or "")[:100]
     consist      = str(data.get("consist",       "") or "")[:100]
     sim_time     = str(data.get("sim_time",      "") or "")[:10]
@@ -435,19 +408,19 @@ def api_heartbeat():
             """, (user["id"],))
             cur.execute("""
                 INSERT INTO live_sessions
-                    (user_id, speed_kmh, delay_min, next_station, consist, sim_time, activity_name, comfort_live, updated_at)
+                  (user_id, speed_kmh, delay_min, next_station, consist, sim_time, activity_name, comfort_live, updated_at)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW())
                 ON CONFLICT (user_id) DO UPDATE SET
-                    speed_kmh=EXCLUDED.speed_kmh,
-                    delay_min=EXCLUDED.delay_min,
-                    next_station=EXCLUDED.next_station,
-                    consist=EXCLUDED.consist,
-                    sim_time=EXCLUDED.sim_time,
-                    activity_name=EXCLUDED.activity_name,
-                    comfort_live=EXCLUDED.comfort_live,
-                    updated_at=NOW()
+                  speed_kmh=EXCLUDED.speed_kmh,
+                  delay_min=EXCLUDED.delay_min,
+                  next_station=EXCLUDED.next_station,
+                  consist=EXCLUDED.consist,
+                  sim_time=EXCLUDED.sim_time,
+                  activity_name=EXCLUDED.activity_name,
+                  comfort_live=EXCLUDED.comfort_live,
+                  updated_at=NOW()
             """, (user["id"], speed_kmh, delay_min, next_station, consist, sim_time, activity_name, comfort_live))
-
+            # Salva campione velocità nello storico (max 200 per utente)
             if speed_kmh > 0:
                 cur.execute("""
                     INSERT INTO speed_history (user_id, speed_kmh, sim_time)
@@ -460,21 +433,22 @@ def api_heartbeat():
                         WHERE user_id=%s ORDER BY recorded_at DESC LIMIT 200
                     )
                 """, (user["id"], user["id"]))
-            conn.commit()
+        conn.commit()
     return jsonify({"ok": True})
 
 # ─────────────────────────────────────────────────────────
-# API dati live (per sezione LIVE leaderboard)
+#  API dati live (per sezione LIVE leaderboard)
 # ─────────────────────────────────────────────────────────
 
 @app.route("/api/live")
 def api_live():
+    """Restituisce tutti gli utenti online con dati live completi."""""
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT
                     u.username,
-                    u.id AS user_id,
+                    u.id        AS user_id,
                     ls.speed_kmh,
                     ls.delay_min,
                     ls.next_station,
@@ -490,6 +464,7 @@ def api_live():
             """)
             users_online = fetchall(cur)
 
+    # Per ogni utente online, carica storico velocità (ultimi 20 campioni)
     result = []
     for u in users_online:
         with get_db() as conn:
@@ -502,6 +477,7 @@ def api_live():
                 """, (u["user_id"],))
                 history = fetchall(cur)
                 history.reverse()
+
                 cur.execute("""
                     SELECT station_name, arrival, departure, delay_min,
                            passed, is_current, sort_order
@@ -510,26 +486,39 @@ def api_live():
                     ORDER BY sort_order ASC
                 """, (u["user_id"],))
                 stations = fetchall(cur)
+
         u["speed_history"] = history
-        u["stations"]      = stations
+        u["stations"] = stations
         result.append(u)
+
     return jsonify(result)
 
 @app.route("/api/live_stations", methods=["POST"])
 def api_live_stations():
+    """
+    Riceve la lista delle stazioni con ritardi aggiornati dal .exe.
+    Header: X-API-Token: <token>
+    Body JSON:
+      {
+        "stations": [
+          {"name": "Roma Termini", "arrival": "08:00", "departure": "08:05",
+           "delay_min": 0, "passed": true, "is_current": false},
+          {"name": "Firenze SMN", "arrival": "09:45", "departure": "09:50",
+           "delay_min": 2.5, "passed": false, "is_current": true}
+        ]
+      }
+    """
     token = request.headers.get("X-API-Token", "").strip()
     if not token:
         return jsonify({"ok": False, "error": "Token mancante"}), 401
-
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT id FROM users WHERE api_token=%s", (token,))
             user = fetchone(cur)
-
     if not user:
         return jsonify({"ok": False, "error": "Token non valido"}), 401
 
-    data     = request.get_json(force=True) or {}
+    data = request.get_json(force=True) or {}
     stations = data.get("stations", [])
 
     with get_db() as conn:
@@ -538,21 +527,79 @@ def api_live_stations():
             for i, st in enumerate(stations):
                 cur.execute("""
                     INSERT INTO live_stations
-                        (user_id, station_name, arrival, departure, delay_min,
-                         passed, is_current, sort_order)
+                      (user_id, station_name, arrival, departure, delay_min,
+                       passed, is_current, sort_order)
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
                 """, (
                     user["id"],
-                    str(st.get("name",      ""))[:100],
-                    str(st.get("arrival",   "") or "")[:10],
+                    str(st.get("name", ""))[:100],
+                    str(st.get("arrival", "") or "")[:10],
                     str(st.get("departure", "") or "")[:10],
                     float(st.get("delay_min", 0) or 0),
-                    bool(st.get("passed",   False)),
+                    bool(st.get("passed", False)),
                     bool(st.get("is_current", False)),
                     i
                 ))
-            conn.commit()
+        conn.commit()
     return jsonify({"ok": True})
+
+# ─────────────────────────────────────────────────────────
+#  API eliminazione account
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/delete_account", methods=["POST"])
+def api_delete_account():
+    if "user_id" not in session:
+        return jsonify({"ok": False, "error": "Non autenticato"}), 401
+
+    data     = request.get_json(force=True) or {}
+    password = data.get("password", "") or ""
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM users WHERE id=%s", (session["user_id"],))
+            user = fetchone(cur)
+
+    if not user or user["password_hash"] != hash_password(password):
+        return jsonify({"ok": False, "error": "Password non corretta"}), 401
+
+    uid = session["user_id"]
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM speed_history   WHERE user_id=%s", (uid,))
+            cur.execute("DELETE FROM live_stations   WHERE user_id=%s", (uid,))
+            cur.execute("DELETE FROM live_sessions   WHERE user_id=%s", (uid,))
+            cur.execute("DELETE FROM heartbeats      WHERE user_id=%s", (uid,))
+            cur.execute("DELETE FROM sessions        WHERE user_id=%s", (uid,))
+            cur.execute("DELETE FROM users           WHERE id=%s",      (uid,))
+        conn.commit()
+
+    session.clear()
+    return jsonify({"ok": True, "message": "Account eliminato."})
+
+# ─────────────────────────────────────────────────────────
+#  API elimina account
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/delete_account", methods=["POST"])
+def api_delete_account():
+    if "user_id" not in session:
+        return jsonify({"ok": False, "error": "Non autenticato"}), 401
+    uid = session["user_id"]
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM speed_history  WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM live_stations  WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM live_sessions  WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM heartbeats     WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM sessions       WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM users          WHERE id=%s",      (uid,))
+            conn.commit()
+        session.clear()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 # ─────────────────────────────────────────────────────────
 
