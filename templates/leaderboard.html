@@ -339,9 +339,9 @@ td.servizio{text-align:center}
 
 <!-- PROFILE -->
 <div class="overlay" id="overlay-profile">
-  <div class="modal" style="max-width:440px">
+  <div class="modal" style="max-width:440px;max-height:90vh;display:flex;flex-direction:column">
     <div class="modal-title"><span id="profile-title">Profilo</span><button class="modal-close" onclick="closeModal('profile')">✕</button></div>
-    <div class="modal-body">
+    <div class="modal-body" style="overflow-y:auto;flex:1">
       <div class="stat-grid" id="profile-stats"></div>
       <div class="slbl">Token API (da incollare nel .exe → Impostazioni)</div>
       <div class="token-display" id="profile-token">—</div>
