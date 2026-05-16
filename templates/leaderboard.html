@@ -107,6 +107,68 @@ td.date{text-align:right;font-family:var(--font);font-size:10px;color:var(--grey
 .skel{animation:shimmer 1.4s infinite}
 @keyframes shimmer{0%,100%{opacity:.3}50%{opacity:.6}}
 .skel-bar{height:10px;border-radius:1px;background:var(--border);display:inline-block}
+/* ── Sezione LIVE ── */
+.live-section{margin-bottom:20px}
+.live-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.live-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(0,122,61,.12);border:1px solid rgba(0,122,61,.3);color:var(--green);font-family:var(--font-md);font-size:10px;font-weight:500;padding:2px 8px;border-radius:2px;letter-spacing:.08em}
+.live-empty{background:var(--card);border:1px solid var(--border);border-radius:2px;padding:20px;text-align:center;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
+
+/* Tab utenti online */
+.live-tabs{display:flex;gap:4px;margin-bottom:0;flex-wrap:wrap}
+.live-tab{padding:5px 14px;background:var(--panel);border:1px solid var(--border);border-bottom:none;color:var(--grey);font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:2px 2px 0 0;transition:all .15s;display:flex;align-items:center;gap:5px}
+.live-tab:hover{background:var(--card);color:var(--white)}
+.live-tab.active{background:var(--card);color:var(--white);border-color:var(--border);border-bottom-color:var(--card)}
+.live-tab .tab-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
+
+/* Pannello dati live */
+.live-panel-main{background:var(--card);border:1px solid var(--border);border-radius:0 2px 2px 2px;padding:14px}
+.live-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:700px){.live-grid{grid-template-columns:1fr}}
+
+/* Info header corsa */
+.live-run-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.live-run-name{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white)}
+.live-run-consist{font-family:var(--font);font-size:10px;color:var(--dimgrey);margin-top:2px}
+.live-kpis{display:flex;gap:10px}
+.live-kpi{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:6px 12px;text-align:center;min-width:70px}
+.live-kpi-val{font-family:var(--font-md);font-size:18px;font-weight:500;line-height:1}
+.live-kpi-lbl{font-family:var(--font);font-size:9px;color:var(--dimgrey);margin-top:2px;letter-spacing:.08em;text-transform:uppercase}
+
+/* Mappa lineare */
+.live-map-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:10px 12px;overflow-x:auto}
+.live-map-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.live-map{position:relative;padding:20px 0 8px}
+.live-map-line{position:absolute;top:28px;left:20px;right:20px;height:2px;background:var(--border)}
+.live-map-progress{position:absolute;top:28px;left:20px;height:2px;background:var(--accent);transition:width .5s}
+.live-map-stations{display:flex;justify-content:space-between;position:relative;padding:0 20px}
+.live-map-st{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:60px;max-width:80px}
+.live-map-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--border);background:var(--panel);transition:all .3s;flex-shrink:0}
+.live-map-dot.passed{background:var(--accent);border-color:var(--accent)}
+.live-map-dot.current{background:var(--green);border-color:var(--green);box-shadow:0 0 8px var(--green);animation:pulse-dot 1.5s infinite}
+.live-map-name{font-family:var(--font);font-size:8px;color:var(--dimgrey);text-align:center;line-height:1.2;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.live-map-name.passed{color:var(--grey)}
+.live-map-name.current{color:var(--green);font-family:var(--font-md);font-weight:500}
+.live-map-time{font-family:var(--font);font-size:7px;color:var(--dimgrey);text-align:center}
+.live-train-icon{position:absolute;top:18px;font-size:16px;transition:left .5s;transform:translateX(-50%)}
+
+/* Grafico velocità */
+.live-chart-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:10px 12px}
+.live-chart-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.live-chart-canvas{width:100%;height:100px;display:block}
+
+/* Tabella fermate */
+.live-stops-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden}
+.live-stops-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border)}
+.live-stops-table{width:100%;border-collapse:collapse}
+.live-stops-table th{font-family:var(--font);font-size:9px;color:var(--dimgrey);padding:5px 10px;text-align:left;border-bottom:1px solid var(--border);letter-spacing:.08em;text-transform:uppercase}
+.live-stops-table td{font-family:var(--font);font-size:10px;padding:6px 10px;border-bottom:1px solid rgba(204,204,204,.3);vertical-align:middle}
+.live-stops-table tr:last-child td{border-bottom:none}
+.live-stops-table tr.passed td{color:var(--dimgrey)}
+.live-stops-table tr.current td{background:rgba(0,122,61,.06);color:var(--white);font-family:var(--font-md);font-weight:500}
+.live-stops-table tr.current td:first-child::before{content:'→ ';color:var(--green)}
+.dly-ok{color:var(--green)}
+.dly-bad{color:var(--red)}
+
 /* scrollbar */
 ::-webkit-scrollbar{width:6px}
 ::-webkit-scrollbar-track{background:var(--card)}
@@ -173,7 +235,17 @@ td.date{text-align:right;font-family:var(--font);font-size:10px;color:var(--grey
     <button class="copy-btn" onclick="copyToken()">📋 Copia</button>
   </div>
 
-  <div class="statusbar">
+  <!-- ══ SEZIONE LIVE ══════════════════════════════════════ -->
+<div class="live-section" id="live-section" style="display:none">
+  <div class="live-section-hdr">
+    <div class="section-title">Treni in Corsa</div>
+    <div class="live-badge"><span class="dot"></span><span id="live-count">0 online</span></div>
+  </div>
+  <div class="live-tabs" id="live-tabs"></div>
+  <div id="live-panel-main" class="live-panel-main"></div>
+</div>
+
+<div class="statusbar">
     <div class="statusbar-left">
       <span><span class="dot"></span>SISTEMA ONLINE</span>
       <span id="lb-count">—</span>
