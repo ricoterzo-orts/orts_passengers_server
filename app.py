@@ -35,6 +35,7 @@ def fetchall(cur):
 def init_db():
     with get_db() as conn:
         with conn.cursor() as cur:
+            # Creazione tabelle standard
             cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id           SERIAL PRIMARY KEY,
@@ -97,9 +98,11 @@ def init_db():
                 registrata_at   TIMESTAMPTZ DEFAULT NOW()
             );
             """)
+            
+            # riga di correzione: Forza l'aggiunta della colonna se il database è vecchio
+            cur.execute("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_live REAL DEFAULT 100;")
+            
         conn.commit()
-
-init_db()
 
 # ─────────────────────────────────────────────────────────
 #  Utility
