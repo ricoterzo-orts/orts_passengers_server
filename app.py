@@ -35,20 +35,19 @@ def fetchall(cur):
 def init_db():
     with get_db() as conn:
         with conn.cursor() as cur:
-            # Creazione tabelle standard
             cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
-                id           SERIAL PRIMARY KEY,
-                nome         TEXT    NOT NULL,
-                cognome      TEXT    NOT NULL,
-                username     TEXT    NOT NULL UNIQUE,
-                email        TEXT    NOT NULL UNIQUE,
+                id            SERIAL PRIMARY KEY,
+                nome          TEXT    NOT NULL,
+                cognome       TEXT    NOT NULL,
+                username      TEXT    NOT NULL UNIQUE,
+                email         TEXT    NOT NULL UNIQUE,
                 password_hash TEXT    NOT NULL,
                 api_token     TEXT    NOT NULL UNIQUE,
                 created_at    TIMESTAMPTZ DEFAULT NOW()
             );
             CREATE TABLE IF NOT EXISTS live_sessions (
-                user_id       INTEGER PRIMARY KEY REFERENCES users(id),
+                user_id         INTEGER PRIMARY KEY REFERENCES users(id),
                 speed_kmh       REAL    DEFAULT 0,
                 comfort_live    REAL    DEFAULT 100,
                 delay_min       REAL    DEFAULT 0,
@@ -98,11 +97,9 @@ def init_db():
                 registrata_at   TIMESTAMPTZ DEFAULT NOW()
             );
             """)
-            
-            # riga di correzione: Forza l'aggiunta della colonna se il database è vecchio
-            cur.execute("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_live REAL DEFAULT 100;")
-            
         conn.commit()
+
+init_db()
 
 # ─────────────────────────────────────────────────────────
 #  Utility
@@ -247,22 +244,10 @@ def api_me():
 #  API Leaderboard
 # ─────────────────────────────────────────────────────────
 
-# ─────────────────────────────────────────────────────────
-#  API Leaderboard (Versione Autoriparante)
-# ─────────────────────────────────────────────────────────
-
 @app.route("/api/leaderboard")
 def api_leaderboard():
     with get_db() as conn:
         with conn.cursor() as cur:
-            # 1. FORZIAMO la creazione della colonna direttamente qui per sicurezza
-            try:
-                cur.execute("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_live REAL DEFAULT 100;")
-                conn.commit()
-            except Exception:
-                conn.rollback() # Se fallisce o esiste già, resetta la transazione e va avanti
-
-            # 2. Eseguiamo la query della classifica
             cur.execute("""
                 SELECT
                     u.username,
@@ -287,10 +272,26 @@ def api_leaderboard():
                 LEFT JOIN live_sessions ls ON ls.user_id = s.user_id
                 GROUP BY s.user_id, u.username, s.ultimo_servizio, s.grade,
                          h.last_seen, ls.speed_kmh, ls.delay_min, ls.next_station,
-                         ls.consist, ls.sim_time, ls.activity_name, ls.comfort_live
+                         ls.consist, ls.sim_time, ls.activity_name
                 ORDER BY punteggio DESC
                 LIMIT 100
             """)
+            rows = fetchall(cur)
+    return jsonify(rows)
+
+@app.route("/api/my_sessions")
+def api_my_sessions():
+    if "user_id" not in session:
+        return jsonify({"ok": False, "error": "Non autenticato"}), 401
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT punteggio, ultimo_servizio, grade, frenate_brusche,
+                       accel_brusche, penalita, completamento,
+                       registrata_at::text AS registrata_at
+                FROM sessions WHERE user_id=%s
+                ORDER BY registrata_at DESC LIMIT 50
+            """, (session["user_id"],))
             rows = fetchall(cur)
     return jsonify(rows)
 
@@ -341,6 +342,19 @@ def api_submit():
 
 @app.route("/api/heartbeat", methods=["POST"])
 def api_heartbeat():
+    """
+    Chiamato dal .exe ogni 30s con dati live.
+    Header: X-API-Token: <token>
+    Body JSON (opzionale):
+      {
+        "speed_kmh": 120.5,
+        "delay_min": 2.3,
+        "next_station": "Firenze SMN",
+        "consist": "E464.001",
+        "sim_time": "14:32",
+        "activity_name": "Roma → Firenze"
+      }
+    """
     token = request.headers.get("X-API-Token", "").strip()
     if not token:
         return jsonify({"ok": False, "error": "Token mancante"}), 401
@@ -381,7 +395,7 @@ def api_heartbeat():
                   comfort_live=EXCLUDED.comfort_live,
                   updated_at=NOW()
             """, (user["id"], speed_kmh, delay_min, next_station, consist, sim_time, activity_name, comfort_live))
-            
+            # Salva campione velocità nello storico (max 200 per utente)
             if speed_kmh > 0:
                 cur.execute("""
                     INSERT INTO speed_history (user_id, speed_kmh, sim_time)
@@ -403,7 +417,7 @@ def api_heartbeat():
 
 @app.route("/api/live")
 def api_live():
-    """Restituisce tutti gli utenti online con dati live completi."""
+    """Restituisce tutti gli utenti online con dati live completi."""""
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -425,9 +439,11 @@ def api_live():
             """)
             users_online = fetchall(cur)
 
-            # Esecuzione query riutilizzando la stessa connessione attiva (ottimizzato)
-            result = []
-            for u in users_online:
+    # Per ogni utente online, carica storico velocità (ultimi 20 campioni)
+    result = []
+    for u in users_online:
+        with get_db() as conn:
+            with conn.cursor() as cur:
                 cur.execute("""
                     SELECT speed_kmh, sim_time, recorded_at::text AS recorded_at
                     FROM speed_history
@@ -446,14 +462,27 @@ def api_live():
                 """, (u["user_id"],))
                 stations = fetchall(cur)
 
-                u["speed_history"] = history
-                u["stations"] = stations
-                result.append(u)
+        u["speed_history"] = history
+        u["stations"] = stations
+        result.append(u)
 
     return jsonify(result)
 
 @app.route("/api/live_stations", methods=["POST"])
 def api_live_stations():
+    """
+    Riceve la lista delle stazioni con ritardi aggiornati dal .exe.
+    Header: X-API-Token: <token>
+    Body JSON:
+      {
+        "stations": [
+          {"name": "Roma Termini", "arrival": "08:00", "departure": "08:05",
+           "delay_min": 0, "passed": true, "is_current": false},
+          {"name": "Firenze SMN", "arrival": "09:45", "departure": "09:50",
+           "delay_min": 2.5, "passed": false, "is_current": true}
+        ]
+      }
+    """
     token = request.headers.get("X-API-Token", "").strip()
     if not token:
         return jsonify({"ok": False, "error": "Token mancante"}), 401
