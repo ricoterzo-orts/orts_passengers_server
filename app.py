@@ -349,6 +349,10 @@ def api_submit():
     except (ValueError, TypeError) as e:
         return jsonify({"ok": False, "error": f"Dati non validi: {e}"}), 400
 
+    # Accetta solo sessioni completate almeno al 50%
+    if completamento < 50:
+        return jsonify({"ok": False, "error": f"Sessione troppo breve ({completamento}% < 50%)"}), 400
+
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
