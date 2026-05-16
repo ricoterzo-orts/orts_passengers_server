@@ -46,6 +46,17 @@ def init_db():
                 api_token     TEXT    NOT NULL UNIQUE,
                 created_at    TIMESTAMPTZ DEFAULT NOW()
             );
+            CREATE TABLE IF NOT EXISTS live_sessions (
+                user_id         INTEGER PRIMARY KEY REFERENCES users(id),
+                speed_kmh       REAL    DEFAULT 0,
+                delay_min       REAL    DEFAULT 0,
+                next_station    TEXT    DEFAULT '',
+                consist         TEXT    DEFAULT '',
+                sim_time        TEXT    DEFAULT '',
+                activity_name   TEXT    DEFAULT '',
+                updated_at      TIMESTAMPTZ DEFAULT NOW()
+            );
+
             CREATE TABLE IF NOT EXISTS heartbeats (
                 user_id     INTEGER PRIMARY KEY REFERENCES users(id),
                 last_seen   TIMESTAMPTZ NOT NULL
@@ -225,11 +236,20 @@ def api_leaderboard():
                     CASE
                         WHEN h.last_seen >= NOW() - INTERVAL '2 minutes'
                         THEN 1 ELSE 0
-                    END                 AS online
+                    END                 AS online,
+                    ls.speed_kmh,
+                    ls.delay_min,
+                    ls.next_station,
+                    ls.consist,
+                    ls.sim_time,
+                    ls.activity_name
                 FROM sessions s
                 JOIN users u ON u.id = s.user_id
                 LEFT JOIN heartbeats h ON h.user_id = s.user_id
-                GROUP BY s.user_id, u.username, s.ultimo_servizio, s.grade, h.last_seen
+                LEFT JOIN live_sessions ls ON ls.user_id = s.user_id
+                GROUP BY s.user_id, u.username, s.ultimo_servizio, s.grade,
+                         h.last_seen, ls.speed_kmh, ls.delay_min, ls.next_station,
+                         ls.consist, ls.sim_time, ls.activity_name
                 ORDER BY punteggio DESC
                 LIMIT 100
             """)
@@ -299,6 +319,19 @@ def api_submit():
 
 @app.route("/api/heartbeat", methods=["POST"])
 def api_heartbeat():
+    """
+    Chiamato dal .exe ogni 30s con dati live.
+    Header: X-API-Token: <token>
+    Body JSON (opzionale):
+      {
+        "speed_kmh": 120.5,
+        "delay_min": 2.3,
+        "next_station": "Firenze SMN",
+        "consist": "E464.001",
+        "sim_time": "14:32",
+        "activity_name": "Roma → Firenze"
+      }
+    """
     token = request.headers.get("X-API-Token", "").strip()
     if not token:
         return jsonify({"ok": False, "error": "Token mancante"}), 401
@@ -308,6 +341,15 @@ def api_heartbeat():
             user = fetchone(cur)
     if not user:
         return jsonify({"ok": False, "error": "Token non valido"}), 401
+
+    data = request.get_json(force=True) or {}
+    speed_kmh    = float(data.get("speed_kmh",   0) or 0)
+    delay_min    = float(data.get("delay_min",   0) or 0)
+    next_station = str(data.get("next_station",  "") or "")[:100]
+    consist      = str(data.get("consist",       "") or "")[:100]
+    sim_time     = str(data.get("sim_time",      "") or "")[:10]
+    activity_name= str(data.get("activity_name", "") or "")[:200]
+
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -315,6 +357,19 @@ def api_heartbeat():
                 VALUES (%s, NOW())
                 ON CONFLICT (user_id) DO UPDATE SET last_seen = NOW()
             """, (user["id"],))
+            cur.execute("""
+                INSERT INTO live_sessions
+                  (user_id, speed_kmh, delay_min, next_station, consist, sim_time, activity_name, updated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,NOW())
+                ON CONFLICT (user_id) DO UPDATE SET
+                  speed_kmh=EXCLUDED.speed_kmh,
+                  delay_min=EXCLUDED.delay_min,
+                  next_station=EXCLUDED.next_station,
+                  consist=EXCLUDED.consist,
+                  sim_time=EXCLUDED.sim_time,
+                  activity_name=EXCLUDED.activity_name,
+                  updated_at=NOW()
+            """, (user["id"], speed_kmh, delay_min, next_station, consist, sim_time, activity_name))
         conn.commit()
     return jsonify({"ok": True})
 
