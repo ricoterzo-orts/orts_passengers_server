@@ -297,7 +297,7 @@ def api_leaderboard():
                 LEFT JOIN live_sessions ls ON ls.user_id = s.user_id
                 GROUP BY s.user_id, u.username, s.ultimo_servizio, s.grade,
                          h.last_seen, ls.speed_kmh, ls.delay_min, ls.next_station,
-                         ls.consist, ls.sim_time, ls.activity_name
+                         ls.consist, ls.sim_time, ls.activity_name, ls.comfort_live
                 ORDER BY punteggio DESC
                 LIMIT 100
             """)
