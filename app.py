@@ -265,29 +265,6 @@ def api_me():
         "avg_score":  round(float(stats["avg"]  or 0), 1),
     })
 
-@app.route('/api/delete_profile', methods=['POST'])
-def delete_profile():
-    # Verifica che l'utente sia loggato (usando la sessione di Flask)
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'ok': False, 'error': 'Non autorizzato'}), 401
-
-    try:
-        # 1. Elimina le sessioni di guida dell'utente
-        db.execute('DELETE FROM sessions WHERE user_id = ?', (user_id,))
-        
-        # 2. Elimina l'utente stesso
-        db.execute('DELETE FROM users WHERE id = ?', (user_id,))
-        
-        db.commit()
-        
-        # 3. Pulisce la sessione del browser
-        session.clear()
-        
-        return jsonify({'ok': True})
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
-
 # ─────────────────────────────────────────────────────────
 #  API Leaderboard
 # ─────────────────────────────────────────────────────────
