@@ -83,6 +83,14 @@ def init_db():
                 updated_at      TIMESTAMPTZ DEFAULT NOW()
             );
 
+            CREATE TABLE IF NOT EXISTS user_stats (
+                user_id         INTEGER PRIMARY KEY REFERENCES users(id),
+                affidabilita    REAL    DEFAULT 0,
+                ultima_tratta   TEXT    DEFAULT '',
+                grade           TEXT    DEFAULT '',
+                updated_at      TIMESTAMPTZ DEFAULT NOW()
+            );
+
             CREATE TABLE IF NOT EXISTS sessions (
                 id              SERIAL PRIMARY KEY,
                 user_id         INTEGER NOT NULL REFERENCES users(id),
@@ -104,6 +112,13 @@ init_db()
 def migrate_db():
     """Aggiunge colonne mancanti a tabelle esistenti (migrazioni sicure)."""
     migrations = [
+        """CREATE TABLE IF NOT EXISTS user_stats (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id),
+            affidabilita REAL DEFAULT 0,
+            ultima_tratta TEXT DEFAULT '',
+            grade TEXT DEFAULT '',
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )""",
         # live_sessions: aggiungi comfort_live se mancante
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_live REAL DEFAULT 100""",
         # live_sessions: aggiungi tutte le colonne nel caso la tabella fosse vecchia
@@ -276,14 +291,14 @@ def api_leaderboard():
             cur.execute("""
                 SELECT
                     u.username,
-                    MAX(s.punteggio)    AS punteggio,
-                    s.ultimo_servizio,
-                    s.grade,
-                    COUNT(s.id)         AS corse,
+                    COALESCE(us.affidabilita, 0)    AS punteggio,
+                    COALESCE(us.ultima_tratta, '')  AS ultimo_servizio,
+                    COALESCE(us.grade, '')           AS grade,
+                    COUNT(s.id)                      AS corse,
                     CASE
                         WHEN h.last_seen >= NOW() - INTERVAL '2 minutes'
                         THEN 1 ELSE 0
-                    END                 AS online,
+                    END                              AS online,
                     ls.speed_kmh,
                     ls.delay_min,
                     ls.next_station,
@@ -291,14 +306,17 @@ def api_leaderboard():
                     ls.sim_time,
                     ls.activity_name,
                     ls.comfort_live
-                FROM sessions s
-                JOIN users u ON u.id = s.user_id
-                LEFT JOIN heartbeats h ON h.user_id = s.user_id
-                LEFT JOIN live_sessions ls ON ls.user_id = s.user_id
-                GROUP BY s.user_id, u.username, s.ultimo_servizio, s.grade,
-                         h.last_seen, ls.speed_kmh, ls.delay_min, ls.next_station,
-                         ls.consist, ls.sim_time, ls.activity_name, ls.comfort_live
-                ORDER BY punteggio DESC
+                FROM users u
+                LEFT JOIN user_stats us ON us.user_id = u.id
+                LEFT JOIN sessions s ON s.user_id = u.id
+                LEFT JOIN heartbeats h ON h.user_id = u.id
+                LEFT JOIN live_sessions ls ON ls.user_id = u.id
+                WHERE us.affidabilita IS NOT NULL
+                GROUP BY u.id, u.username, us.affidabilita, us.ultima_tratta,
+                         us.grade, h.last_seen, ls.speed_kmh, ls.delay_min,
+                         ls.next_station, ls.consist, ls.sim_time,
+                         ls.activity_name, ls.comfort_live
+                ORDER BY us.affidabilita DESC
                 LIMIT 100
             """)
             rows = fetchall(cur)
@@ -362,6 +380,24 @@ def api_submit():
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (user["id"], punteggio, ultimo_servizio, frenate, accel,
                   penalita, completamento, durata_min, grade))
+            # Aggiorna affidabilità totale: media di tutte le sessioni
+            cur.execute("""
+                INSERT INTO user_stats (user_id, affidabilita, ultima_tratta, grade, updated_at)
+                SELECT
+                    %s,
+                    AVG(punteggio),
+                    (SELECT ultimo_servizio FROM sessions
+                     WHERE user_id=%s ORDER BY registrata_at DESC LIMIT 1),
+                    (SELECT grade FROM sessions
+                     WHERE user_id=%s ORDER BY registrata_at DESC LIMIT 1),
+                    NOW()
+                FROM sessions WHERE user_id=%s
+                ON CONFLICT (user_id) DO UPDATE SET
+                    affidabilita  = EXCLUDED.affidabilita,
+                    ultima_tratta = EXCLUDED.ultima_tratta,
+                    grade         = EXCLUDED.grade,
+                    updated_at    = NOW()
+            """, (user["id"], user["id"], user["id"], user["id"]))
         conn.commit()
     return jsonify({"ok": True, "message": "Sessione registrata!"})
 
