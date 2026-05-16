@@ -49,6 +49,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS live_sessions (
                 user_id         INTEGER PRIMARY KEY REFERENCES users(id),
                 speed_kmh       REAL    DEFAULT 0,
+                comfort_live    REAL    DEFAULT 100,
                 delay_min       REAL    DEFAULT 0,
                 next_station    TEXT    DEFAULT '',
                 consist         TEXT    DEFAULT '',
@@ -263,7 +264,8 @@ def api_leaderboard():
                     ls.next_station,
                     ls.consist,
                     ls.sim_time,
-                    ls.activity_name
+                    ls.activity_name,
+                    ls.comfort_live
                 FROM sessions s
                 JOIN users u ON u.id = s.user_id
                 LEFT JOIN heartbeats h ON h.user_id = s.user_id
@@ -370,6 +372,7 @@ def api_heartbeat():
     consist      = str(data.get("consist",       "") or "")[:100]
     sim_time     = str(data.get("sim_time",      "") or "")[:10]
     activity_name= str(data.get("activity_name", "") or "")[:200]
+    comfort_live = float(data.get("comfort_live", 100) or 100)
 
     with get_db() as conn:
         with conn.cursor() as cur:
@@ -380,8 +383,8 @@ def api_heartbeat():
             """, (user["id"],))
             cur.execute("""
                 INSERT INTO live_sessions
-                  (user_id, speed_kmh, delay_min, next_station, consist, sim_time, activity_name, updated_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,NOW())
+                  (user_id, speed_kmh, delay_min, next_station, consist, sim_time, activity_name, comfort_live, updated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW())
                 ON CONFLICT (user_id) DO UPDATE SET
                   speed_kmh=EXCLUDED.speed_kmh,
                   delay_min=EXCLUDED.delay_min,
@@ -389,8 +392,9 @@ def api_heartbeat():
                   consist=EXCLUDED.consist,
                   sim_time=EXCLUDED.sim_time,
                   activity_name=EXCLUDED.activity_name,
+                  comfort_live=EXCLUDED.comfort_live,
                   updated_at=NOW()
-            """, (user["id"], speed_kmh, delay_min, next_station, consist, sim_time, activity_name))
+            """, (user["id"], speed_kmh, delay_min, next_station, consist, sim_time, activity_name, comfort_live))
             # Salva campione velocità nello storico (max 200 per utente)
             if speed_kmh > 0:
                 cur.execute("""
