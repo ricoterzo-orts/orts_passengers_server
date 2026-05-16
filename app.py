@@ -101,6 +101,31 @@ def init_db():
 
 init_db()
 
+def migrate_db():
+    """Aggiunge colonne mancanti a tabelle esistenti (migrazioni sicure)."""
+    migrations = [
+        # live_sessions: aggiungi comfort_live se mancante
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_live REAL DEFAULT 100""",
+        # live_sessions: aggiungi tutte le colonne nel caso la tabella fosse vecchia
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS speed_kmh REAL DEFAULT 0""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS delay_min REAL DEFAULT 0""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS next_station TEXT DEFAULT ''""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS consist TEXT DEFAULT ''""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS sim_time TEXT DEFAULT ''""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS activity_name TEXT DEFAULT ''""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()""",
+    ]
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            for sql in migrations:
+                try:
+                    cur.execute(sql)
+                except Exception:
+                    pass  # colonna già esistente o altro errore non bloccante
+        conn.commit()
+
+migrate_db()
+
 # ─────────────────────────────────────────────────────────
 #  Utility
 # ─────────────────────────────────────────────────────────
