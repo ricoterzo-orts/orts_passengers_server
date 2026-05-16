@@ -96,7 +96,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .comfort-bar-track{height:4px;background:var(--panel);border-radius:2px;overflow:hidden}
 .comfort-bar-fill{height:100%;border-radius:2px;transition:width .5s}
 
-/* ── TRENI IN CORSA (sezione esistente) ── */
+/* ── TRENI IN CORSA ── */
 .live-section{margin-bottom:24px}
 .live-tabs{display:flex;gap:4px;margin-bottom:0;flex-wrap:wrap}
 .live-tab{padding:5px 14px;background:var(--panel);border:1px solid var(--border);border-bottom:none;color:var(--grey);font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:2px 2px 0 0;transition:all .15s;display:flex;align-items:center;gap:5px}
@@ -199,6 +199,8 @@ td.servizio{text-align:center}
 .modal-btn{width:100%;margin-top:4px;padding:7px;background:var(--accent);color:#fff;border:none;font-family:var(--font-md);font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:1px;transition:background .15s}
 .modal-btn:hover{background:var(--accent2)}
 .modal-btn:disabled{background:var(--dimgrey);cursor:not-allowed}
+.modal-btn.danger{background:none;border:1px solid var(--red);color:var(--red);margin-top:16px;opacity:.7}
+.modal-btn.danger:hover{background:var(--red);color:#fff;opacity:1}
 .msg{font-family:var(--font);font-size:10px;text-align:center;margin-top:8px;min-height:14px}
 .msg.ok{color:var(--green)}.msg.err{color:var(--red)}
 .modal-switch{text-align:center;margin-top:10px;font-family:var(--font);font-size:10px;color:var(--grey)}
@@ -239,13 +241,11 @@ td.servizio{text-align:center}
 </header>
 
 <main>
-  <!-- Token banner -->
   <div id="user-banner">
     <span><span class="lbl">Token API per il .exe: </span><span class="tv" id="banner-token"></span></span>
     <button class="copy-btn" onclick="copyToken()">📋 Copia</button>
   </div>
 
-  <!-- Statusbar -->
   <div class="statusbar">
     <div class="statusbar-left">
       <span><span class="dot"></span>SISTEMA ONLINE</span>
@@ -254,7 +254,6 @@ td.servizio{text-align:center}
     <div class="statusbar-right" id="lb-updated">aggiornamento ogni 15s</div>
   </div>
 
-  <!-- ══ SEZIONE 1: ONLINE ══ -->
   <div class="online-section" id="online-section" style="display:none">
     <div class="sec-hdr">
       <div class="sec-title">Giocatori Online</div>
@@ -263,7 +262,6 @@ td.servizio{text-align:center}
     <div class="online-grid" id="online-grid"></div>
   </div>
 
-  <!-- ══ SEZIONE 2: TRENI IN CORSA ══ -->
   <div class="live-section" id="live-section" style="display:none">
     <div class="sec-hdr">
       <div class="sec-title">Treni in Corsa</div>
@@ -272,7 +270,6 @@ td.servizio{text-align:center}
     <div id="live-panel-main" class="live-panel-main"></div>
   </div>
 
-  <!-- ══ SEZIONE 3: CLASSIFICA AFFIDABILITÀ ══ -->
   <div class="lb-section">
     <div class="sec-hdr">
       <div class="sec-title">Classifica Affidabilità Totale</div>
@@ -295,7 +292,6 @@ td.servizio{text-align:center}
   </div>
 </main>
 
-<!-- LOGIN -->
 <div class="overlay" id="overlay-login">
   <div class="modal">
     <div class="modal-title"><span>Accedi</span><button class="modal-close" onclick="closeModal('login')">✕</button></div>
@@ -309,7 +305,6 @@ td.servizio{text-align:center}
   </div>
 </div>
 
-<!-- REGISTER -->
 <div class="overlay" id="overlay-register">
   <div class="modal">
     <div class="modal-title"><span>Registrazione</span><button class="modal-close" onclick="closeModal('register')">✕</button></div>
@@ -328,7 +323,6 @@ td.servizio{text-align:center}
   </div>
 </div>
 
-<!-- PROFILE -->
 <div class="overlay" id="overlay-profile">
   <div class="modal" style="max-width:440px">
     <div class="modal-title"><span id="profile-title">Profilo</span><button class="modal-close" onclick="closeModal('profile')">✕</button></div>
@@ -338,6 +332,7 @@ td.servizio{text-align:center}
       <div class="token-display" id="profile-token">—</div>
       <div class="slbl">Ultime sessioni</div>
       <div class="sessions-list" id="profile-sessions"><div style="color:var(--dimgrey);padding:8px 0">Caricamento...</div></div>
+      <button class="modal-btn danger" onclick="deleteProfile()">Cancella Profilo</button>
     </div>
   </div>
 </div>
@@ -347,13 +342,11 @@ let me = null;
 let liveData = [];
 let activeTab = 0;
 
-// ── Modal helpers ──
 function openModal(n){document.getElementById('overlay-'+n).classList.add('open')}
 function closeModal(n){document.getElementById('overlay-'+n).classList.remove('open')}
 function switchModal(a,b){closeModal(a);openModal(b)}
 document.querySelectorAll('.overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open')}));
 
-// ── Auth ──
 async function doRegister(){
   const btn=document.getElementById('r-btn'),msg=document.getElementById('r-msg');
   btn.disabled=true;msg.textContent='Registrazione...';msg.className='msg';
@@ -386,6 +379,21 @@ async function doLogin(){
 }
 
 async function doLogout(){await fetch('/api/logout',{method:'POST'});me=null;updateNav();loadLeaderboard();}
+
+async function deleteProfile() {
+  if(!confirm("Sei sicuro di voler eliminare definitivamente il tuo profilo? Questa azione non può essere annullata.")) return;
+  try {
+    const r = await fetch('/api/delete_profile', { method: 'POST' });
+    const d = await r.json();
+    if(d.ok) {
+      alert("Profilo eliminato.");
+      me = null;
+      closeModal('profile');
+      updateNav();
+      loadLeaderboard();
+    } else { alert("Errore: " + d.error); }
+  } catch { alert("Errore di rete."); }
+}
 
 async function checkMe(){
   try{const r=await fetch('/api/me');const d=await r.json();me=d.logged_in?d:null;}
@@ -438,7 +446,6 @@ async function loadProfile(){
   }catch{sl.innerHTML='<div style="color:var(--red)">Errore.</div>';}
 }
 
-// ── Leaderboard ──
 function scoreColor(sc){return sc>=85?'var(--green)':sc>=65?'#1565C0':sc>=45?'var(--amber)':'var(--red)';}
 function gradeClass(g){if(!g)return'';const l=g.toLowerCase();if(l.includes('ott')||l.includes('ecc'))return'g-ecc';if(l.includes('buo'))return'g-buo';if(l.includes('suf')||l.includes('med'))return'g-suf';return'g-ins';}
 function rankStr(i){return i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);}
@@ -452,15 +459,13 @@ async function loadLeaderboard(){
     document.getElementById('lb-updated').textContent='Aggiornato alle '+now;
     const body=document.getElementById('lb-body');
     if(!rows.length){
-      body.innerHTML='<tr><td colspan="5"><div class="empty-state">Nessuna sessione ancora. Completa una corsa con il monitor attivo!</div></td></tr>';
+      body.innerHTML='<tr><td colspan="5"><div class="empty-state">Nessuna sessione ancora.</div></td></tr>';
       return;
     }
     body.innerHTML=rows.map((row,i)=>`
       <tr>
         <td class="rank">${rankStr(i)}</td>
-        <td class="username">${row.username}
-          ${row.online?'<span style="margin-left:6px;font-size:9px;color:var(--green);font-family:var(--font-md)">● ONLINE</span>':''}
-        </td>
+        <td class="username">${row.username} ${row.online?'<span style="margin-left:6px;font-size:9px;color:var(--green)">● ONLINE</span>':''}</td>
         <td class="score">
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
@@ -468,219 +473,43 @@ async function loadLeaderboard(){
         <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
         <td class="c" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
       </tr>`).join('');
-  }catch(e){
-    document.getElementById('lb-body').innerHTML='<tr><td colspan="5"><div class="empty-state">Errore caricamento.</div></td></tr>';
-  }
+  }catch(e){ document.getElementById('lb-body').innerHTML='<tr><td colspan="5"><div class="empty-state">Errore caricamento.</div></td></tr>'; }
 }
 
-// ── Online cards ──
-function comfortClass(c){return c>=70?'comfort-hi':c>=40?'comfort-mid':'comfort-lo';}
 function comfortColor(c){return c>=70?'var(--green)':c>=40?'var(--amber)':'var(--red)';}
-function dlyClass(d){return Math.abs(d||0)<=2?'dly-ok':'dly-bad';}
 function dlyText(d){if(!d||Math.abs(d)<0.1)return'Puntuale';return(d>0?'+':'')+parseFloat(d).toFixed(1)+' min';}
 
 function renderOnlineCards(users){
-  const sec=document.getElementById('online-section');
-  const grid=document.getElementById('online-grid');
+  const sec=document.getElementById('online-section'),grid=document.getElementById('online-grid');
   document.getElementById('online-count').textContent=users.length+' online';
   if(!users.length){sec.style.display='none';return;}
   sec.style.display='block';
   grid.innerHTML=users.map(u=>{
-    const spd=Math.round(u.speed_kmh||0);
-    const dly=u.delay_min||0;
-    const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
-    const barW=Math.max(0,Math.min(100,cft));
-    const barCol=comfortColor(cft);
+    const spd=Math.round(u.speed_kmh||0),dly=u.delay_min||0,cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
     return `<div class="online-card">
       <div class="online-card-hdr">
-        <div>
-          <div class="online-card-user">👤 ${u.username}</div>
-          <div class="online-card-act">${u.activity_name||'—'}</div>
-        </div>
+        <div><div class="online-card-user">👤 ${u.username}</div><div class="online-card-act">${u.activity_name||'—'}</div></div>
         <div class="online-dot-badge"><span class="pulse"></span>LIVE</div>
       </div>
       <div class="cluster">
-        <div class="instrument">
-          <div class="instrument-val spd">${spd}</div>
-          <div class="instrument-lbl">km/h</div>
-        </div>
-        <div class="instrument">
-          <div class="instrument-val ${dlyClass(dly)}">${dlyText(dly)}</div>
-          <div class="instrument-lbl">Ritardo</div>
-        </div>
-        <div class="instrument">
-          <div class="instrument-val ${comfortClass(cft)}">${cft}</div>
-          <div class="instrument-lbl">Comfort</div>
-        </div>
+        <div class="instrument"><div class="instrument-val spd">${spd}</div><div class="instrument-lbl">km/h</div></div>
+        <div class="instrument"><div class="instrument-val ${Math.abs(dly)<=2?'dly-ok':'dly-bad'}">${dlyText(dly)}</div><div class="instrument-lbl">Ritardo</div></div>
+        <div class="instrument"><div class="instrument-val" style="color:${comfortColor(cft)}">${cft}</div><div class="instrument-lbl">Comfort</div></div>
       </div>
-      ${u.next_station?`
-      <div class="next-station-bar">
-        <span class="next-station-arrow">→</span>
-        <span class="next-station-name">${u.next_station}</span>
-        ${u.sim_time?`<span class="next-station-time">${u.sim_time}</span>`:''}
-      </div>`:''}
-      <div class="comfort-bar-wrap">
-        <div class="comfort-bar-track">
-          <div class="comfort-bar-fill" style="width:${barW}%;background:${barCol}"></div>
-        </div>
-      </div>
-      ${u.consist?`<div class="consist-tag">🚂 <span>${u.consist}</span></div>`:''}
+      ${u.next_station?`<div class="next-station-bar"><span class="next-station-arrow">→</span><span class="next-station-name">${u.next_station}</span></div>`:''}
+      <div class="comfort-bar-wrap"><div class="comfort-bar-track"><div class="comfort-bar-fill" style="width:${cft}%;background:${comfortColor(cft)}"></div></div></div>
     </div>`;
   }).join('');
 }
 
-// ── Live section (Treni in Corsa) ──
-function switchTab(i){activeTab=i;renderLiveSection();}
-
-function renderLiveSection(){
-  const sec=document.getElementById('live-section');
-  const tabsEl=document.getElementById('live-tabs');
-  const panelEl=document.getElementById('live-panel-main');
-  if(!liveData.length){sec.style.display='none';return;}
-  sec.style.display='block';
-  tabsEl.innerHTML=liveData.map((u,i)=>`
-    <div class="live-tab ${i===activeTab?'active':''}" onclick="switchTab(${i})">
-      <span class="tab-dot"></span>${u.username}
-    </div>`).join('');
-  if(activeTab>=liveData.length)activeTab=0;
-  renderPanel(liveData[activeTab],panelEl);
-}
-
-function renderPanel(u,el){
-  const dlyClass2=Math.abs(u.delay_min||0)<=2?'dly-ok':'dly-bad';
-  const dlyTxt=dlyText(u.delay_min);
-  const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
-  el.innerHTML=`
-    <div class="live-run-hdr">
-      <div>
-        <div class="live-run-name">${u.activity_name||'—'}</div>
-        <div class="live-run-consist">${u.consist?'🚂 '+u.consist:''}${u.sim_time?' · ⏰ '+u.sim_time:''}</div>
-      </div>
-      <div class="live-kpis">
-        <div class="live-kpi">
-          <div class="live-kpi-val" style="color:var(--accent)">${u.speed_kmh?Math.round(u.speed_kmh):'—'}</div>
-          <div class="live-kpi-lbl">km/h</div>
-        </div>
-        <div class="live-kpi">
-          <div class="live-kpi-val ${dlyClass2}">${dlyTxt}</div>
-          <div class="live-kpi-lbl">Ritardo</div>
-        </div>
-        <div class="live-kpi">
-          <div class="live-kpi-val" style="color:${comfortColor(cft)}">${cft}</div>
-          <div class="live-kpi-lbl">Comfort</div>
-        </div>
-        ${u.next_station?`<div class="live-kpi" style="min-width:100px">
-          <div style="font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--white);line-height:1.2">${u.next_station}</div>
-          <div class="live-kpi-lbl">Prossima</div>
-        </div>`:''}
-      </div>
-    </div>
-    <div style="margin-bottom:12px">
-      <div class="live-map-wrap">
-        <div class="live-map-title">Percorso</div>
-        ${renderStationsMap(u.stations||[])}
-      </div>
-    </div>
-    <div class="live-grid">
-      <div class="live-chart-wrap">
-        <div class="live-chart-title">Velocità (storico)</div>
-        <canvas class="live-chart-canvas" id="speed-chart-${u.username}"></canvas>
-      </div>
-      <div class="live-stops-wrap">
-        <div class="live-stops-title">Fermate</div>
-        ${renderStopsTable(u.stations||[])}
-      </div>
-    </div>`;
-  requestAnimationFrame(()=>drawSpeedChart(u));
-}
-
-function renderStationsMap(stations){
-  if(!stations.length)return'<div style="color:var(--dimgrey);font-size:10px;text-align:center;padding:8px">Nessuna fermata</div>';
-  const total=stations.length;
-  const currentIdx=stations.findIndex(s=>s.is_current);
-  const passedCount=stations.filter(s=>s.passed).length;
-  const progress=total>1?(currentIdx>=0?currentIdx/(total-1):passedCount/total)*100:0;
-  const trainLeft=Math.max(2,Math.min(98,progress));
-  const dotsHtml=stations.map(s=>{
-    const cls=s.is_current?'current':s.passed?'passed':'';
-    return `<div class="live-map-st">
-      <div class="live-map-dot ${cls}"></div>
-      <div class="live-map-name ${cls}" title="${s.station_name}">${s.station_name}</div>
-      <div class="live-map-time">${s.arrival||''}</div>
-    </div>`;
-  }).join('');
-  return`<div class="live-map">
-    <div class="live-map-line"></div>
-    <div class="live-map-progress" style="width:${progress}%"></div>
-    <div class="live-train-icon" style="left:${trainLeft}%">🚄</div>
-    <div class="live-map-stations">${dotsHtml}</div>
-  </div>`;
-}
-
-function renderStopsTable(stations){
-  if(!stations.length)return'<div style="padding:12px;font-size:10px;color:var(--dimgrey);text-align:center">Nessuna fermata</div>';
-  const rows=stations.map(s=>{
-    const cls=s.is_current?'current':s.passed?'passed':'';
-    const dly=s.delay_min?`<span class="${Math.abs(s.delay_min)>2?'dly-bad':'dly-ok'}">${s.delay_min>0?'+':''}${parseFloat(s.delay_min).toFixed(1)}'</span>`:'<span class="dly-ok">—</span>';
-    return`<tr class="${cls}"><td>${s.station_name}</td><td>${s.arrival||'—'}</td><td>${s.departure||'—'}</td><td>${dly}</td></tr>`;
-  }).join('');
-  return`<table class="live-stops-table"><thead><tr><th>Stazione</th><th>Arr.</th><th>Par.</th><th>Rit.</th></tr></thead><tbody>${rows}</tbody></table>`;
-}
-
-function drawSpeedChart(u){
-  const canvas=document.getElementById('speed-chart-'+u.username);
-  if(!canvas)return;
-  const history=u.speed_history||[];
-  const W=canvas.offsetWidth||300,H=100;
-  canvas.width=W;canvas.height=H;
-  const ctx=canvas.getContext('2d');
-  if(!history.length){
-    ctx.fillStyle='var(--dimgrey)';ctx.font='10px Trebuchet MS';ctx.textAlign='center';
-    ctx.fillText('Dati non ancora disponibili',W/2,50);return;
-  }
-  const speeds=history.map(h=>h.speed_kmh);
-  const maxSpd=Math.max(...speeds,10);
-  const pad={t:8,r:8,b:20,l:32};
-  const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
-  ctx.strokeStyle='rgba(204,204,204,0.3)';ctx.lineWidth=1;
-  [0,.25,.5,.75,1].forEach(f=>{
-    const y=pad.t+ch*(1-f);
-    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();
-    ctx.fillStyle='#888';ctx.font='8px Trebuchet MS';ctx.textAlign='right';
-    ctx.fillText(Math.round(maxSpd*f),pad.l-3,y+3);
-  });
-  ctx.beginPath();
-  history.forEach((h,i)=>{
-    const x=pad.l+(i/(history.length-1||1))*cw;
-    const y=pad.t+ch*(1-h.speed_kmh/maxSpd);
-    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-  });
-  ctx.strokeStyle='#CE1B26';ctx.lineWidth=2;ctx.stroke();
-  ctx.lineTo(pad.l+cw,pad.t+ch);ctx.lineTo(pad.l,pad.t+ch);ctx.closePath();
-  ctx.fillStyle='rgba(206,27,38,0.1)';ctx.fill();
-  const last=history[history.length-1];
-  const lx=pad.l+cw,ly=pad.t+ch*(1-last.speed_kmh/maxSpd);
-  ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fillStyle='#CE1B26';ctx.fill();
-  ctx.fillStyle='#888';ctx.font='8px Trebuchet MS';ctx.textAlign='center';
-  [0,Math.floor(history.length/2),history.length-1].forEach(i=>{
-    if(history[i]&&history[i].sim_time){
-      const x=pad.l+(i/(history.length-1||1))*cw;
-      ctx.fillText(history[i].sim_time,x,H-4);
-    }
-  });
-}
-
-// ── Load live data ──
 async function loadLive(){
   try{
     const r=await fetch('/api/live');
     liveData=await r.json();
     renderOnlineCards(liveData);
-    renderLiveSection();
   }catch(e){}
 }
 
-// ── Init ──
 checkMe();
 loadLeaderboard();
 loadLive();
