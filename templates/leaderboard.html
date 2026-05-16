@@ -262,7 +262,7 @@ td.date{text-align:right;font-family:var(--font);font-size:10px;color:var(--grey
       <thead>
         <tr>
           <th>#</th><th>Username</th>
-          <th class="c">Punteggio</th>
+          <th class="c">Affidabilità</th>
           <th class="c">Ultimo Servizio</th>
           <th class="c">Stato Live</th>
         </tr>
@@ -435,7 +435,7 @@ async function loadLeaderboard(){
         <td class="rank">${rankStr(i)}</td>
         <td class="username">${row.username}<div class="sub">${row.corse} cors${row.corse===1?'a':'e'}</div></td>
         <td class="score">
-          <div class="snum" style="color:${scoreColor(row.punteggio)}">${Math.round(row.punteggio)}<span style="font-size:11px;opacity:.5">/100</span></div>
+          <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:11px;opacity:.5">/100</span></div>
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
         </td>
         <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
