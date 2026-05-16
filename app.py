@@ -61,6 +61,27 @@ def init_db():
                 user_id     INTEGER PRIMARY KEY REFERENCES users(id),
                 last_seen   TIMESTAMPTZ NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS speed_history (
+                id          SERIAL PRIMARY KEY,
+                user_id     INTEGER NOT NULL REFERENCES users(id),
+                speed_kmh   REAL    NOT NULL,
+                sim_time    TEXT    DEFAULT '',
+                recorded_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
+            CREATE TABLE IF NOT EXISTS live_stations (
+                id              SERIAL PRIMARY KEY,
+                user_id         INTEGER NOT NULL REFERENCES users(id),
+                station_name    TEXT    NOT NULL,
+                arrival         TEXT    DEFAULT '',
+                departure       TEXT    DEFAULT '',
+                delay_min       REAL    DEFAULT 0,
+                passed          BOOLEAN DEFAULT FALSE,
+                is_current      BOOLEAN DEFAULT FALSE,
+                sort_order      INTEGER DEFAULT 0,
+                updated_at      TIMESTAMPTZ DEFAULT NOW()
+            );
+
             CREATE TABLE IF NOT EXISTS sessions (
                 id              SERIAL PRIMARY KEY,
                 user_id         INTEGER NOT NULL REFERENCES users(id),
@@ -370,6 +391,126 @@ def api_heartbeat():
                   activity_name=EXCLUDED.activity_name,
                   updated_at=NOW()
             """, (user["id"], speed_kmh, delay_min, next_station, consist, sim_time, activity_name))
+            # Salva campione velocità nello storico (max 200 per utente)
+            if speed_kmh > 0:
+                cur.execute("""
+                    INSERT INTO speed_history (user_id, speed_kmh, sim_time)
+                    VALUES (%s, %s, %s)
+                """, (user["id"], speed_kmh, sim_time))
+                cur.execute("""
+                    DELETE FROM speed_history WHERE user_id=%s
+                    AND id NOT IN (
+                        SELECT id FROM speed_history
+                        WHERE user_id=%s ORDER BY recorded_at DESC LIMIT 200
+                    )
+                """, (user["id"], user["id"]))
+        conn.commit()
+    return jsonify({"ok": True})
+
+# ─────────────────────────────────────────────────────────
+#  API dati live (per sezione LIVE leaderboard)
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/live")
+def api_live():
+    """Restituisce tutti gli utenti online con dati live completi."""""
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    u.username,
+                    u.id        AS user_id,
+                    ls.speed_kmh,
+                    ls.delay_min,
+                    ls.next_station,
+                    ls.consist,
+                    ls.sim_time,
+                    ls.activity_name,
+                    ls.updated_at::text AS updated_at
+                FROM live_sessions ls
+                JOIN users u ON u.id = ls.user_id
+                JOIN heartbeats h ON h.user_id = ls.user_id
+                WHERE h.last_seen >= NOW() - INTERVAL '2 minutes'
+                ORDER BY ls.updated_at DESC
+            """)
+            users_online = fetchall(cur)
+
+    # Per ogni utente online, carica storico velocità (ultimi 20 campioni)
+    result = []
+    for u in users_online:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT speed_kmh, sim_time, recorded_at::text AS recorded_at
+                    FROM speed_history
+                    WHERE user_id=%s
+                    ORDER BY recorded_at DESC LIMIT 40
+                """, (u["user_id"],))
+                history = fetchall(cur)
+                history.reverse()
+
+                cur.execute("""
+                    SELECT station_name, arrival, departure, delay_min,
+                           passed, is_current, sort_order
+                    FROM live_stations
+                    WHERE user_id=%s
+                    ORDER BY sort_order ASC
+                """, (u["user_id"],))
+                stations = fetchall(cur)
+
+        u["speed_history"] = history
+        u["stations"] = stations
+        result.append(u)
+
+    return jsonify(result)
+
+@app.route("/api/live_stations", methods=["POST"])
+def api_live_stations():
+    """
+    Riceve la lista delle stazioni con ritardi aggiornati dal .exe.
+    Header: X-API-Token: <token>
+    Body JSON:
+      {
+        "stations": [
+          {"name": "Roma Termini", "arrival": "08:00", "departure": "08:05",
+           "delay_min": 0, "passed": true, "is_current": false},
+          {"name": "Firenze SMN", "arrival": "09:45", "departure": "09:50",
+           "delay_min": 2.5, "passed": false, "is_current": true}
+        ]
+      }
+    """
+    token = request.headers.get("X-API-Token", "").strip()
+    if not token:
+        return jsonify({"ok": False, "error": "Token mancante"}), 401
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE api_token=%s", (token,))
+            user = fetchone(cur)
+    if not user:
+        return jsonify({"ok": False, "error": "Token non valido"}), 401
+
+    data = request.get_json(force=True) or {}
+    stations = data.get("stations", [])
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM live_stations WHERE user_id=%s", (user["id"],))
+            for i, st in enumerate(stations):
+                cur.execute("""
+                    INSERT INTO live_stations
+                      (user_id, station_name, arrival, departure, delay_min,
+                       passed, is_current, sort_order)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (
+                    user["id"],
+                    str(st.get("name", ""))[:100],
+                    str(st.get("arrival", "") or "")[:10],
+                    str(st.get("departure", "") or "")[:10],
+                    float(st.get("delay_min", 0) or 0),
+                    bool(st.get("passed", False)),
+                    bool(st.get("is_current", False)),
+                    i
+                ))
         conn.commit()
     return jsonify({"ok": True})
 
