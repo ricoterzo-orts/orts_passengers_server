@@ -19,21 +19,21 @@
   font-weight: 500;
 }
 :root {
-  --bg:      #F2F2F2;
-  --panel:   #E4E4E4;
-  --card:    #FFFFFF;
-  --border:  #CCCCCC;
-  --accent:  #CE1B26;
+  --bg: #F2F2F2;
+  --panel: #E4E4E4;
+  --card: #FFFFFF;
+  --border: #CCCCCC;
+  --accent: #CE1B26;
   --accent2: #A8141D;
-  --white:   #2B2B2B;
-  --grey:    #5A5A5A;
+  --white: #2B2B2B;
+  --grey: #5A5A5A;
   --dimgrey: #AAAAAA;
-  --green:   #007A3D;
-  --amber:   #E07B00;
-  --red:     #CE1B26;
-  --font:    'Futura','futura_medium_bt',sans-serif;
+  --green: #007A3D;
+  --amber: #E07B00;
+  --red: #CE1B26;
+  --font: 'Futura','futura_medium_bt',sans-serif;
   --font-md: 'Futura','futura_medium_bt',sans-serif;
-  --mono:    'Futura',monospace;
+  --mono: 'Futura',monospace;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--white);font-family:var(--font);font-size:13px;min-height:100vh}
@@ -218,6 +218,20 @@ td.servizio{text-align:center}
 .sess-serv{color:var(--accent2);font-family:var(--font);flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
 .sess-date{color:var(--grey);font-family:var(--font)}
 
+/* ── DANGER ZONE (cancellazione profilo) ── */
+.danger-zone{margin-top:18px;border-top:1px solid var(--border);padding-top:14px}
+.danger-zone-title{font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:8px}
+.danger-zone-body{display:none;margin-top:8px}
+.danger-zone-body .field label{color:var(--red)}
+.danger-zone-body .field input:focus{border-color:var(--red)}
+.danger-zone-actions{display:flex;gap:6px;margin-top:8px}
+.danger-zone-actions .modal-btn{margin-top:0;flex:1}
+.danger-zone-actions .modal-btn.cancel-del{background:var(--panel);color:var(--grey);border:1px solid var(--border)}
+.danger-zone-actions .modal-btn.cancel-del:hover{background:var(--border)}
+.danger-zone-actions .modal-btn.confirm-del{background:var(--red);color:#fff}
+.danger-zone-actions .modal-btn.confirm-del:hover{background:#a00}
+.danger-msg{font-family:var(--font);font-size:10px;color:var(--red);margin-top:6px;min-height:14px;text-align:center}
+
 ::-webkit-scrollbar{width:6px}
 ::-webkit-scrollbar-track{background:var(--card)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -292,6 +306,7 @@ td.servizio{text-align:center}
   </div>
 </main>
 
+<!-- ── MODAL LOGIN ── -->
 <div class="overlay" id="overlay-login">
   <div class="modal">
     <div class="modal-title"><span>Accedi</span><button class="modal-close" onclick="closeModal('login')">✕</button></div>
@@ -305,6 +320,7 @@ td.servizio{text-align:center}
   </div>
 </div>
 
+<!-- ── MODAL REGISTRAZIONE ── -->
 <div class="overlay" id="overlay-register">
   <div class="modal">
     <div class="modal-title"><span>Registrazione</span><button class="modal-close" onclick="closeModal('register')">✕</button></div>
@@ -323,6 +339,7 @@ td.servizio{text-align:center}
   </div>
 </div>
 
+<!-- ── MODAL PROFILO ── -->
 <div class="overlay" id="overlay-profile">
   <div class="modal" style="max-width:440px">
     <div class="modal-title"><span id="profile-title">Profilo</span><button class="modal-close" onclick="closeModal('profile')">✕</button></div>
@@ -331,8 +348,33 @@ td.servizio{text-align:center}
       <div class="slbl">Token API (da incollare nel .exe → Impostazioni)</div>
       <div class="token-display" id="profile-token">—</div>
       <div class="slbl">Ultime sessioni</div>
-      <div class="sessions-list" id="profile-sessions"><div style="color:var(--dimgrey);padding:8px 0">Caricamento...</div></div>
-      <button class="modal-btn danger" onclick="deleteProfile()">Cancella Profilo</button>
+      <div class="sessions-list" id="profile-sessions">
+        <div style="color:var(--dimgrey);padding:8px 0">Caricamento...</div>
+      </div>
+
+      <!-- ── DANGER ZONE ── -->
+      <div class="danger-zone">
+        <div class="danger-zone-title">⚠ Zona pericolosa</div>
+        <button class="modal-btn danger" id="btn-show-delete" onclick="showDeleteZone()">
+          Cancella profilo dalla leaderboard
+        </button>
+        <div class="danger-zone-body" id="delete-zone-body">
+          <div class="field">
+            <label>Conferma con la tua password</label>
+            <input type="password" id="delete-password" placeholder="••••••••">
+          </div>
+          <p style="font-family:var(--font);font-size:10px;color:var(--grey);margin-bottom:4px">
+            Questa operazione è <strong>irreversibile</strong>: verranno cancellati il profilo,
+            tutte le sessioni e i dati live dalla classifica.
+          </p>
+          <div class="danger-zone-actions">
+            <button class="modal-btn cancel-del" onclick="hideDeleteZone()">Annulla</button>
+            <button class="modal-btn confirm-del" id="btn-confirm-delete" onclick="doDeleteProfile()">Elimina definitivamente</button>
+          </div>
+          <div class="danger-msg" id="delete-msg"></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -347,6 +389,52 @@ function closeModal(n){document.getElementById('overlay-'+n).classList.remove('o
 function switchModal(a,b){closeModal(a);openModal(b)}
 document.querySelectorAll('.overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open')}));
 
+/* ── DELETE PROFILE UI ── */
+function showDeleteZone(){
+  document.getElementById('btn-show-delete').style.display='none';
+  document.getElementById('delete-zone-body').style.display='block';
+  document.getElementById('delete-password').focus();
+}
+function hideDeleteZone(){
+  document.getElementById('btn-show-delete').style.display='';
+  document.getElementById('delete-zone-body').style.display='none';
+  document.getElementById('delete-password').value='';
+  document.getElementById('delete-msg').textContent='';
+}
+
+async function doDeleteProfile(){
+  const pw  = document.getElementById('delete-password').value;
+  const msg = document.getElementById('delete-msg');
+  const btn = document.getElementById('btn-confirm-delete');
+  msg.textContent='';
+  if(!pw){msg.textContent='Inserisci la password.';return;}
+  btn.disabled=true;
+  btn.textContent='Eliminazione...';
+  try{
+    const r=await fetch('/api/delete_profile',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:pw})
+    });
+    const d=await r.json();
+    if(d.ok){
+      closeModal('profile');
+      me=null;
+      updateNav();
+      loadLeaderboard();
+      alert('Profilo eliminato con successo.');
+    } else {
+      msg.textContent='✗ '+d.error;
+      document.getElementById('delete-password').value='';
+    }
+  } catch {
+    msg.textContent='✗ Errore di rete.';
+  }
+  btn.disabled=false;
+  btn.textContent='Elimina definitivamente';
+}
+
+/* ── AUTH ── */
 async function doRegister(){
   const btn=document.getElementById('r-btn'),msg=document.getElementById('r-msg');
   btn.disabled=true;msg.textContent='Registrazione...';msg.className='msg';
@@ -380,21 +468,6 @@ async function doLogin(){
 
 async function doLogout(){await fetch('/api/logout',{method:'POST'});me=null;updateNav();loadLeaderboard();}
 
-async function deleteProfile() {
-  if(!confirm("Sei sicuro di voler eliminare definitivamente il tuo profilo? Questa azione non può essere annullata.")) return;
-  try {
-    const r = await fetch('/api/delete_profile', { method: 'POST' });
-    const d = await r.json();
-    if(d.ok) {
-      alert("Profilo eliminato.");
-      me = null;
-      closeModal('profile');
-      updateNav();
-      loadLeaderboard();
-    } else { alert("Errore: " + d.error); }
-  } catch { alert("Errore di rete."); }
-}
-
 async function checkMe(){
   try{const r=await fetch('/api/me');const d=await r.json();me=d.logged_in?d:null;}
   catch{me=null;}
@@ -407,7 +480,7 @@ function updateNav(){
   document.getElementById('btn-register').style.display=li?'none':'';
   document.getElementById('btn-profile').style.display=li?'':'none';
   document.getElementById('btn-logout').style.display=li?'':'none';
-  document.getElementById('nav-username').textContent=li?('● '+me.username+'  '):'';
+  document.getElementById('nav-username').textContent=li?('● '+me.username+' '):'';
   const b=document.getElementById('user-banner');
   if(li){b.style.display='flex';document.getElementById('banner-token').textContent=me.api_token;}
   else{b.style.display='none';}
@@ -423,6 +496,7 @@ function copyToken(){
 
 async function loadProfile(){
   openModal('profile');
+  hideDeleteZone();
   if(!me)return;
   document.getElementById('profile-title').textContent=me.nome+' '+me.cognome+' — Profilo';
   document.getElementById('profile-token').textContent=me.api_token;
@@ -446,6 +520,7 @@ async function loadProfile(){
   }catch{sl.innerHTML='<div style="color:var(--red)">Errore.</div>';}
 }
 
+/* ── LEADERBOARD ── */
 function scoreColor(sc){return sc>=85?'var(--green)':sc>=65?'#1565C0':sc>=45?'var(--amber)':'var(--red)';}
 function gradeClass(g){if(!g)return'';const l=g.toLowerCase();if(l.includes('ott')||l.includes('ecc'))return'g-ecc';if(l.includes('buo'))return'g-buo';if(l.includes('suf')||l.includes('med'))return'g-suf';return'g-ins';}
 function rankStr(i){return i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);}
@@ -473,9 +548,10 @@ async function loadLeaderboard(){
         <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
         <td class="c" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
       </tr>`).join('');
-  }catch(e){ document.getElementById('lb-body').innerHTML='<tr><td colspan="5"><div class="empty-state">Errore caricamento.</div></td></tr>'; }
+  }catch(e){document.getElementById('lb-body').innerHTML='<tr><td colspan="5"><div class="empty-state">Errore caricamento.</div></td></tr>';}
 }
 
+/* ── LIVE ── */
 function comfortColor(c){return c>=70?'var(--green)':c>=40?'var(--amber)':'var(--red)';}
 function dlyText(d){if(!d||Math.abs(d)<0.1)return'Puntuale';return(d>0?'+':'')+parseFloat(d).toFixed(1)+' min';}
 
