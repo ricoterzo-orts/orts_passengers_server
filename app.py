@@ -247,10 +247,22 @@ def api_me():
 #  API Leaderboard
 # ─────────────────────────────────────────────────────────
 
+# ─────────────────────────────────────────────────────────
+#  API Leaderboard (Versione Autoriparante)
+# ─────────────────────────────────────────────────────────
+
 @app.route("/api/leaderboard")
 def api_leaderboard():
     with get_db() as conn:
         with conn.cursor() as cur:
+            # 1. FORZIAMO la creazione della colonna direttamente qui per sicurezza
+            try:
+                cur.execute("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_live REAL DEFAULT 100;")
+                conn.commit()
+            except Exception:
+                conn.rollback() # Se fallisce o esiste già, resetta la transazione e va avanti
+
+            # 2. Eseguiamo la query della classifica
             cur.execute("""
                 SELECT
                     u.username,
@@ -279,22 +291,6 @@ def api_leaderboard():
                 ORDER BY punteggio DESC
                 LIMIT 100
             """)
-            rows = fetchall(cur)
-    return jsonify(rows)
-
-@app.route("/api/my_sessions")
-def api_my_sessions():
-    if "user_id" not in session:
-        return jsonify({"ok": False, "error": "Non autenticato"}), 401
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT punteggio, ultimo_servizio, grade, frenate_brusche,
-                       accel_brusche, penalita, completamento,
-                       registrata_at::text AS registrata_at
-                FROM sessions WHERE user_id=%s
-                ORDER BY registrata_at DESC LIMIT 50
-            """, (session["user_id"],))
             rows = fetchall(cur)
     return jsonify(rows)
 
