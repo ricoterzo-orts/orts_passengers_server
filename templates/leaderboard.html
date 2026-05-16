@@ -215,6 +215,15 @@ td.servizio{text-align:center}
 .sess-score{color:var(--white);font-weight:500;font-family:var(--font-md);min-width:50px}
 .sess-serv{color:var(--accent2);font-family:var(--font);flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
 .sess-date{color:var(--grey);font-family:var(--font)}
+.danger-zone{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.danger-title{font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:8px}
+.delete-btn{width:100%;padding:6px;background:transparent;color:var(--red);border:1px solid var(--red);font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:1px;transition:all .15s}
+.delete-btn:hover{background:var(--red);color:#fff}
+.delete-confirm{display:none;margin-top:8px;background:rgba(206,27,38,.06);border:1px solid rgba(206,27,38,.2);border-radius:2px;padding:10px;text-align:center}
+.delete-confirm p{font-size:11px;color:var(--white);margin-bottom:8px;font-family:var(--font)}
+.delete-confirm-btns{display:flex;gap:6px}
+.delete-yes{flex:1;padding:5px;background:var(--red);color:#fff;border:none;font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:1px}
+.delete-no{flex:1;padding:5px;background:var(--panel);color:var(--grey);border:1px solid var(--border);font-family:var(--font-md);font-size:11px;cursor:pointer;border-radius:1px}
 
 ::-webkit-scrollbar{width:6px}
 ::-webkit-scrollbar-track{background:var(--card)}
@@ -338,6 +347,18 @@ td.servizio{text-align:center}
       <div class="token-display" id="profile-token">—</div>
       <div class="slbl">Ultime sessioni</div>
       <div class="sessions-list" id="profile-sessions"><div style="color:var(--dimgrey);padding:8px 0">Caricamento...</div></div>
+      <div class="danger-zone">
+        <div class="danger-title">⚠ Zona pericolosa</div>
+        <button class="delete-btn" onclick="showDeleteConfirm()">Elimina profilo</button>
+        <div class="delete-confirm" id="delete-confirm">
+          <p>Sei sicuro? Tutti i tuoi dati e sessioni verranno eliminati definitivamente.</p>
+          <div class="delete-confirm-btns">
+            <button class="delete-yes" onclick="doDeleteProfile()">Sì, elimina</button>
+            <button class="delete-no" onclick="hideDeleteConfirm()">Annulla</button>
+          </div>
+          <div class="msg" id="delete-msg" style="margin-top:6px"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -678,6 +699,29 @@ async function loadLive(){
     renderOnlineCards(liveData);
     renderLiveSection();
   }catch(e){}
+}
+
+// ── Delete profile ──
+function showDeleteConfirm(){
+  document.getElementById('delete-confirm').style.display='block';
+}
+function hideDeleteConfirm(){
+  document.getElementById('delete-confirm').style.display='none';
+  document.getElementById('delete-msg').textContent='';
+}
+async function doDeleteProfile(){
+  const msg=document.getElementById('delete-msg');
+  msg.textContent='Eliminazione in corso...';msg.className='msg';
+  try{
+    const r=await fetch('/api/delete_account',{method:'POST'});
+    const d=await r.json();
+    if(d.ok){
+      msg.textContent='✓ Profilo eliminato.';msg.className='msg ok';
+      setTimeout(()=>{closeModal('profile');me=null;updateNav();loadLeaderboard();},1500);
+    }else{
+      msg.textContent='✗ '+d.error;msg.className='msg err';
+    }
+  }catch{msg.textContent='✗ Errore di rete';msg.className='msg err';}
 }
 
 // ── Init ──
