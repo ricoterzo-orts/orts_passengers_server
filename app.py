@@ -83,6 +83,14 @@ def init_db():
                 updated_at      TIMESTAMPTZ DEFAULT NOW()
             );
 
+            CREATE TABLE IF NOT EXISTS station_coords (
+                id          SERIAL PRIMARY KEY,
+                name        TEXT    NOT NULL UNIQUE,
+                lat         REAL    NOT NULL,
+                lon         REAL    NOT NULL,
+                updated_at  TIMESTAMPTZ DEFAULT NOW()
+            );
+
             CREATE TABLE IF NOT EXISTS user_stats (
                 user_id         INTEGER PRIMARY KEY REFERENCES users(id),
                 affidabilita    REAL    DEFAULT 0,
@@ -112,6 +120,13 @@ init_db()
 def migrate_db():
     """Aggiunge colonne mancanti a tabelle esistenti (migrazioni sicure)."""
     migrations = [
+        """CREATE TABLE IF NOT EXISTS station_coords (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            lat REAL NOT NULL,
+            lon REAL NOT NULL,
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )""",
         """CREATE TABLE IF NOT EXISTS user_stats (
             user_id INTEGER PRIMARY KEY REFERENCES users(id),
             affidabilita REAL DEFAULT 0,
@@ -640,6 +655,60 @@ def api_delete_account():
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+# ─────────────────────────────────────────────────────────
+#  API coordinate stazioni (per mappa)
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/station_coords", methods=["POST"])
+def api_station_coords():
+    """
+    Riceve dizionario {nome_stazione: {lat, lon}} dal monitor.
+    Header: X-API-Token: <token>
+    Body JSON: {"stations": {"Messina C.": {"lat": 38.19, "lon": 15.55}, ...}}
+    """
+    token = request.headers.get("X-API-Token", "").strip()
+    if not token:
+        return jsonify({"ok": False, "error": "Token mancante"}), 401
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE api_token=%s", (token,))
+            user = fetchone(cur)
+    if not user:
+        return jsonify({"ok": False, "error": "Token non valido"}), 401
+
+    data = request.get_json(force=True) or {}
+    stations = data.get("stations", {})
+    if not stations:
+        return jsonify({"ok": False, "error": "Nessuna stazione"}), 400
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            for name, coords in stations.items():
+                try:
+                    lat = float(coords.get("lat", 0))
+                    lon = float(coords.get("lon", 0))
+                    if not (35.0 <= lat <= 47.5 and 6.0 <= lon <= 19.0):
+                        continue
+                    cur.execute("""
+                        INSERT INTO station_coords (name, lat, lon, updated_at)
+                        VALUES (%s, %s, %s, NOW())
+                        ON CONFLICT (name) DO UPDATE SET
+                            lat=EXCLUDED.lat, lon=EXCLUDED.lon, updated_at=NOW()
+                    """, (str(name)[:100], lat, lon))
+                except Exception:
+                    pass
+        conn.commit()
+    return jsonify({"ok": True, "count": len(stations)})
+
+@app.route("/api/station_coords")
+def api_get_station_coords():
+    """Restituisce tutte le coordinate stazioni salvate."""""
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT name, lat, lon FROM station_coords ORDER BY name")
+            rows = fetchall(cur)
+    return jsonify({r["name"]: {"lat": r["lat"], "lon": r["lon"]} for r in rows})
 
 # ─────────────────────────────────────────────────────────
 
