@@ -40,8 +40,14 @@ def fetchall(cur):
 @app.route("/")
 def index():
     if "user_id" not in session:
-        return redirect(url_for("login_page")
+        return redirect(url_for("login_page")) # Corretta parentesi
     return render_template("leaderboard.html")
+
+@app.route("/login")
+def login_page():
+    if "user_id" in session:
+        return redirect(url_for("index"))
+    return render_template("login.html") # Questa mancava e causava il 404
     
 # ─────────────────────────────────────────────────────────
 #  API Autenticazione
