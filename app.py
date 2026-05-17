@@ -9,6 +9,16 @@ import psycopg2, psycopg2.extras, psycopg2.errorcodes
 import hashlib, os, secrets, re
 
 app = Flask(__name__)
+
+# Configurazione sicura per la sessione
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+app.config['SESSION_COOKIE_SECURE'] = True          # invia cookie solo su HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True        # protegge da XSS
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax' # previene CSRF
+session["user_id"]  = user["id"]
+session["username"] = user["username"]
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
