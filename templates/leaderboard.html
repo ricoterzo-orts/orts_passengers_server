@@ -9,14 +9,12 @@
 <style>
 @font-face {
   font-family: 'Futura';
-  src: url('/static/futur.woff2') format('woff2'),
-       url('/static/futur.ttf') format('truetype');
+  src: url('/static/futur.woff2') format('woff2');
   font-weight: normal;
 }
 @font-face {
   font-family: 'Futura';
-  src: url('/static/futura_medium_bt.woff2') format('woff2'),
-       url('/static/futura_medium_bt.ttf') format('truetype');
+  src: url('/static/futura_medium_bt.woff2') format('woff2');
   font-weight: 500;
 }
 :root {
@@ -32,9 +30,9 @@
   --green:   #007A3D;
   --amber:   #E07B00;
   --red:     #CE1B26;
-  --font:    'Futura','Trebuchet MS',sans-serif;
-  --font-md: 'Futura','Trebuchet MS',sans-serif;
-  --mono:    'Courier New',monospace;
+  --font:    'Futura', sans-serif;
+  --font-md: 'Futura', sans-serif;
+  --mono:    'Courier New', monospace;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--white);font-family:var(--font);font-size:13px;min-height:100vh}
@@ -42,8 +40,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--font);font-size:1
 /* ── HEADER ── */
 header{background:var(--accent2);border-bottom:2px solid var(--accent);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 .logo{display:flex;align-items:center;gap:10px}
-.logo h1{font-size:13px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:#fff;font-family:var(--font-md)}
-.logo h1 span{opacity:.8;font-weight:normal}
+.logo img{height:36px;width:auto;display:block}
 nav{display:flex;gap:6px;align-items:center}
 #nav-username{font-family:var(--font-md);font-size:11px;color:rgba(255,255,255,.9);margin-right:4px;font-weight:500}
 .nav-btn{padding:4px 14px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.25);color:#fff;font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:background .15s;line-height:22px}
@@ -242,8 +239,8 @@ td.servizio{text-align:center}
 
 <header>
   <div class="logo">
-  <img src="/static/VTV_logo.jpg" alt="ViaggiaTreno Virtual" style="height: 36px;">
-</div>
+    <img src="/static/viaggiatreno_logo.jpg" alt="ViaggiaTreno Virtual">
+  </div>
   <nav>
     <span id="nav-username"></span>
     <button class="nav-btn" id="btn-login" onclick="openModal('login')">Accedi</button>
@@ -312,9 +309,9 @@ td.servizio{text-align:center}
           </tr>
         </thead>
         <tbody id="lb-body">
-          <tr><td colspan="5"><div class="empty-state">Caricamento...</div></tr>
+          <tr><td colspan="5"><div class="empty-state">Caricamento...</div></td></tr>
         </tbody>
-      </table>
+       </table>
     </div>
   </div>
 </main>
@@ -488,7 +485,7 @@ async function loadLeaderboard(){
     document.getElementById('lb-updated').textContent='Aggiornato alle '+now;
     const body=document.getElementById('lb-body');
     if(!rows.length){
-      body.innerHTML='<tr><td colspan="5"><div class="empty-state">Nessuna sessione ancora. Completa una corsa con il monitor attivo!</div></tr>';
+      body.innerHTML='<tr><td colspan="5"><div class="empty-state">Nessuna sessione ancora. Completa una corsa con il monitor attivo!</div></td></tr>';
       return;
     }
     body.innerHTML=rows.map((row,i)=>`
@@ -503,9 +500,9 @@ async function loadLeaderboard(){
         </td>
         <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
         <td class="c" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
-      </tr>`).join('');
+       </tr>`).join('');
   }catch(e){
-    document.getElementById('lb-body').innerHTML='<tr><td colspan="5"><div class="empty-state">Errore caricamento.</div></tr>';
+    document.getElementById('lb-body').innerHTML='<tr><td colspan="5"><div class="empty-state">Errore caricamento.</div></td></tr>';
   }
 }
 
@@ -679,7 +676,7 @@ function drawSpeedChart(u){
   canvas.width=W;canvas.height=H;
   const ctx=canvas.getContext('2d');
   if(!history.length){
-    ctx.fillStyle='var(--dimgrey)';ctx.font='10px Trebuchet MS';ctx.textAlign='center';
+    ctx.fillStyle='var(--dimgrey)';ctx.font='10px Futura, sans-serif';ctx.textAlign='center';
     ctx.fillText('Dati non ancora disponibili',W/2,50);return;
   }
   const speeds=history.map(h=>h.speed_kmh);
@@ -690,7 +687,7 @@ function drawSpeedChart(u){
   [0,.25,.5,.75,1].forEach(f=>{
     const y=pad.t+ch*(1-f);
     ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();
-    ctx.fillStyle='#888';ctx.font='8px Trebuchet MS';ctx.textAlign='right';
+    ctx.fillStyle='#888';ctx.font='8px Futura, sans-serif';ctx.textAlign='right';
     ctx.fillText(Math.round(maxSpd*f),pad.l-3,y+3);
   });
   ctx.beginPath();
@@ -705,7 +702,7 @@ function drawSpeedChart(u){
   const last=history[history.length-1];
   const lx=pad.l+cw,ly=pad.t+ch*(1-last.speed_kmh/maxSpd);
   ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fillStyle='#CE1B26';ctx.fill();
-  ctx.fillStyle='#888';ctx.font='8px Trebuchet MS';ctx.textAlign='center';
+  ctx.fillStyle='#888';ctx.font='8px Futura, sans-serif';ctx.textAlign='center';
   [0,Math.floor(history.length/2),history.length-1].forEach(i=>{
     if(history[i]&&history[i].sim_time){
       const x=pad.l+(i/(history.length-1||1))*cw;
@@ -729,7 +726,6 @@ async function loadLive(){
 function confirmAndDeleteProfile(){
   const confirmDiv = document.getElementById('delete-confirm');
   if(!confirmDiv) return;
-  // Crea campo password se non esiste già
   let passWrapper = document.getElementById('delete-password-wrapper');
   if(!passWrapper){
     const wrapper = document.createElement('div');
@@ -742,7 +738,6 @@ function confirmAndDeleteProfile(){
     confirmDiv.insertBefore(wrapper, confirmDiv.querySelector('.delete-confirm-btns'));
     passWrapper = wrapper;
   }
-  // Assicura che il bottone Sì usi la nuova funzione
   const yesBtn = document.querySelector('#delete-confirm .delete-yes');
   if(yesBtn && !yesBtn.dataset.patched){
     yesBtn.onclick = async (e) => {
@@ -913,7 +908,7 @@ function updateMap(users){
              || (u.next_station ? (() => { const c = getStationCoord(u.next_station); return c ? [c.lat, c.lon] : null; })() : null);
 
     if(pos){
-      const popupHtml = `<div style="font-family:Trebuchet MS;font-size:12px">
+      const popupHtml = `<div style="font-family:Futura, sans-serif;font-size:12px">
         <b>${u.username}</b><br>
         🚂 ${u.consist||'—'}<br>
         🚄 ${u.speed_kmh ? Math.round(u.speed_kmh)+' km/h' : '—'}<br>
