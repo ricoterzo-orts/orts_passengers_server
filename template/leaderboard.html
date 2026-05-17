@@ -905,6 +905,104 @@ function updateMap(users){
   }
 }
 
+  // profile-delete.js - modulo per eliminazione sicura del profilo
+
+/**
+ * Mostra un dialogo modale per richiedere la password prima di eliminare l'account.
+ * Richiama poi l'API con la password inserita.
+ */
+async function confirmAndDeleteProfile() {
+    // Nasconde eventuali messaggi precedenti
+    const msgDiv = document.getElementById('delete-msg');
+    if (msgDiv) msgDiv.textContent = '';
+
+    // Crea dinamicamente il campo password se non esiste già
+    let passField = document.getElementById('delete-password-field');
+    if (!passField) {
+        const confirmDiv = document.getElementById('delete-confirm');
+        if (!confirmDiv) return;
+        const inputWrapper = document.createElement('div');
+        inputWrapper.id = 'delete-password-wrapper';
+        inputWrapper.style.marginTop = '10px';
+        inputWrapper.innerHTML = `
+            <label for="delete-password" style="font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--grey);">Conferma password</label>
+            <input type="password" id="delete-password" placeholder="••••••••" style="width:100%; padding:5px 8px; margin-top:4px; background:var(--bg); border:1px solid var(--border); color:white; font-family:monospace;">
+        `;
+        confirmDiv.insertBefore(inputWrapper, confirmDiv.querySelector('.delete-confirm-btns'));
+        passField = document.getElementById('delete-password');
+    }
+
+    // Mostra la zona di conferma (se non già visibile)
+    const confirmBox = document.getElementById('delete-confirm');
+    if (confirmBox) confirmBox.style.display = 'block';
+
+    // Attendi che l'utente prema "Sì, elimina" – il bottone ora chiamerà doDeleteProfileWithPassword()
+    // Per evitare doppie chiamate, sostituiamo l'handler originale del bottone "delete-yes"
+    const yesBtn = document.querySelector('#delete-confirm .delete-yes');
+    if (yesBtn && !yesBtn.dataset.patched) {
+        const oldClick = yesBtn.onclick;
+        yesBtn.onclick = async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('delete-password')?.value || '';
+            if (!password) {
+                showDeleteMessage('Inserisci la password per eliminare il profilo.', 'err');
+                return;
+            }
+            await doDeleteProfileWithPassword(password);
+        };
+        yesBtn.dataset.patched = 'true';
+    }
+}
+
+/**
+ * Invia la richiesta di eliminazione con la password fornita.
+ * @param {string} password
+ */
+async function doDeleteProfileWithPassword(password) {
+    const msgDiv = document.getElementById('delete-msg');
+    if (!msgDiv) return;
+
+    msgDiv.textContent = 'Eliminazione in corso...';
+    msgDiv.className = 'msg';
+
+    try {
+        const response = await fetch('/api/delete_account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: password })
+        });
+        const data = await response.json();
+
+        if (data.ok) {
+            msgDiv.textContent = '✓ Profilo eliminato con successo.';
+            msgDiv.className = 'msg ok';
+            // Chiudi il modale profilo e resetta lo stato
+            setTimeout(() => {
+                closeModal('profile');
+                // Logout lato client
+                me = null;
+                updateNav();
+                loadLeaderboard();
+                location.reload(); // Ricarica la pagina per aggiornare la classifica
+            }, 1500);
+        } else {
+            msgDiv.textContent = '✗ ' + (data.error || 'Errore sconosciuto');
+            msgDiv.className = 'msg err';
+        }
+    } catch (err) {
+        msgDiv.textContent = '✗ Errore di connessione. Riprova.';
+        msgDiv.className = 'msg err';
+    }
+}
+
+function showDeleteMessage(msg, type) {
+    const msgDiv = document.getElementById('delete-msg');
+    if (msgDiv) {
+        msgDiv.textContent = msg;
+        msgDiv.className = 'msg ' + type;
+    }
+}
+
 // ── Init ──
 checkMe();
 loadLeaderboard();
