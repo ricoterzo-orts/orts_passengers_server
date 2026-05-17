@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ORTS Passengers — Leaderboard</title>
-<link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+<title>ORTS Passengers — ViaggiaTreno Virtual</title>
+<link rel="icon" href="/static/logo.ico" type="image/x-icon">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 @font-face {
@@ -97,7 +97,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .comfort-bar-track{height:4px;background:var(--panel);border-radius:2px;overflow:hidden}
 .comfort-bar-fill{height:100%;border-radius:2px;transition:width .5s}
 
-/* ── TRENI IN CORSA (sezione esistente) ── */
+/* ── TRENI IN CORSA ── */
 .live-section{margin-bottom:24px}
 .live-tabs{display:flex;gap:4px;margin-bottom:0;flex-wrap:wrap}
 .live-tab{padding:5px 14px;background:var(--panel);border:1px solid var(--border);border-bottom:none;color:var(--grey);font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:2px 2px 0 0;transition:all .15s;display:flex;align-items:center;gap:5px}
@@ -254,13 +254,11 @@ td.servizio{text-align:center}
 </header>
 
 <main>
-  <!-- Token banner -->
   <div id="user-banner">
     <span><span class="lbl">Token API per il .exe: </span><span class="tv" id="banner-token"></span></span>
     <button class="copy-btn" onclick="copyToken()">📋 Copia</button>
   </div>
 
-  <!-- Statusbar -->
   <div class="statusbar">
     <div class="statusbar-left">
       <span><span class="dot"></span>SISTEMA ONLINE</span>
@@ -269,7 +267,6 @@ td.servizio{text-align:center}
     <div class="statusbar-right" id="lb-updated">aggiornamento ogni 15s</div>
   </div>
 
-  <!-- ══ SEZIONE 0: MAPPA LIVE ══ -->
   <div class="map-section" id="map-section">
     <div class="sec-hdr">
       <div class="sec-title">Mappa Treni in Tempo Reale</div>
@@ -278,7 +275,6 @@ td.servizio{text-align:center}
     <div id="live-map"></div>
   </div>
 
-  <!-- ══ SEZIONE 1: ONLINE ══ -->
   <div class="online-section" id="online-section" style="display:none">
     <div class="sec-hdr">
       <div class="sec-title">Giocatori Online</div>
@@ -287,7 +283,6 @@ td.servizio{text-align:center}
     <div class="online-grid" id="online-grid"></div>
   </div>
 
-  <!-- ══ SEZIONE 2: TRENI IN CORSA ══ -->
   <div class="live-section" id="live-section" style="display:none">
     <div class="sec-hdr">
       <div class="sec-title">Treni in Corsa</div>
@@ -296,7 +291,6 @@ td.servizio{text-align:center}
     <div id="live-panel-main" class="live-panel-main"></div>
   </div>
 
-  <!-- ══ SEZIONE 3: CLASSIFICA AFFIDABILITÀ ══ -->
   <div class="lb-section">
     <div class="sec-hdr">
       <div class="sec-title">Classifica Affidabilità Totale</div>
@@ -319,7 +313,6 @@ td.servizio{text-align:center}
   </div>
 </main>
 
-<!-- LOGIN -->
 <div class="overlay" id="overlay-login">
   <div class="modal">
     <div class="modal-title"><span>Accedi</span><button class="modal-close" onclick="closeModal('login')">✕</button></div>
@@ -333,7 +326,6 @@ td.servizio{text-align:center}
   </div>
 </div>
 
-<!-- REGISTER -->
 <div class="overlay" id="overlay-register">
   <div class="modal">
     <div class="modal-title"><span>Registrazione</span><button class="modal-close" onclick="closeModal('register')">✕</button></div>
@@ -352,7 +344,6 @@ td.servizio{text-align:center}
   </div>
 </div>
 
-<!-- PROFILE -->
 <div class="overlay" id="overlay-profile">
   <div class="modal" style="max-width:440px;max-height:90vh;display:flex;flex-direction:column">
     <div class="modal-title"><span id="profile-title">Profilo</span><button class="modal-close" onclick="closeModal('profile')">✕</button></div>
@@ -377,6 +368,8 @@ td.servizio{text-align:center}
     </div>
   </div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
 <script>
 let me = null;
@@ -783,7 +776,6 @@ async function loadStationCoords(){
 
 function getStationCoord(name){
   if(!name) return null;
-  // Cerca corrispondenza esatta o parziale
   if(stationCoords[name]) return stationCoords[name];
   const nl = name.toLowerCase().trim();
   for(const [k,v] of Object.entries(stationCoords)){
@@ -796,7 +788,6 @@ function getStationCoord(name){
 
 function interpolatePosition(stations, nextStation){
   if(!stations || !stations.length) return null;
-  // Trova stazione corrente e prossima
   const currentIdx = stations.findIndex(s => s.is_current);
   const passedStations = stations.filter(s => s.passed);
   const lastPassed = passedStations.length > 0 ? passedStations[passedStations.length-1] : null;
@@ -811,7 +802,6 @@ function interpolatePosition(stations, nextStation){
   if(fromCoord && !toCoord) return [fromCoord.lat, fromCoord.lon];
   if(!fromCoord || !toCoord) return null;
 
-  // Interpola a metà tra ultima passata e prossima
   return [
     (fromCoord.lat + toCoord.lat) / 2,
     (fromCoord.lon + toCoord.lon) / 2,
@@ -823,7 +813,6 @@ function updateMap(users){
 
   document.getElementById('map-count').textContent = users.length + ' treni';
 
-  // Disegna linee percorso per ogni utente
   users.forEach(u => {
     const stations = u.stations || [];
     const coords = stations
@@ -831,7 +820,6 @@ function updateMap(users){
       .filter(Boolean)
       .map(c => [c.lat, c.lon]);
 
-    // Linea percorso
     if(coords.length >= 2){
       if(routeLines[u.username]){
         routeLines[u.username].setLatLngs(coords);
@@ -845,7 +833,6 @@ function updateMap(users){
       }
     }
 
-    // Icona stazioni
     (stations || []).forEach(st => {
       const coord = getStationCoord(st.station_name);
       if(!coord) return;
@@ -857,7 +844,6 @@ function updateMap(users){
         .addTo(leafletMap);
     });
 
-    // Posizione treno
     const pos = interpolatePosition(stations, u.next_station)
              || (u.next_station ? (() => { const c = getStationCoord(u.next_station); return c ? [c.lat, c.lon] : null; })() : null);
 
@@ -880,7 +866,6 @@ function updateMap(users){
     }
   });
 
-  // Rimuovi marker utenti offline
   Object.keys(trainMarkers).forEach(username => {
     if(!users.find(u => u.username === username)){
       leafletMap.removeLayer(trainMarkers[username]);
@@ -892,7 +877,6 @@ function updateMap(users){
     }
   });
 
-  // Centra mappa se ci sono treni
   if(users.length > 0 && Object.keys(trainMarkers).length > 0){
     const positions = Object.values(trainMarkers).map(m => m.getLatLng());
     if(positions.length === 1){
@@ -904,17 +888,17 @@ function updateMap(users){
   }
 }
 
-// ── Init ──
+// ── Inizializzazione Sequenziale ──
 checkMe();
 loadLeaderboard();
 loadStationCoords().then(() => {
-  initMap();
+  initMap(); // Ora Leaflet è sicuramente caricato
   loadLive();
 });
+
 setInterval(loadLeaderboard,15000);
 setInterval(loadLive,15000);
-setInterval(loadStationCoords,300000); // aggiorna coordinate ogni 5 min
+setInterval(loadStationCoords,300000);
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 </body>
 </html>
