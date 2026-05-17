@@ -134,9 +134,7 @@ def migrate_db():
             grade TEXT DEFAULT '',
             updated_at TIMESTAMPTZ DEFAULT NOW()
         )""",
-        # live_sessions: aggiungi comfort_live se mancante
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_live REAL DEFAULT 100""",
-        # live_sessions: aggiungi tutte le colonne nel caso la tabella fosse vecchia
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS speed_kmh REAL DEFAULT 0""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS delay_min REAL DEFAULT 0""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS next_station TEXT DEFAULT ''""",
@@ -151,7 +149,7 @@ def migrate_db():
                 try:
                     cur.execute(sql)
                 except Exception:
-                    pass  # colonna già esistente o altro errore non bloccante
+                    pass
         conn.commit()
 
 migrate_db()
@@ -382,7 +380,6 @@ def api_submit():
     except (ValueError, TypeError) as e:
         return jsonify({"ok": False, "error": f"Dati non validi: {e}"}), 400
 
-    # Accetta solo sessioni completate almeno al 50%
     if completamento < 50:
         return jsonify({"ok": False, "error": f"Sessione troppo breve ({completamento}% < 50%)"}), 400
 
@@ -395,7 +392,6 @@ def api_submit():
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (user["id"], punteggio, ultimo_servizio, frenate, accel,
                   penalita, completamento, durata_min, grade))
-            # Aggiorna affidabilità totale: media di tutte le sessioni
             cur.execute("""
                 INSERT INTO user_stats (user_id, affidabilita, ultima_tratta, grade, updated_at)
                 SELECT
@@ -422,19 +418,6 @@ def api_submit():
 
 @app.route("/api/heartbeat", methods=["POST"])
 def api_heartbeat():
-    """
-    Chiamato dal .exe ogni 30s con dati live.
-    Header: X-API-Token: <token>
-    Body JSON (opzionale):
-      {
-        "speed_kmh": 120.5,
-        "delay_min": 2.3,
-        "next_station": "Firenze SMN",
-        "consist": "E464.001",
-        "sim_time": "14:32",
-        "activity_name": "Roma → Firenze"
-      }
-    """
     token = request.headers.get("X-API-Token", "").strip()
     if not token:
         return jsonify({"ok": False, "error": "Token mancante"}), 401
@@ -475,7 +458,6 @@ def api_heartbeat():
                   comfort_live=EXCLUDED.comfort_live,
                   updated_at=NOW()
             """, (user["id"], speed_kmh, delay_min, next_station, consist, sim_time, activity_name, comfort_live))
-            # Salva campione velocità nello storico (max 200 per utente)
             if speed_kmh > 0:
                 cur.execute("""
                     INSERT INTO speed_history (user_id, speed_kmh, sim_time)
@@ -497,7 +479,6 @@ def api_heartbeat():
 
 @app.route("/api/live")
 def api_live():
-    """Restituisce tutti gli utenti online con dati live completi."""""
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -519,7 +500,6 @@ def api_live():
             """)
             users_online = fetchall(cur)
 
-    # Per ogni utente online, carica storico velocità (ultimi 20 campioni)
     result = []
     for u in users_online:
         with get_db() as conn:
@@ -550,19 +530,6 @@ def api_live():
 
 @app.route("/api/live_stations", methods=["POST"])
 def api_live_stations():
-    """
-    Riceve la lista delle stazioni con ritardi aggiornati dal .exe.
-    Header: X-API-Token: <token>
-    Body JSON:
-      {
-        "stations": [
-          {"name": "Roma Termini", "arrival": "08:00", "departure": "08:05",
-           "delay_min": 0, "passed": true, "is_current": false},
-          {"name": "Firenze SMN", "arrival": "09:45", "departure": "09:50",
-           "delay_min": 2.5, "passed": false, "is_current": true}
-        ]
-      }
-    """
     token = request.headers.get("X-API-Token", "").strip()
     if not token:
         return jsonify({"ok": False, "error": "Token mancante"}), 401
@@ -599,28 +566,29 @@ def api_live_stations():
     return jsonify({"ok": True})
 
 # ─────────────────────────────────────────────────────────
-#  API eliminazione account
+#  API eliminazione account (con verifica password)
 # ─────────────────────────────────────────────────────────
 
 @app.route("/api/delete_account", methods=["POST"])
 def api_delete_account():
+    """Elimina l'account dell'utente autenticato, previa verifica della password."""
     if "user_id" not in session:
         return jsonify({"ok": False, "error": "Non autenticato"}), 401
 
-    data     = request.get_json(force=True) or {}
-    password = data.get("password", "") or ""
+    data = request.get_json(force=True) or {}
+    password = data.get("password", "").strip()
+
+    if not password:
+        return jsonify({"ok": False, "error": "Password richiesta"}), 400
 
     with get_db() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM users WHERE id=%s", (session["user_id"],))
-            user = fetchone(cur)
+            cur.execute("SELECT password_hash FROM users WHERE id=%s", (session["user_id"],))
+            row = cur.fetchone()
+            if not row or row[0] != hash_password(password):
+                return jsonify({"ok": False, "error": "Password errata"}), 401
 
-    if not user or user["password_hash"] != hash_password(password):
-        return jsonify({"ok": False, "error": "Password non corretta"}), 401
-
-    uid = session["user_id"]
-    with get_db() as conn:
-        with conn.cursor() as cur:
+            uid = session["user_id"]
             cur.execute("DELETE FROM speed_history   WHERE user_id=%s", (uid,))
             cur.execute("DELETE FROM live_stations   WHERE user_id=%s", (uid,))
             cur.execute("DELETE FROM live_sessions   WHERE user_id=%s", (uid,))
@@ -630,31 +598,7 @@ def api_delete_account():
         conn.commit()
 
     session.clear()
-    return jsonify({"ok": True, "message": "Account eliminato."})
-
-# ─────────────────────────────────────────────────────────
-#  API elimina account
-# ─────────────────────────────────────────────────────────
-
-@app.route("/api/delete_account", methods=["POST"])
-def api_delete_account():
-    if "user_id" not in session:
-        return jsonify({"ok": False, "error": "Non autenticato"}), 401
-    uid = session["user_id"]
-    try:
-        with get_db() as conn:
-            with conn.cursor() as cur:
-                cur.execute("DELETE FROM speed_history  WHERE user_id=%s", (uid,))
-                cur.execute("DELETE FROM live_stations  WHERE user_id=%s", (uid,))
-                cur.execute("DELETE FROM live_sessions  WHERE user_id=%s", (uid,))
-                cur.execute("DELETE FROM heartbeats     WHERE user_id=%s", (uid,))
-                cur.execute("DELETE FROM sessions       WHERE user_id=%s", (uid,))
-                cur.execute("DELETE FROM users          WHERE id=%s",      (uid,))
-            conn.commit()
-        session.clear()
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True, "message": "Account eliminato definitivamente."})
 
 # ─────────────────────────────────────────────────────────
 #  API coordinate stazioni (per mappa)
@@ -662,11 +606,6 @@ def api_delete_account():
 
 @app.route("/api/station_coords", methods=["POST"])
 def api_station_coords():
-    """
-    Riceve dizionario {nome_stazione: {lat, lon}} dal monitor.
-    Header: X-API-Token: <token>
-    Body JSON: {"stations": {"Messina C.": {"lat": 38.19, "lon": 15.55}, ...}}
-    """
     token = request.headers.get("X-API-Token", "").strip()
     if not token:
         return jsonify({"ok": False, "error": "Token mancante"}), 401
@@ -703,7 +642,6 @@ def api_station_coords():
 
 @app.route("/api/station_coords")
 def api_get_station_coords():
-    """Restituisce tutte le coordinate stazioni salvate."""""
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT name, lat, lon FROM station_coords ORDER BY name")
