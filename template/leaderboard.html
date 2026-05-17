@@ -730,9 +730,15 @@ async function loadLive(){
 function showDeleteConfirm(){
   document.getElementById('delete-confirm').style.display='block';
 }
-function hideDeleteConfirm(){
-  document.getElementById('delete-confirm').style.display='none';
-  document.getElementById('delete-msg').textContent='';
+function hideDeleteConfirm() {
+    const confirmDiv = document.getElementById('delete-confirm');
+    if (confirmDiv) confirmDiv.style.display = 'none';
+    // Pulisci campo password
+    const passInput = document.getElementById('delete-password');
+    if (passInput) passInput.value = '';
+    const msgDiv = document.getElementById('delete-msg');
+    if (msgDiv) msgDiv.textContent = '';
+}
 }
 async function doDeleteProfile(){
   const msg=document.getElementById('delete-msg');
@@ -1002,15 +1008,7 @@ function showDeleteMessage(msg, type) {
         msgDiv.className = 'msg ' + type;
     }
 }
-function hideDeleteConfirm() {
-    const confirmDiv = document.getElementById('delete-confirm');
-    if (confirmDiv) confirmDiv.style.display = 'none';
-    // Pulisci campo password
-    const passInput = document.getElementById('delete-password');
-    if (passInput) passInput.value = '';
-    const msgDiv = document.getElementById('delete-msg');
-    if (msgDiv) msgDiv.textContent = '';
-}
+
 
   
 // ── Init ──
