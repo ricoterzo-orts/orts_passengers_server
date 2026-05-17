@@ -309,7 +309,7 @@ def api_leaderboard():
                     COALESCE(us.grade, '')           AS grade,
                     COUNT(s.id)                      AS corse,
                     CASE
-                        WHEN h.last_seen >= NOW() - INTERVAL '2 minutes'
+                        WHEN h.last_seen >= NOW() - INTERVAL '15 seconds'
                         THEN 1 ELSE 0
                     END                              AS online,
                     ls.speed_kmh,
@@ -495,7 +495,7 @@ def api_live():
                 FROM live_sessions ls
                 JOIN users u ON u.id = ls.user_id
                 JOIN heartbeats h ON h.user_id = ls.user_id
-                WHERE h.last_seen >= NOW() - INTERVAL '2 minutes'
+                WHERE h.last_seen >= NOW() - INTERVAL '15 seconds'
                 ORDER BY ls.updated_at DESC
             """)
             users_online = fetchall(cur)
