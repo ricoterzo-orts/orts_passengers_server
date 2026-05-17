@@ -40,7 +40,7 @@ def fetchall(cur):
 @app.route("/")
 def index():
     if "user_id" not in session:
-        return redirect(url_for("login_page"))
+        return redirect(url_for("login_page")
     return render_template("leaderboard.html")
     
 # ─────────────────────────────────────────────────────────
