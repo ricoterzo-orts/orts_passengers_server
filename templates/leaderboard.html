@@ -427,6 +427,7 @@ async function doLogout(){await fetch('/api/logout',{method:'POST'});me=null;upd
 async function checkMe(){
   try{const r=await fetch('/api/me');const d=await r.json();me=d.logged_in?d:null;}
   catch{me=null;}
+  if(!me){ window.location.href='/login'; return; }
   updateNav();
 }
 
