@@ -604,23 +604,25 @@ def api_live_stations():
 
 @app.route("/api/delete_account", methods=["POST"])
 def api_delete_account():
+    """Elimina l'account dell'utente autenticato, previa verifica della password."""
     if "user_id" not in session:
         return jsonify({"ok": False, "error": "Non autenticato"}), 401
 
-    data     = request.get_json(force=True) or {}
-    password = data.get("password", "") or ""
+    data = request.get_json(force=True) or {}
+    password = data.get("password", "").strip()
+
+    if not password:
+        return jsonify({"ok": False, "error": "Password richiesta"}), 400
 
     with get_db() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM users WHERE id=%s", (session["user_id"],))
-            user = fetchone(cur)
+            cur.execute("SELECT password_hash FROM users WHERE id=%s", (session["user_id"],))
+            row = cur.fetchone()
+            if not row or row[0] != hash_password(password):
+                return jsonify({"ok": False, "error": "Password errata"}), 401
 
-    if not user or user["password_hash"] != hash_password(password):
-        return jsonify({"ok": False, "error": "Password non corretta"}), 401
-
-    uid = session["user_id"]
-    with get_db() as conn:
-        with conn.cursor() as cur:
+            uid = session["user_id"]
+            # Elimina tutti i dati collegati
             cur.execute("DELETE FROM speed_history   WHERE user_id=%s", (uid,))
             cur.execute("DELETE FROM live_stations   WHERE user_id=%s", (uid,))
             cur.execute("DELETE FROM live_sessions   WHERE user_id=%s", (uid,))
@@ -630,31 +632,7 @@ def api_delete_account():
         conn.commit()
 
     session.clear()
-    return jsonify({"ok": True, "message": "Account eliminato."})
-
-# ─────────────────────────────────────────────────────────
-#  API elimina account
-# ─────────────────────────────────────────────────────────
-
-@app.route("/api/delete_account", methods=["POST"])
-def api_delete_account():
-    if "user_id" not in session:
-        return jsonify({"ok": False, "error": "Non autenticato"}), 401
-    uid = session["user_id"]
-    try:
-        with get_db() as conn:
-            with conn.cursor() as cur:
-                cur.execute("DELETE FROM speed_history  WHERE user_id=%s", (uid,))
-                cur.execute("DELETE FROM live_stations  WHERE user_id=%s", (uid,))
-                cur.execute("DELETE FROM live_sessions  WHERE user_id=%s", (uid,))
-                cur.execute("DELETE FROM heartbeats     WHERE user_id=%s", (uid,))
-                cur.execute("DELETE FROM sessions       WHERE user_id=%s", (uid,))
-                cur.execute("DELETE FROM users          WHERE id=%s",      (uid,))
-            conn.commit()
-        session.clear()
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True, "message": "Account eliminato definitivamente."})
 
 # ─────────────────────────────────────────────────────────
 #  API coordinate stazioni (per mappa)
