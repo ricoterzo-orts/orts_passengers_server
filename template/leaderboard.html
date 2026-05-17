@@ -364,17 +364,17 @@ td.servizio{text-align:center}
       <div class="slbl">Ultime sessioni</div>
       <div class="sessions-list" id="profile-sessions"><div style="color:var(--dimgrey);padding:8px 0">Caricamento...</div></div>
       <div class="danger-zone">
-        <div class="danger-title">⚠ Zona pericolosa</div>
-        <button class="delete-btn" onclick="confirmAndDeleteProfile()">Elimina profilo</button>
-        <div class="delete-confirm" id="delete-confirm">
-          <p>Sei sicuro? Tutti i tuoi dati e sessioni verranno eliminati definitivamente.</p>
-          <div class="delete-confirm-btns">
-            <button class="delete-yes" onclick="doDeleteProfile()">Sì, elimina</button>
-            <button class="delete-no" onclick="hideDeleteConfirm()">Annulla</button>
-          </div>
-          <div class="msg" id="delete-msg" style="margin-top:6px"></div>
-        </div>
-      </div>
+  <div class="danger-title">⚠ Zona pericolosa</div>
+  <button class="delete-btn" onclick="confirmAndDeleteProfile()">Elimina profilo</button>
+  <div class="delete-confirm" id="delete-confirm" style="display:none;">
+    <p>Sei sicuro? Tutti i tuoi dati e sessioni verranno eliminati definitivamente.</p>
+    <div class="delete-confirm-btns">
+      <button class="delete-yes">Sì, elimina</button>
+      <button class="delete-no" onclick="hideDeleteConfirm()">Annulla</button>
+    </div>
+    <div class="msg" id="delete-msg" style="margin-top:6px"></div>
+  </div>
+</div>
     </div>
   </div>
 </div>
@@ -1002,7 +1002,17 @@ function showDeleteMessage(msg, type) {
         msgDiv.className = 'msg ' + type;
     }
 }
+function hideDeleteConfirm() {
+    const confirmDiv = document.getElementById('delete-confirm');
+    if (confirmDiv) confirmDiv.style.display = 'none';
+    // Pulisci campo password
+    const passInput = document.getElementById('delete-password');
+    if (passInput) passInput.value = '';
+    const msgDiv = document.getElementById('delete-msg');
+    if (msgDiv) msgDiv.textContent = '';
+}
 
+  
 // ── Init ──
 checkMe();
 loadLeaderboard();
