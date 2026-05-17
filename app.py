@@ -8,8 +8,13 @@ from functools import wraps
 import psycopg2, psycopg2.extras, psycopg2.errorcodes
 import hashlib, os, secrets, re
 
+from datetime import timedelta
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+app.config["SESSION_COOKIE_SECURE"]   = False
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
@@ -258,6 +263,7 @@ def api_login():
     if not user:
         return jsonify({"ok": False, "error": "Credenziali non valide"}), 401
 
+    session.permanent   = True
     session["user_id"]  = user["id"]
     session["username"] = user["username"]
     return jsonify({"ok": True, "username": user["username"]})
