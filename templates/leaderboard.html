@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ORTS Passengers — Trenitalia Virtual</title>
+<title>ORTS Passengers — ViaggiaTreno Virtual</title>
 <link rel="icon" href="/static/logo.ico" type="image/x-icon">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 @font-face {
   font-family: 'Futura';
@@ -225,6 +226,12 @@ td.servizio{text-align:center}
 .delete-yes{flex:1;padding:5px;background:var(--red);color:#fff;border:none;font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:1px}
 .delete-no{flex:1;padding:5px;background:var(--panel);color:var(--grey);border:1px solid var(--border);font-family:var(--font-md);font-size:11px;cursor:pointer;border-radius:1px}
 
+/* ── MAPPA ── */
+.map-section{margin-bottom:24px}
+#live-map{height:420px;border:1px solid var(--border);border-radius:3px;background:var(--panel);z-index:1}
+.map-empty{height:420px;background:var(--card);border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--dimgrey);font-family:var(--font);font-size:11px}
+.map-empty .icon{font-size:32px;opacity:.3}
+
 ::-webkit-scrollbar{width:6px}
 ::-webkit-scrollbar-track{background:var(--card)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -261,6 +268,15 @@ td.servizio{text-align:center}
       <span id="lb-count">—</span>
     </div>
     <div class="statusbar-right" id="lb-updated">aggiornamento ogni 15s</div>
+  </div>
+
+  <!-- ══ SEZIONE 0: MAPPA LIVE ══ -->
+  <div class="map-section" id="map-section">
+    <div class="sec-hdr">
+      <div class="sec-title">Mappa Treni in Tempo Reale</div>
+      <div class="sec-badge"><span class="pulse"></span><span id="map-count">0 treni</span></div>
+    </div>
+    <div id="live-map"></div>
   </div>
 
   <!-- ══ SEZIONE 1: ONLINE ══ -->
@@ -348,7 +364,7 @@ td.servizio{text-align:center}
       <div class="slbl">Ultime sessioni</div>
       <div class="sessions-list" id="profile-sessions"><div style="color:var(--dimgrey);padding:8px 0">Caricamento...</div></div>
       <div class="danger-zone">
-        <div class="danger-title">ATTENZIONE</div>
+        <div class="danger-title">⚠ Zona pericolosa</div>
         <button class="delete-btn" onclick="showDeleteConfirm()">Elimina profilo</button>
         <div class="delete-confirm" id="delete-confirm">
           <p>Sei sicuro? Tutti i tuoi dati e sessioni verranno eliminati definitivamente.</p>
@@ -706,6 +722,7 @@ async function loadLive(){
     liveData=await r.json();
     renderOnlineCards(liveData);
     renderLiveSection();
+    updateMap(liveData);
   }catch(e){}
 }
 
@@ -732,12 +749,173 @@ async function doDeleteProfile(){
   }catch{msg.textContent='✗ Errore di rete';msg.className='msg err';}
 }
 
+// ── Mappa Leaflet ──
+let leafletMap = null;
+let trainMarkers = {};
+let stationCoords = {};
+let routeLines = {};
+
+const TRAIN_ICON = L.divIcon({
+  html: '<div style="font-size:20px;line-height:1;filter:drop-shadow(1px 1px 2px rgba(0,0,0,.4))">🚄</div>',
+  className: '',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
+function initMap(){
+  if(leafletMap) return;
+  leafletMap = L.map('live-map', {
+    center: [38.0, 14.5],
+    zoom: 8,
+    zoomControl: true,
+  });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom: 18,
+  }).addTo(leafletMap);
+}
+
+async function loadStationCoords(){
+  try{
+    const r = await fetch('/api/station_coords');
+    stationCoords = await r.json();
+  }catch(e){}
+}
+
+function getStationCoord(name){
+  if(!name) return null;
+  // Cerca corrispondenza esatta o parziale
+  if(stationCoords[name]) return stationCoords[name];
+  const nl = name.toLowerCase().trim();
+  for(const [k,v] of Object.entries(stationCoords)){
+    if(k.toLowerCase().includes(nl) || nl.includes(k.toLowerCase())){
+      return v;
+    }
+  }
+  return null;
+}
+
+function interpolatePosition(stations, nextStation){
+  if(!stations || !stations.length) return null;
+  // Trova stazione corrente e prossima
+  const currentIdx = stations.findIndex(s => s.is_current);
+  const passedStations = stations.filter(s => s.passed);
+  const lastPassed = passedStations.length > 0 ? passedStations[passedStations.length-1] : null;
+  const nextSt = stations.find(s => s.is_current) || stations.find(s => !s.passed);
+
+  if(!lastPassed && !nextSt) return null;
+
+  const fromCoord = lastPassed ? getStationCoord(lastPassed.station_name) : null;
+  const toCoord = nextSt ? getStationCoord(nextSt.station_name) : null;
+
+  if(toCoord && !fromCoord) return [toCoord.lat, toCoord.lon];
+  if(fromCoord && !toCoord) return [fromCoord.lat, fromCoord.lon];
+  if(!fromCoord || !toCoord) return null;
+
+  // Interpola a metà tra ultima passata e prossima
+  return [
+    (fromCoord.lat + toCoord.lat) / 2,
+    (fromCoord.lon + toCoord.lon) / 2,
+  ];
+}
+
+function updateMap(users){
+  if(!leafletMap) initMap();
+
+  document.getElementById('map-count').textContent = users.length + ' treni';
+
+  // Disegna linee percorso per ogni utente
+  users.forEach(u => {
+    const stations = u.stations || [];
+    const coords = stations
+      .map(s => getStationCoord(s.station_name))
+      .filter(Boolean)
+      .map(c => [c.lat, c.lon]);
+
+    // Linea percorso
+    if(coords.length >= 2){
+      if(routeLines[u.username]){
+        routeLines[u.username].setLatLngs(coords);
+      } else {
+        routeLines[u.username] = L.polyline(coords, {
+          color: '#CE1B26',
+          weight: 3,
+          opacity: 0.5,
+          dashArray: '6,4',
+        }).addTo(leafletMap);
+      }
+    }
+
+    // Icona stazioni
+    (stations || []).forEach(st => {
+      const coord = getStationCoord(st.station_name);
+      if(!coord) return;
+      const cls = st.is_current ? '#007A3D' : st.passed ? '#CE1B26' : '#AAAAAA';
+      L.circleMarker([coord.lat, coord.lon], {
+        radius: 5,
+        color: cls, fillColor: cls, fillOpacity: 0.8, weight: 1,
+      }).bindTooltip(st.station_name, {permanent: false, direction: 'top'})
+        .addTo(leafletMap);
+    });
+
+    // Posizione treno
+    const pos = interpolatePosition(stations, u.next_station)
+             || (u.next_station ? (() => { const c = getStationCoord(u.next_station); return c ? [c.lat, c.lon] : null; })() : null);
+
+    if(pos){
+      const popupHtml = `<div style="font-family:Trebuchet MS;font-size:12px">
+        <b>${u.username}</b><br>
+        🚂 ${u.consist||'—'}<br>
+        🚄 ${u.speed_kmh ? Math.round(u.speed_kmh)+' km/h' : '—'}<br>
+        ⏱ ${u.delay_min ? (u.delay_min>0?'+':'')+Math.round(u.delay_min)+' min' : 'Puntuale'}<br>
+        → ${u.next_station||'—'}
+      </div>`;
+      if(trainMarkers[u.username]){
+        trainMarkers[u.username].setLatLng(pos);
+        trainMarkers[u.username].getPopup().setContent(popupHtml);
+      } else {
+        trainMarkers[u.username] = L.marker(pos, {icon: TRAIN_ICON})
+          .bindPopup(popupHtml)
+          .addTo(leafletMap);
+      }
+    }
+  });
+
+  // Rimuovi marker utenti offline
+  Object.keys(trainMarkers).forEach(username => {
+    if(!users.find(u => u.username === username)){
+      leafletMap.removeLayer(trainMarkers[username]);
+      delete trainMarkers[username];
+      if(routeLines[username]){
+        leafletMap.removeLayer(routeLines[username]);
+        delete routeLines[username];
+      }
+    }
+  });
+
+  // Centra mappa se ci sono treni
+  if(users.length > 0 && Object.keys(trainMarkers).length > 0){
+    const positions = Object.values(trainMarkers).map(m => m.getLatLng());
+    if(positions.length === 1){
+      leafletMap.setView(positions[0], 10);
+    } else {
+      const group = L.featureGroup(Object.values(trainMarkers));
+      leafletMap.fitBounds(group.getBounds().pad(0.2));
+    }
+  }
+}
+
 // ── Init ──
 checkMe();
 loadLeaderboard();
-loadLive();
+loadStationCoords().then(() => {
+  initMap();
+  loadLive();
+});
 setInterval(loadLeaderboard,15000);
 setInterval(loadLive,15000);
+setInterval(loadStationCoords,300000); // aggiorna coordinate ogni 5 min
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 </body>
 </html>
