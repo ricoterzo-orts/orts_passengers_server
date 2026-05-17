@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORTS Passengers — Leaderboard</title>
+<link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+@font-face {
+  font-family: 'Futura';
+  src: url('/static/futur.woff2') format('woff2'),
+       url('/static/futur.ttf') format('truetype');
+  font-weight: normal;
+}
+@font-face {
+  font-family: 'Futura';
+  src: url('/static/futura_medium_bt.woff2') format('woff2'),
+       url('/static/futura_medium_bt.ttf') format('truetype');
+  font-weight: 500;
+}
+:root {
+  --bg:      #F2F2F2;
+  --panel:   #E4E4E4;
+  --card:    #FFFFFF;
+  --border:  #CCCCCC;
+  --accent:  #CE1B26;
+  --accent2: #A8141D;
+  --white:   #2B2B2B;
+  --grey:    #5A5A5A;
+  --dimgrey: #AAAAAA;
+  --green:   #007A3D;
+  --amber:   #E07B00;
+  --red:     #CE1B26;
+  --font:    'Futura','Trebuchet MS',sans-serif;
+  --font-md: 'Futura','Trebuchet MS',sans-serif;
+  --mono:    'Courier New',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--white);font-family:var(--font);font-size:13px;min-height:100vh}
+
+/* ── HEADER ── */
+header{background:var(--accent2);border-bottom:2px solid var(--accent);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo h1{font-size:13px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:#fff;font-family:var(--font-md)}
+nav{display:flex;gap:10px;align-items:center}
+#nav-username{font-family:var(--font-md);font-size:11px;color:rgba(255,255,255,.9);font-weight:500}
+.nav-btn{padding:4px 14px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.25);color:#fff;font-family:var(--font-md);font-size:11px;font-weight:500;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:background .15s}
+.nav-btn:hover{background:rgba(0,0,0,.45)}
+
+/* ── LAYOUT ── */
+main{max-width:1100px;margin:0 auto;padding:20px 16px}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sec-title{font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-family:var(--font-md);display:flex;align-items:center;gap:6px}
+.sec-title::before{content:'';display:inline-block;width:3px;height:14px;background:var(--accent);border-radius:1px}
+
+/* ── MAPPA ── */
+.map-section{margin-bottom:24px}
+#live-map{height:450px;border:1px solid var(--border);border-radius:3px;background:var(--panel);z-index:1}
+
+/* ── ONLINE CARDS & LIVE ── */
+.online-section, .live-section{margin-bottom:24px}
+.online-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.online-card{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--green);border-radius:3px;padding:14px}
+.cluster{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0}
+.instrument{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:8px;text-align:center}
+.instrument-val{font-family:var(--font-md);font-size:22px;font-weight:500;line-height:1}
+
+/* ── TABELLA LEADERBOARD ── */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:2px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead{background:var(--panel)}
+thead th{font-family:var(--font);font-size:10px;text-transform:uppercase;color:var(--grey);padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+tbody td{padding:12px;border-bottom:1px solid rgba(204,204,204,.4)}
+.rank{font-weight:500;color:var(--grey);width:40px}
+.username{font-weight:500;font-size:13px;font-family:var(--font-md)}
+.score-val{font-family:var(--font-md);font-size:18px;font-weight:500}
+
+/* ── STATUSBAR ── */
+.statusbar{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);padding:8px 12px;margin-bottom:20px;border-radius:2px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1} 50%{opacity:0.4}}
+
+/* ── TOKEN BANNER ── */
+#user-banner{display:none;background:var(--card);border:1px solid var(--border);border-left:4px solid var(--accent);padding:10px 15px;margin-bottom:15px;align-items:center;justify-content:space-between}
+.copy-btn{background:var(--bg);border:1px solid var(--border);padding:3px 10px;cursor:pointer;font-size:10px;border-radius:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <img src="/static/VTV_logo.jpg" alt="VTV" style="height: 32px;">
+    <h1>ORTS Passengers <span>Leaderboard</span></h1>
+  </div>
+  <nav>
+    <span id="nav-username"></span>
+    <button class="nav-btn" id="btn-logout" onclick="doLogout()">Esci</button>
+  </nav>
+</header>
+
+<main>
+  <div id="user-banner">
+    <span>Token API (per il .exe): <strong id="banner-token" style="color:var(--accent)"></strong></span>
+    <button class="copy-btn" onclick="copyToken()">COPIA TOKEN</button>
+  </div>
+
+  <div class="statusbar">
+    <div style="font-size:11px; font-weight:500">
+      <span class="dot"></span> SISTEMA ONLINE — <span id="lb-count">0</span> UTENTI
+    </div>
+    <div id="lb-updated" style="font-size:10px; color:var(--dimgrey)">Aggiornamento automatico...</div>
+  </div>
+
+  <div class="map-section">
+    <div class="sec-hdr"><div class="sec-title">Mappa Live</div></div>
+    <div id="live-map"></div>
+  </div>
+
+  <div class="online-section">
+    <div class="sec-hdr"><div class="sec-title">Treni Attivi</div></div>
+    <div class="online-grid" id="online-grid"></div>
+  </div>
+
+  <div class="lb-section">
+    <div class="sec-hdr"><div class="sec-title">Classifica Affidabilità</div></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Username</th><th style="text-align:center">Punteggio</th><th>Ultima Tratta</th></tr>
+        </thead>
+        <tbody id="lb-body">
+          <tr><td colspan="4" style="text-align:center; padding:40px">Caricamento dati...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<script>
+let me = null;
+let leafletMap = null;
+let trainMarkers = {};
+let stationCoords = {};
+
+// ── Controllo Sessione ──
+async function checkMe(){
+  try {
+    const r = await fetch('/api/me');
+    const d = await r.json();
+    if(!d.logged_in) {
+      window.location.href = '/login';
+      return;
+    }
+    me = d;
+    updateUI();
+  } catch(e) {
+    window.location.href = '/login';
+  }
+}
+
+function updateUI(){
+  if(!me) return;
+  document.getElementById('nav-username').textContent = '● ' + me.username;
+  document.getElementById('user-banner').style.display = 'flex';
+  document.getElementById('banner-token').textContent = me.api_token;
+}
+
+async function doLogout(){
+  await fetch('/api/logout', {method:'POST'});
+  window.location.href = '/login';
+}
+
+function copyToken(){
+  navigator.clipboard.writeText(me.api_token);
+  alert("Token copiato!");
+}
+
+// ── Dati Classifica ──
+async function loadLeaderboard(){
+  const r = await fetch('/api/leaderboard');
+  const data = await r.json();
+  document.getElementById('lb-count').textContent = data.length;
+  document.getElementById('lb-updated').textContent = 'Ultimo aggiornamento: ' + new Date().toLocaleTimeString();
+  
+  const body = document.getElementById('lb-body');
+  body.innerHTML = data.map((u, i) => `
+    <tr>
+      <td class="rank">#${i+1}</td>
+      <td class="username">${u.username} ${u.online ? '<span style="color:var(--green); font-size:9px">● LIVE</span>' : ''}</td>
+      <td style="text-align:center">
+        <div class="score-val" style="color:${u.punteggio > 70 ? 'var(--green)' : 'var(--red)'}">${parseFloat(u.punteggio).toFixed(1)}</div>
+      </td>
+      <td style="font-size:11px; color:var(--grey)">${u.ultimo_servizio || '—'}</td>
+    </tr>
+  `).join('');
+}
+
+// ── Mappa & Live ──
+function initMap(){
+  if(leafletMap) return;
+  leafletMap = L.map('live-map').setView([42.0, 12.5], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(leafletMap);
+}
+
+async function loadLive(){
+  const r = await fetch('/api/live');
+  const users = await r.json();
+  
+  const grid = document.getElementById('online-grid');
+  if(users.length === 0) {
+    grid.innerHTML = '<div style="color:var(--dimgrey)">Nessun treno attivo al momento.</div>';
+  } else {
+    grid.innerHTML = users.map(u => `
+      <div class="online-card">
+        <div style="font-weight:bold; margin-bottom:5px">👤 ${u.username}</div>
+        <div style="font-size:11px; color:var(--accent); margin-bottom:10px">${u.activity_name || 'In viaggio...'}</div>
+        <div class="cluster">
+          <div class="instrument"><div class="instrument-val">${Math.round(u.speed_kmh)}</div><div style="font-size:9px">km/h</div></div>
+          <div class="instrument"><div class="instrument-val">${u.delay_min > 0 ? '+'+Math.round(u.delay_min) : Math.round(u.delay_min)}</div><div style="font-size:9px">Ritardo</div></div>
+          <div class="instrument"><div class="instrument-val">${Math.round(u.comfort_live || 100)}</div><div style="font-size:9px">Comfort</div></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Update Markers
+  users.forEach(u => {
+    // Nota: serve che l'API live restituisca lat/lon o che station_coords sia popolato
+    if(u.lat && u.lon) {
+      if(trainMarkers[u.username]) {
+        trainMarkers[u.username].setLatLng([u.lat, u.lon]);
+      } else {
+        trainMarkers[u.username] = L.marker([u.lat, u.lon]).addTo(leafletMap)
+          .bindPopup(`<b>${u.username}</b><br>${u.activity_name}`);
+      }
+    }
+  });
+}
+
+// ── Loop ──
+checkMe();
+initMap();
+loadLeaderboard();
+loadLive();
+
+setInterval(loadLeaderboard, 30000);
+setInterval(loadLive, 10000);
+
+</script>
+</body>
+</html>
