@@ -6,6 +6,7 @@
 <title>ORTS Passengers — Leaderboard</title>
 <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 @font-face {
   font-family: 'Futura';
@@ -242,7 +243,7 @@ td.servizio{text-align:center}
 
 <header>
   <div class="logo">
-    <img src="/static/logo.png" alt="ViaggiatrTreno Virtual" style="height:40px;width:auto;display:block;object-fit:contain">
+    <img src="/static/VTV_logo.jpg" alt="ViaggaTreno Virtual" style="height:40px;width:auto;display:block;object-fit:contain">
   </div>
   <nav>
     <span id="nav-username"></span>
@@ -928,6 +929,5 @@ setInterval(loadLeaderboard,15000);
 setInterval(loadLive,15000);
 setInterval(loadStationCoords,300000); // aggiorna coordinate ogni 5 min
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 </body>
 </html>
