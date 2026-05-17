@@ -39,18 +39,10 @@ def fetchall(cur):
 
 @app.route("/")
 def index():
-    # PROTEZIONE: Se l'utente non è loggato, reindirizza alla pagina di login dedicata
     if "user_id" not in session:
         return redirect(url_for("login_page"))
     return render_template("leaderboard.html")
-
-@app.route("/login")
-def login_page():
-    # Se l'utente è già loggato, lo rimanda alla leaderboard
-    if "user_id" in session:
-        return redirect(url_for("index"))
-    return render_template("login.html")
-
+    
 # ─────────────────────────────────────────────────────────
 #  API Autenticazione
 # ─────────────────────────────────────────────────────────
