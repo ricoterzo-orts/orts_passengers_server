@@ -197,6 +197,8 @@ def login_page():
 
 @app.route("/leaderboard")
 def leaderboard_page():
+    if "user_id" not in session:
+        return redirect(url_for("login_page"))
     return render_template("leaderboard.html")
 
 @app.route("/profile")
