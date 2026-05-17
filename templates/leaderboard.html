@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORTS Passengers — ViaggiaTreno Virtual</title>
+<link rel="icon" href="/static/logo.ico" type="image/x-icon">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+@font-face {
+  font-family: 'Futura';
+  src: url('/static/futur.woff2') format('woff2'),
+       url('/static/futur.ttf') format('truetype');
+  font-weight: normal;
+}
+@font-face {
+  font-family: 'Futura';
+  src: url('/static/futura_medium_bt.woff2') format('woff2'),
+       url('/static/futura_medium_bt.ttf') format('truetype');
+  font-weight: 500;
+}
+:root {
+  --bg:      #F2F2F2;
+  --panel:   #E4E4E4;
+  --card:    #FFFFFF;
+  --border:  #CCCCCC;
+  --accent:  #CE1B26;
+  --accent2: #A8141D;
+  --white:   #2B2B2B;
+  --grey:    #5A5A5A;
+  --dimgrey: #AAAAAA;
+  --green:   #007A3D;
+  --amber:   #E07B00;
+  --red:     #CE1B26;
+  --font:    'Futura','Trebuchet MS',sans-serif;
+  --font-md: 'Futura','Trebuchet MS',sans-serif;
+  --mono:    'Courier New',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--white);font-family:var(--font);font-size:13px;min-height:100vh}
+
+/* ── HEADER ── */
+header{background:var(--accent2);border-bottom:2px solid var(--accent);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo h1{font-size:13px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:#fff;font-family:var(--font-md)}
+.logo h1 span{opacity:.8;font-weight:normal}
+nav{display:flex;gap:6px;align-items:center}
+#nav-username{font-family:var(--font-md);font-size:11px;color:rgba(255,255,255,.9);margin-right:4px;font-weight:500}
+.nav-btn{padding:4px 14px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.25);color:#fff;font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:background .15s;line-height:22px}
+.nav-btn:hover{background:rgba(0,0,0,.45)}
+.nav-btn.sec{background:rgba(255,255,255,.15)}
+
+/* ── LAYOUT ── */
+main{max-width:1100px;margin:0 auto;padding:20px 16px}
+
+/* ── SECTION HEADERS ── */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sec-title{font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-family:var(--font-md);display:flex;align-items:center;gap:6px}
+.sec-title::before{content:'';display:inline-block;width:3px;height:14px;background:var(--accent);border-radius:1px}
+.sec-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(0,122,61,.1);border:1px solid rgba(0,122,61,.25);color:var(--green);font-family:var(--font-md);font-size:10px;font-weight:500;padding:2px 8px;border-radius:2px;letter-spacing:.06em}
+
+/* ── ONLINE CARDS ── */
+.online-section{margin-bottom:24px}
+.online-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.online-card{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--green);border-radius:3px;padding:14px;position:relative}
+.online-card-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.online-card-user{font-family:var(--font-md);font-size:14px;font-weight:500;color:var(--white)}
+.online-card-act{font-size:10px;color:var(--dimgrey);margin-top:2px;font-family:var(--font)}
+.online-dot-badge{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:500;color:var(--green);font-family:var(--font-md);letter-spacing:.06em;text-transform:uppercase}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Instrument cluster */
+.cluster{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.instrument{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:8px;text-align:center}
+.instrument-val{font-family:var(--font-md);font-size:22px;font-weight:500;line-height:1;color:var(--white)}
+.instrument-val.spd{color:var(--accent)}
+.instrument-val.dly-ok{color:var(--green)}
+.instrument-val.dly-bad{color:var(--red)}
+.instrument-val.comfort-hi{color:var(--green)}
+.instrument-val.comfort-mid{color:var(--amber)}
+.instrument-val.comfort-lo{color:var(--red)}
+.instrument-lbl{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dimgrey);margin-top:3px;font-family:var(--font)}
+
+/* Next station bar */
+.next-station-bar{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:7px 10px;display:flex;align-items:center;gap:8px;font-size:11px}
+.next-station-arrow{color:var(--accent);font-size:14px;flex-shrink:0}
+.next-station-name{font-family:var(--font-md);font-weight:500;color:var(--white);flex:1}
+.next-station-time{font-family:var(--mono);font-size:10px;color:var(--dimgrey)}
+
+/* Consist tag */
+.consist-tag{margin-top:6px;font-family:var(--font);font-size:10px;color:var(--dimgrey)}
+.consist-tag span{color:var(--grey)}
+
+/* comfort bar */
+.comfort-bar-wrap{margin-top:8px}
+.comfort-bar-track{height:4px;background:var(--panel);border-radius:2px;overflow:hidden}
+.comfort-bar-fill{height:100%;border-radius:2px;transition:width .5s}
+
+/* ── TRENI IN CORSA (sezione esistente) ── */
+.live-section{margin-bottom:24px}
+.live-tabs{display:flex;gap:4px;margin-bottom:0;flex-wrap:wrap}
+.live-tab{padding:5px 14px;background:var(--panel);border:1px solid var(--border);border-bottom:none;color:var(--grey);font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:2px 2px 0 0;transition:all .15s;display:flex;align-items:center;gap:5px}
+.live-tab:hover{background:var(--card);color:var(--white)}
+.live-tab.active{background:var(--card);color:var(--white);border-bottom-color:var(--card)}
+.live-tab .tab-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
+.live-panel-main{background:var(--card);border:1px solid var(--border);border-radius:0 2px 2px 2px;padding:14px}
+.live-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:700px){.live-grid{grid-template-columns:1fr}}
+.live-run-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.live-run-name{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white)}
+.live-run-consist{font-family:var(--font);font-size:10px;color:var(--dimgrey);margin-top:2px}
+.live-kpis{display:flex;gap:10px}
+.live-kpi{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:6px 12px;text-align:center;min-width:70px}
+.live-kpi-val{font-family:var(--font-md);font-size:18px;font-weight:500;line-height:1}
+.live-kpi-lbl{font-family:var(--font);font-size:9px;color:var(--dimgrey);margin-top:2px;letter-spacing:.08em;text-transform:uppercase}
+.live-map-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:10px 12px;overflow-x:auto}
+.live-map-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.live-map{position:relative;padding:20px 0 8px}
+.live-map-line{position:absolute;top:28px;left:20px;right:20px;height:2px;background:var(--border)}
+.live-map-progress{position:absolute;top:28px;left:20px;height:2px;background:var(--accent);transition:width .5s}
+.live-map-stations{display:flex;justify-content:space-between;position:relative;padding:0 20px}
+.live-map-st{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:60px;max-width:80px}
+.live-map-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--border);background:var(--panel);transition:all .3s;flex-shrink:0}
+.live-map-dot.passed{background:var(--accent);border-color:var(--accent)}
+.live-map-dot.current{background:var(--green);border-color:var(--green);box-shadow:0 0 8px var(--green);animation:pulse-dot 1.5s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(.85)}}
+.live-map-name{font-family:var(--font);font-size:8px;color:var(--dimgrey);text-align:center;line-height:1.2;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.live-map-name.passed{color:var(--grey)}
+.live-map-name.current{color:var(--green);font-family:var(--font-md);font-weight:500}
+.live-map-time{font-family:var(--font);font-size:7px;color:var(--dimgrey);text-align:center}
+.live-train-icon{position:absolute;top:18px;font-size:16px;transition:left .5s;transform:translateX(-50%)}
+.live-chart-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:10px 12px}
+.live-chart-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.live-chart-canvas{width:100%;height:100px;display:block}
+.live-stops-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden}
+.live-stops-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border)}
+.live-stops-table{width:100%;border-collapse:collapse}
+.live-stops-table th{font-family:var(--font);font-size:9px;color:var(--dimgrey);padding:5px 10px;text-align:left;border-bottom:1px solid var(--border);letter-spacing:.08em;text-transform:uppercase}
+.live-stops-table td{font-family:var(--font);font-size:10px;padding:6px 10px;border-bottom:1px solid rgba(204,204,204,.3);vertical-align:middle}
+.live-stops-table tr:last-child td{border-bottom:none}
+.live-stops-table tr.passed td{color:var(--dimgrey)}
+.live-stops-table tr.current td{background:rgba(0,122,61,.06);color:var(--white);font-family:var(--font-md);font-weight:500}
+.live-stops-table tr.current td:first-child::before{content:'→ ';color:var(--green)}
+.dly-ok{color:var(--green)}.dly-bad{color:var(--red)}.dly-amber{color:var(--amber)}
+
+/* ── CLASSIFICA AFFIDABILITÀ ── */
+.lb-section{margin-bottom:24px}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:2px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead{background:var(--panel)}
+thead th{font-family:var(--font);font-size:10px;font-weight:normal;letter-spacing:.1em;text-transform:uppercase;color:var(--grey);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th.c{text-align:center}th.r{text-align:right}
+tbody tr{border-bottom:1px solid rgba(204,204,204,.4);transition:background .1s}
+tbody tr:hover{background:rgba(206,27,38,.04)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:9px 12px;vertical-align:middle}
+td.rank{font-family:var(--font-md);font-size:11px;color:var(--grey);width:40px;font-weight:500}
+tr:nth-child(1) td.rank{color:#B8860B}
+tr:nth-child(2) td.rank{color:#888}
+tr:nth-child(3) td.rank{color:#A0522D}
+td.username{font-weight:500;font-size:13px;color:var(--white);font-family:var(--font-md)}
+.sub{font-family:var(--font);font-size:10px;color:var(--dimgrey);margin-top:1px}
+td.score{text-align:center}
+.snum{font-family:var(--font-md);font-size:18px;font-weight:500;line-height:1}
+.sgrade{font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
+.g-ecc{color:#007A3D}.g-buo{color:#1565C0}.g-suf{color:#E07B00}.g-ins{color:#CE1B26}
+td.servizio{text-align:center}
+.serv-pill{display:inline-block;background:rgba(206,27,38,.08);border:1px solid rgba(206,27,38,.2);color:var(--accent2);font-family:var(--font);font-size:10px;padding:2px 8px;border-radius:2px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty-state{text-align:center;padding:40px;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
+
+/* ── STATUSBAR ── */
+.statusbar{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-bottom:2px solid var(--accent2);padding:5px 12px;margin-bottom:20px;border-radius:2px}
+.statusbar-left{display:flex;align-items:center;gap:14px;font-family:var(--font);font-size:11px;color:var(--grey)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 2s infinite;display:inline-block;margin-right:3px}
+.statusbar-right{font-family:var(--font);font-size:10px;color:var(--grey)}
+
+/* ── TOKEN BANNER ── */
+#user-banner{display:none;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);padding:8px 12px;margin-bottom:14px;border-radius:2px;font-family:var(--font);font-size:11px;align-items:center;justify-content:space-between;gap:10px}
+#user-banner .lbl{color:var(--grey)}
+#user-banner .tv{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
+.copy-btn{background:var(--bg);border:1px solid var(--border);color:var(--grey);font-family:var(--font);font-size:10px;padding:2px 8px;cursor:pointer;border-radius:2px}
+.copy-btn:hover{border-color:var(--accent);color:var(--white)}
+
+/* ── MODALI ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--accent);border-radius:2px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,.2);animation:fi .15s ease}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.modal-title{background:var(--accent2);padding:7px 12px;display:flex;align-items:center;justify-content:space-between}
+.modal-title span{font-size:12px;font-weight:500;font-family:var(--font-md);letter-spacing:.06em;text-transform:uppercase;color:#fff}
+.modal-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer}
+.modal-close:hover{color:#fff}
+.modal-body{padding:16px}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:10px;font-weight:500;font-family:var(--font-md);letter-spacing:.1em;text-transform:uppercase;color:var(--grey);margin-bottom:4px}
+.field input{width:100%;padding:5px 8px;background:var(--bg);border:1px solid var(--border);color:var(--white);font-family:var(--font);font-size:12px;border-radius:1px;outline:none;transition:border-color .15s}
+.field input:focus{border-color:var(--accent)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.modal-btn{width:100%;margin-top:4px;padding:7px;background:var(--accent);color:#fff;border:none;font-family:var(--font-md);font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:1px;transition:background .15s}
+.modal-btn:hover{background:var(--accent2)}
+.modal-btn:disabled{background:var(--dimgrey);cursor:not-allowed}
+.msg{font-family:var(--font);font-size:10px;text-align:center;margin-top:8px;min-height:14px}
+.msg.ok{color:var(--green)}.msg.err{color:var(--red)}
+.modal-switch{text-align:center;margin-top:10px;font-family:var(--font);font-size:10px;color:var(--grey)}
+.modal-switch a{color:var(--accent);cursor:pointer}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:10px 0}
+.stat-box{background:var(--bg);border:1px solid var(--border);border-radius:1px;padding:8px 6px;text-align:center}
+.stat-num{font-family:var(--font-md);font-size:20px;font-weight:500;line-height:1}
+.stat-lbl{font-size:9px;font-family:var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--dimgrey);margin-top:2px}
+.token-display{background:var(--bg);border:1px solid var(--border);font-family:var(--font);font-size:10px;color:var(--accent2);padding:6px 8px;border-radius:1px;word-break:break-all;margin:6px 0 12px}
+.slbl{font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.1em;text-transform:uppercase;color:var(--dimgrey);margin-bottom:4px}
+.sessions-list{max-height:160px;overflow-y:auto;font-family:var(--font);font-size:10px;color:var(--white)}
+.sess-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)}
+.sess-row:last-child{border-bottom:none}
+.sess-score{color:var(--white);font-weight:500;font-family:var(--font-md);min-width:50px}
+.sess-serv{color:var(--accent2);font-family:var(--font);flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
+.sess-date{color:var(--grey);font-family:var(--font)}
+.danger-zone{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.danger-title{font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:8px}
+.delete-btn{width:100%;padding:6px;background:transparent;color:var(--red);border:1px solid var(--red);font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:1px;transition:all .15s}
+.delete-btn:hover{background:var(--red);color:#fff}
+.delete-confirm{display:none;margin-top:8px;background:rgba(206,27,38,.06);border:1px solid rgba(206,27,38,.2);border-radius:2px;padding:10px;text-align:center}
+.delete-confirm p{font-size:11px;color:var(--white);margin-bottom:8px;font-family:var(--font)}
+.delete-confirm-btns{display:flex;gap:6px}
+.delete-yes{flex:1;padding:5px;background:var(--red);color:#fff;border:none;font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:1px}
+.delete-no{flex:1;padding:5px;background:var(--panel);color:var(--grey);border:1px solid var(--border);font-family:var(--font-md);font-size:11px;cursor:pointer;border-radius:1px}
+
+/* ── MAPPA ── */
+.map-section{margin-bottom:24px}
+#live-map{height:420px;border:1px solid var(--border);border-radius:3px;background:var(--panel);z-index:1}
+.map-empty{height:420px;background:var(--card);border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--dimgrey);font-family:var(--font);font-size:11px}
+.map-empty .icon{font-size:32px;opacity:.3}
+
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--card)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--dimgrey)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span style="font-size:18px">🚂</span>
+    <h1>ORTS Passengers <span>— Leaderboard</span></h1>
+  </div>
+  <nav>
+    <span id="nav-username"></span>
+    <button class="nav-btn" id="btn-login" onclick="openModal('login')">Accedi</button>
+    <button class="nav-btn sec" id="btn-register" onclick="openModal('register')">Registrati</button>
+    <button class="nav-btn" id="btn-profile" style="display:none" onclick="loadProfile()">Profilo</button>
+    <button class="nav-btn" id="btn-logout" style="display:none" onclick="doLogout()">Esci</button>
+  </nav>
+</header>
+
+<main>
+  <!-- Token banner -->
+  <div id="user-banner">
+    <span><span class="lbl">Token API per il .exe: </span><span class="tv" id="banner-token"></span></span>
+    <button class="copy-btn" onclick="copyToken()">📋 Copia</button>
+  </div>
+
+  <!-- Statusbar -->
+  <div class="statusbar">
+    <div class="statusbar-left">
+      <span><span class="dot"></span>SISTEMA ONLINE</span>
+      <span id="lb-count">—</span>
+    </div>
+    <div class="statusbar-right" id="lb-updated">aggiornamento ogni 15s</div>
+  </div>
+
+  <!-- ══ SEZIONE 0: MAPPA LIVE ══ -->
+  <div class="map-section" id="map-section">
+    <div class="sec-hdr">
+      <div class="sec-title">Mappa Treni in Tempo Reale</div>
+      <div class="sec-badge"><span class="pulse"></span><span id="map-count">0 treni</span></div>
+    </div>
+    <div id="live-map"></div>
+  </div>
+
+  <!-- ══ SEZIONE 1: ONLINE ══ -->
+  <div class="online-section" id="online-section" style="display:none">
+    <div class="sec-hdr">
+      <div class="sec-title">Giocatori Online</div>
+      <div class="sec-badge"><span class="pulse"></span><span id="online-count">0 online</span></div>
+    </div>
+    <div class="online-grid" id="online-grid"></div>
+  </div>
+
+  <!-- ══ SEZIONE 2: TRENI IN CORSA ══ -->
+  <div class="live-section" id="live-section" style="display:none">
+    <div class="sec-hdr">
+      <div class="sec-title">Treni in Corsa</div>
+    </div>
+    <div class="live-tabs" id="live-tabs"></div>
+    <div id="live-panel-main" class="live-panel-main"></div>
+  </div>
+
+  <!-- ══ SEZIONE 3: CLASSIFICA AFFIDABILITÀ ══ -->
+  <div class="lb-section">
+    <div class="sec-hdr">
+      <div class="sec-title">Classifica Affidabilità Totale</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Username</th>
+            <th class="c">Affidabilità</th>
+            <th class="c">Ultima Tratta</th>
+            <th class="c">Corse</th>
+          </tr>
+        </thead>
+        <tbody id="lb-body">
+          <tr><td colspan="5"><div class="empty-state">Caricamento...</div></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- LOGIN -->
+<div class="overlay" id="overlay-login">
+  <div class="modal">
+    <div class="modal-title"><span>Accedi</span><button class="modal-close" onclick="closeModal('login')">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Username o Email</label><input type="text" id="l-user" placeholder="macchinista42" autocomplete="username"></div>
+      <div class="field"><label>Password</label><input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="modal-btn" id="l-btn" onclick="doLogin()">Accedi</button>
+      <div class="msg" id="l-msg"></div>
+      <div class="modal-switch">Non hai un account? <a onclick="switchModal('login','register')">Registrati</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- REGISTER -->
+<div class="overlay" id="overlay-register">
+  <div class="modal">
+    <div class="modal-title"><span>Registrazione</span><button class="modal-close" onclick="closeModal('register')">✕</button></div>
+    <div class="modal-body">
+      <div class="frow">
+        <div class="field"><label>Nome</label><input type="text" id="r-nome" placeholder="Mario"></div>
+        <div class="field"><label>Cognome</label><input type="text" id="r-cognome" placeholder="Rossi"></div>
+      </div>
+      <div class="field"><label>Username</label><input type="text" id="r-user" placeholder="macchinista42"></div>
+      <div class="field"><label>Email</label><input type="email" id="r-email" placeholder="mario@ferrovie.it"></div>
+      <div class="field"><label>Password (min. 6 caratteri)</label><input type="password" id="r-pass" placeholder="••••••••"></div>
+      <button class="modal-btn" id="r-btn" onclick="doRegister()">Crea account</button>
+      <div class="msg" id="r-msg"></div>
+      <div class="modal-switch">Hai già un account? <a onclick="switchModal('register','login')">Accedi</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div class="overlay" id="overlay-profile">
+  <div class="modal" style="max-width:440px;max-height:90vh;display:flex;flex-direction:column">
+    <div class="modal-title"><span id="profile-title">Profilo</span><button class="modal-close" onclick="closeModal('profile')">✕</button></div>
+    <div class="modal-body" style="overflow-y:auto;flex:1">
+      <div class="stat-grid" id="profile-stats"></div>
+      <div class="slbl">Token API (da incollare nel .exe → Impostazioni)</div>
+      <div class="token-display" id="profile-token">—</div>
+      <div class="slbl">Ultime sessioni</div>
+      <div class="sessions-list" id="profile-sessions"><div style="color:var(--dimgrey);padding:8px 0">Caricamento...</div></div>
+      <div class="danger-zone">
+        <div class="danger-title">⚠ Zona pericolosa</div>
+        <button class="delete-btn" onclick="confirmAndDeleteProfile()">Elimina profilo</button>
+        <div class="delete-confirm" id="delete-confirm" style="display:none;">
+          <p>Sei sicuro? Tutti i tuoi dati e sessioni verranno eliminati definitivamente.</p>
+          <div class="delete-confirm-btns">
+            <button class="delete-yes">Sì, elimina</button>
+            <button class="delete-no" onclick="hideDeleteConfirm()">Annulla</button>
+          </div>
+          <div class="msg" id="delete-msg" style="margin-top:6px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let me = null;
+let liveData = [];
+let activeTab = 0;
+
+// ── Modal helpers ──
+function openModal(n){document.getElementById('overlay-'+n).classList.add('open')}
+function closeModal(n){document.getElementById('overlay-'+n).classList.remove('open')}
+function switchModal(a,b){closeModal(a);openModal(b)}
+document.querySelectorAll('.overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open')}));
+
+// ── Auth ──
+async function doRegister(){
+  const btn=document.getElementById('r-btn'),msg=document.getElementById('r-msg');
+  btn.disabled=true;msg.textContent='Registrazione...';msg.className='msg';
+  try{
+    const r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      nome:document.getElementById('r-nome').value.trim(),
+      cognome:document.getElementById('r-cognome').value.trim(),
+      username:document.getElementById('r-user').value.trim(),
+      email:document.getElementById('r-email').value.trim(),
+      password:document.getElementById('r-pass').value})});
+    const d=await r.json();
+    if(d.ok){msg.textContent='✓ Registrazione completata!';msg.className='msg ok';setTimeout(()=>switchModal('register','login'),1200);}
+    else{msg.textContent='✗ '+d.error;msg.className='msg err';}
+  }catch{msg.textContent='✗ Errore di rete';msg.className='msg err';}
+  btn.disabled=false;
+}
+
+async function doLogin(){
+  const btn=document.getElementById('l-btn'),msg=document.getElementById('l-msg');
+  btn.disabled=true;msg.textContent='Accesso...';msg.className='msg';
+  try{
+    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      username:document.getElementById('l-user').value.trim(),
+      password:document.getElementById('l-pass').value})});
+    const d=await r.json();
+    if(d.ok){msg.textContent='✓ Benvenuto!';msg.className='msg ok';setTimeout(()=>{closeModal('login');checkMe();loadLeaderboard();loadLive();},700);}
+    else{msg.textContent='✗ '+d.error;msg.className='msg err';}
+  }catch{msg.textContent='✗ Errore di rete';msg.className='msg err';}
+  btn.disabled=false;
+}
+
+async function doLogout(){await fetch('/api/logout',{method:'POST'});me=null;updateNav();loadLeaderboard();}
+
+async function checkMe(){
+  try{const r=await fetch('/api/me');const d=await r.json();me=d.logged_in?d:null;}
+  catch{me=null;}
+  updateNav();
+}
+
+function updateNav(){
+  const li=!!me;
+  document.getElementById('btn-login').style.display=li?'none':'';
+  document.getElementById('btn-register').style.display=li?'none':'';
+  document.getElementById('btn-profile').style.display=li?'':'none';
+  document.getElementById('btn-logout').style.display=li?'':'none';
+  document.getElementById('nav-username').textContent=li?('● '+me.username+'  '):'';
+  const b=document.getElementById('user-banner');
+  if(li){b.style.display='flex';document.getElementById('banner-token').textContent=me.api_token;}
+  else{b.style.display='none';}
+}
+
+function copyToken(){
+  if(!me)return;
+  navigator.clipboard.writeText(me.api_token).then(()=>{
+    const btn=document.querySelector('#user-banner .copy-btn');
+    btn.textContent='✓ Copiato!';setTimeout(()=>btn.textContent='📋 Copia',1500);
+  });
+}
+
+async function loadProfile(){
+  openModal('profile');
+  if(!me)return;
+  document.getElementById('profile-title').textContent=me.nome+' '+me.cognome+' — Profilo';
+  document.getElementById('profile-token').textContent=me.api_token;
+  const sc=me.best_score;
+  const col=sc>=85?'var(--green)':sc>=65?'#1565C0':sc>=45?'var(--amber)':'var(--red)';
+  document.getElementById('profile-stats').innerHTML=`
+    <div class="stat-box"><div class="stat-num">${me.runs}</div><div class="stat-lbl">Corse</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:${col}">${me.best_score}</div><div class="stat-lbl">Best</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--grey)">${me.avg_score}</div><div class="stat-lbl">Media</div></div>`;
+  const sl=document.getElementById('profile-sessions');
+  sl.innerHTML='<div style="color:var(--dimgrey)">Caricamento...</div>';
+  try{
+    const r=await fetch('/api/my_sessions');const d=await r.json();
+    if(!d.length){sl.innerHTML='<div style="color:var(--dimgrey);padding:8px 0">Nessuna sessione ancora.</div>';return;}
+    sl.innerHTML=d.map(s=>`
+      <div class="sess-row">
+        <span class="sess-score">${parseFloat(s.punteggio||0).toFixed(1)}/100</span>
+        <span class="sess-serv">${s.ultimo_servizio||'—'}</span>
+        <span class="sess-date">${(s.registrata_at||'').slice(0,10)}</span>
+      </div>`).join('');
+  }catch{sl.innerHTML='<div style="color:var(--red)">Errore.</div>';}
+}
+
+// ── Leaderboard ──
+function scoreColor(sc){return sc>=85?'var(--green)':sc>=65?'#1565C0':sc>=45?'var(--amber)':'var(--red)';}
+function gradeClass(g){if(!g)return'';const l=g.toLowerCase();if(l.includes('ott')||l.includes('ecc'))return'g-ecc';if(l.includes('buo'))return'g-buo';if(l.includes('suf')||l.includes('med'))return'g-suf';return'g-ins';}
+function rankStr(i){return i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);}
+
+async function loadLeaderboard(){
+  try{
+    const r=await fetch('/api/leaderboard');
+    const rows=await r.json();
+    const now=new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('lb-count').textContent=rows.length+' utenti in classifica';
+    document.getElementById('lb-updated').textContent='Aggiornato alle '+now;
+    const body=document.getElementById('lb-body');
+    if(!rows.length){
+      body.innerHTML='<tr><td colspan="5"><div class="empty-state">Nessuna sessione ancora. Completa una corsa con il monitor attivo!</div></tr>';
+      return;
+    }
+    body.innerHTML=rows.map((row,i)=>`
+      <tr>
+        <td class="rank">${rankStr(i)}</td>
+        <td class="username">${row.username}
+          ${row.online?'<span style="margin-left:6px;font-size:9px;color:var(--green);font-family:var(--font-md)">● ONLINE</span>':''}
+        </td>
+        <td class="score">
+          <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
+          <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
+        </td>
+        <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
+        <td class="c" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
+      </tr>`).join('');
+  }catch(e){
+    document.getElementById('lb-body').innerHTML='<tr><td colspan="5"><div class="empty-state">Errore caricamento.</div></tr>';
+  }
+}
+
+// ── Online cards ──
+function comfortClass(c){return c>=70?'comfort-hi':c>=40?'comfort-mid':'comfort-lo';}
+function comfortColor(c){return c>=70?'var(--green)':c>=40?'var(--amber)':'var(--red)';}
+function dlyClass(d){
+  const v=Math.abs(d||0);
+  if(v===0||d===null||d===undefined)return'dly-ok';
+  if(v<2)return'dly-amber';
+  return'dly-bad';
+}
+function dlyText(d){
+  if(!d||Math.abs(d)<0.1)return'0';
+  return(d>0?'+':'')+Math.round(d);
+}
+
+function renderOnlineCards(users){
+  const sec=document.getElementById('online-section');
+  const grid=document.getElementById('online-grid');
+  document.getElementById('online-count').textContent=users.length+' online';
+  if(!users.length){sec.style.display='none';return;}
+  sec.style.display='block';
+  grid.innerHTML=users.map(u=>{
+    const spd=Math.round(u.speed_kmh||0);
+    const dly=u.delay_min||0;
+    const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
+    const barW=Math.max(0,Math.min(100,cft));
+    const barCol=comfortColor(cft);
+    return `<div class="online-card">
+      <div class="online-card-hdr">
+        <div>
+          <div class="online-card-user">👤 ${u.username}</div>
+          <div class="online-card-act">${u.activity_name||'—'}</div>
+        </div>
+        <div class="online-dot-badge"><span class="pulse"></span>LIVE</div>
+      </div>
+      <div class="cluster">
+        <div class="instrument">
+          <div class="instrument-val spd">${spd}</div>
+          <div class="instrument-lbl">km/h</div>
+        </div>
+        <div class="instrument">
+          <div class="instrument-val ${dlyClass(dly)}">${dlyText(dly)} min</div>
+          <div class="instrument-lbl">Ritardo</div>
+        </div>
+        <div class="instrument">
+          <div class="instrument-val ${comfortClass(cft)}">${cft}</div>
+          <div class="instrument-lbl">Comfort</div>
+        </div>
+      </div>
+      ${u.next_station?`
+      <div class="next-station-bar">
+        <span class="next-station-arrow">→</span>
+        <span class="next-station-name">${u.next_station}</span>
+        ${u.sim_time?`<span class="next-station-time">${u.sim_time}</span>`:''}
+      </div>`:''}
+      <div class="comfort-bar-wrap">
+        <div class="comfort-bar-track">
+          <div class="comfort-bar-fill" style="width:${barW}%;background:${barCol}"></div>
+        </div>
+      </div>
+      ${u.consist?`<div class="consist-tag">🚂 <span>${u.consist}</span></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ── Live section (Treni in Corsa) ──
+function switchTab(i){activeTab=i;renderLiveSection();}
+
+function renderLiveSection(){
+  const sec=document.getElementById('live-section');
+  const tabsEl=document.getElementById('live-tabs');
+  const panelEl=document.getElementById('live-panel-main');
+  if(!liveData.length){sec.style.display='none';return;}
+  sec.style.display='block';
+  tabsEl.innerHTML=liveData.map((u,i)=>`
+    <div class="live-tab ${i===activeTab?'active':''}" onclick="switchTab(${i})">
+      <span class="tab-dot"></span>${u.username}
+    </div>`).join('');
+  if(activeTab>=liveData.length)activeTab=0;
+  renderPanel(liveData[activeTab],panelEl);
+}
+
+function renderPanel(u,el){
+  const dlyClass2=Math.abs(u.delay_min||0)<=2?'dly-ok':'dly-bad';
+  const dlyTxt=dlyText(u.delay_min);
+  const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
+  el.innerHTML=`
+    <div class="live-run-hdr">
+      <div>
+        <div class="live-run-name">${u.activity_name||'—'}</div>
+        <div class="live-run-consist">${u.consist?'🚂 '+u.consist:''}${u.sim_time?' · ⏰ '+u.sim_time:''}</div>
+      </div>
+      <div class="live-kpis">
+        <div class="live-kpi">
+          <div class="live-kpi-val" style="color:var(--accent)">${u.speed_kmh?Math.round(u.speed_kmh):'—'}</div>
+          <div class="live-kpi-lbl">km/h</div>
+        </div>
+        <div class="live-kpi">
+          <div class="live-kpi-val ${dlyClass2}">${dlyTxt}</div>
+          <div class="live-kpi-lbl">Ritardo</div>
+        </div>
+        <div class="live-kpi">
+          <div class="live-kpi-val" style="color:${comfortColor(cft)}">${cft}</div>
+          <div class="live-kpi-lbl">Comfort</div>
+        </div>
+        ${u.next_station?`<div class="live-kpi" style="min-width:100px">
+          <div style="font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--white);line-height:1.2">${u.next_station}</div>
+          <div class="live-kpi-lbl">Prossima</div>
+        </div>`:''}
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="live-map-wrap">
+        <div class="live-map-title">Percorso</div>
+        ${renderStationsMap(u.stations||[])}
+      </div>
+    </div>
+    <div class="live-grid">
+      <div class="live-chart-wrap">
+        <div class="live-chart-title">Velocità (storico)</div>
+        <canvas class="live-chart-canvas" id="speed-chart-${u.username}"></canvas>
+      </div>
+      <div class="live-stops-wrap">
+        <div class="live-stops-title">Fermate</div>
+        ${renderStopsTable(u.stations||[])}
+      </div>
+    </div>`;
+  requestAnimationFrame(()=>drawSpeedChart(u));
+}
+
+function renderStationsMap(stations){
+  if(!stations.length)return'<div style="color:var(--dimgrey);font-size:10px;text-align:center;padding:8px">Nessuna fermata</div>';
+  const total=stations.length;
+  const currentIdx=stations.findIndex(s=>s.is_current);
+  const passedCount=stations.filter(s=>s.passed).length;
+  const progress=total>1?(currentIdx>=0?currentIdx/(total-1):passedCount/total)*100:0;
+  const trainLeft=Math.max(2,Math.min(98,progress));
+  const dotsHtml=stations.map(s=>{
+    const cls=s.is_current?'current':s.passed?'passed':'';
+    return `<div class="live-map-st">
+      <div class="live-map-dot ${cls}"></div>
+      <div class="live-map-name ${cls}" title="${s.station_name}">${s.station_name}</div>
+      <div class="live-map-time">${s.arrival||''}</div>
+    </div>`;
+  }).join('');
+  return`<div class="live-map">
+    <div class="live-map-line"></div>
+    <div class="live-map-progress" style="width:${progress}%"></div>
+    <div class="live-train-icon" style="left:${trainLeft}%">🚄</div>
+    <div class="live-map-stations">${dotsHtml}</div>
+  </div>`;
+}
+
+function renderStopsTable(stations){
+  if(!stations.length)return'<div style="padding:12px;font-size:10px;color:var(--dimgrey);text-align:center">Nessuna fermata</div>';
+  const rows=stations.map(s=>{
+    const cls=s.is_current?'current':s.passed?'passed':'';
+    const dly=s.delay_min?`<span class="${Math.abs(s.delay_min)>2?'dly-bad':'dly-ok'}">${s.delay_min>0?'+':''}${parseFloat(s.delay_min).toFixed(1)}'</span>`:'<span class="dly-ok">—</span>';
+    return`<tr class="${cls}"><td>${s.station_name}</td><td>${s.arrival||'—'}</td><td>${s.departure||'—'}</td><td>${dly}</td></tr>`;
+  }).join('');
+  return`<table class="live-stops-table"><thead><tr><th>Stazione</th><th>Arr.</th><th>Par.</th><th>Rit.</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function drawSpeedChart(u){
+  const canvas=document.getElementById('speed-chart-'+u.username);
+  if(!canvas)return;
+  const history=u.speed_history||[];
+  const W=canvas.offsetWidth||300,H=100;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  if(!history.length){
+    ctx.fillStyle='var(--dimgrey)';ctx.font='10px Trebuchet MS';ctx.textAlign='center';
+    ctx.fillText('Dati non ancora disponibili',W/2,50);return;
+  }
+  const speeds=history.map(h=>h.speed_kmh);
+  const maxSpd=Math.max(...speeds,10);
+  const pad={t:8,r:8,b:20,l:32};
+  const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+  ctx.strokeStyle='rgba(204,204,204,0.3)';ctx.lineWidth=1;
+  [0,.25,.5,.75,1].forEach(f=>{
+    const y=pad.t+ch*(1-f);
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();
+    ctx.fillStyle='#888';ctx.font='8px Trebuchet MS';ctx.textAlign='right';
+    ctx.fillText(Math.round(maxSpd*f),pad.l-3,y+3);
+  });
+  ctx.beginPath();
+  history.forEach((h,i)=>{
+    const x=pad.l+(i/(history.length-1||1))*cw;
+    const y=pad.t+ch*(1-h.speed_kmh/maxSpd);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle='#CE1B26';ctx.lineWidth=2;ctx.stroke();
+  ctx.lineTo(pad.l+cw,pad.t+ch);ctx.lineTo(pad.l,pad.t+ch);ctx.closePath();
+  ctx.fillStyle='rgba(206,27,38,0.1)';ctx.fill();
+  const last=history[history.length-1];
+  const lx=pad.l+cw,ly=pad.t+ch*(1-last.speed_kmh/maxSpd);
+  ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fillStyle='#CE1B26';ctx.fill();
+  ctx.fillStyle='#888';ctx.font='8px Trebuchet MS';ctx.textAlign='center';
+  [0,Math.floor(history.length/2),history.length-1].forEach(i=>{
+    if(history[i]&&history[i].sim_time){
+      const x=pad.l+(i/(history.length-1||1))*cw;
+      ctx.fillText(history[i].sim_time,x,H-4);
+    }
+  });
+}
+
+// ── Load live data ──
+async function loadLive(){
+  try{
+    const r=await fetch('/api/live');
+    liveData=await r.json();
+    renderOnlineCards(liveData);
+    renderLiveSection();
+    updateMap(liveData);
+  }catch(e){}
+}
+
+// ── Eliminazione profilo con password ──
+function confirmAndDeleteProfile(){
+  const confirmDiv = document.getElementById('delete-confirm');
+  if(!confirmDiv) return;
+  // Crea campo password se non esiste già
+  let passWrapper = document.getElementById('delete-password-wrapper');
+  if(!passWrapper){
+    const wrapper = document.createElement('div');
+    wrapper.id = 'delete-password-wrapper';
+    wrapper.style.marginTop = '10px';
+    wrapper.innerHTML = `
+      <label for="delete-password" style="font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--grey);">Conferma password</label>
+      <input type="password" id="delete-password" placeholder="••••••••" style="width:100%; padding:5px 8px; margin-top:4px; background:var(--bg); border:1px solid var(--border); color:white; font-family:monospace;">
+    `;
+    confirmDiv.insertBefore(wrapper, confirmDiv.querySelector('.delete-confirm-btns'));
+    passWrapper = wrapper;
+  }
+  // Assicura che il bottone Sì usi la nuova funzione
+  const yesBtn = document.querySelector('#delete-confirm .delete-yes');
+  if(yesBtn && !yesBtn.dataset.patched){
+    yesBtn.onclick = async (e) => {
+      e.preventDefault();
+      const password = document.getElementById('delete-password')?.value || '';
+      if(!password){
+        showDeleteMsg('Inserisci la password.', 'err');
+        return;
+      }
+      await doDeleteProfileWithPassword(password);
+    };
+    yesBtn.dataset.patched = 'true';
+  }
+  confirmDiv.style.display = 'block';
+}
+
+function hideDeleteConfirm(){
+  const confirmDiv = document.getElementById('delete-confirm');
+  if(confirmDiv) confirmDiv.style.display = 'none';
+  const passInput = document.getElementById('delete-password');
+  if(passInput) passInput.value = '';
+  const msgDiv = document.getElementById('delete-msg');
+  if(msgDiv) msgDiv.textContent = '';
+}
+
+function showDeleteMsg(msg, type){
+  const msgDiv = document.getElementById('delete-msg');
+  if(msgDiv){
+    msgDiv.textContent = msg;
+    msgDiv.className = 'msg ' + type;
+  }
+}
+
+async function doDeleteProfileWithPassword(password){
+  const msgDiv = document.getElementById('delete-msg');
+  if(msgDiv){
+    msgDiv.textContent = 'Eliminazione in corso...';
+    msgDiv.className = 'msg';
+  }
+  try{
+    const r = await fetch('/api/delete_account', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({password: password})
+    });
+    const d = await r.json();
+    if(d.ok){
+      showDeleteMsg('✓ Profilo eliminato con successo.', 'ok');
+      setTimeout(()=>{
+        closeModal('profile');
+        me = null;
+        updateNav();
+        loadLeaderboard();
+        location.reload();
+      }, 1500);
+    } else {
+      showDeleteMsg('✗ ' + (d.error || 'Errore sconosciuto'), 'err');
+    }
+  } catch(err){
+    showDeleteMsg('✗ Errore di connessione. Riprova.', 'err');
+  }
+}
+
+// ── Mappa Leaflet ──
+let leafletMap = null;
+let trainMarkers = {};
+let stationCoords = {};
+let routeLines = {};
+
+const TRAIN_ICON = L.divIcon({
+  html: '<div style="font-size:20px;line-height:1;filter:drop-shadow(1px 1px 2px rgba(0,0,0,.4))">🚄</div>',
+  className: '',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
+function initMap(){
+  if(leafletMap) return;
+  leafletMap = L.map('live-map', {
+    center: [38.0, 14.5],
+    zoom: 8,
+    zoomControl: true,
+  });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom: 18,
+  }).addTo(leafletMap);
+}
+
+async function loadStationCoords(){
+  try{
+    const r = await fetch('/api/station_coords');
+    stationCoords = await r.json();
+  }catch(e){}
+}
+
+function getStationCoord(name){
+  if(!name) return null;
+  if(stationCoords[name]) return stationCoords[name];
+  const nl = name.toLowerCase().trim();
+  for(const [k,v] of Object.entries(stationCoords)){
+    if(k.toLowerCase().includes(nl) || nl.includes(k.toLowerCase())){
+      return v;
+    }
+  }
+  return null;
+}
+
+function interpolatePosition(stations, nextStation){
+  if(!stations || !stations.length) return null;
+  const currentIdx = stations.findIndex(s => s.is_current);
+  const passedStations = stations.filter(s => s.passed);
+  const lastPassed = passedStations.length > 0 ? passedStations[passedStations.length-1] : null;
+  const nextSt = stations.find(s => s.is_current) || stations.find(s => !s.passed);
+
+  if(!lastPassed && !nextSt) return null;
+
+  const fromCoord = lastPassed ? getStationCoord(lastPassed.station_name) : null;
+  const toCoord = nextSt ? getStationCoord(nextSt.station_name) : null;
+
+  if(toCoord && !fromCoord) return [toCoord.lat, toCoord.lon];
+  if(fromCoord && !toCoord) return [fromCoord.lat, fromCoord.lon];
+  if(!fromCoord || !toCoord) return null;
+
+  return [
+    (fromCoord.lat + toCoord.lat) / 2,
+    (fromCoord.lon + toCoord.lon) / 2,
+  ];
+}
+
+function updateMap(users){
+  if(!leafletMap) initMap();
+
+  document.getElementById('map-count').textContent = users.length + ' treni';
+
+  users.forEach(u => {
+    const stations = u.stations || [];
+    const coords = stations
+      .map(s => getStationCoord(s.station_name))
+      .filter(Boolean)
+      .map(c => [c.lat, c.lon]);
+
+    if(coords.length >= 2){
+      if(routeLines[u.username]){
+        routeLines[u.username].setLatLngs(coords);
+      } else {
+        routeLines[u.username] = L.polyline(coords, {
+          color: '#CE1B26',
+          weight: 3,
+          opacity: 0.5,
+          dashArray: '6,4',
+        }).addTo(leafletMap);
+      }
+    }
+
+    (stations || []).forEach(st => {
+      const coord = getStationCoord(st.station_name);
+      if(!coord) return;
+      const cls = st.is_current ? '#007A3D' : st.passed ? '#CE1B26' : '#AAAAAA';
+      L.circleMarker([coord.lat, coord.lon], {
+        radius: 5,
+        color: cls, fillColor: cls, fillOpacity: 0.8, weight: 1,
+      }).bindTooltip(st.station_name, {permanent: false, direction: 'top'})
+        .addTo(leafletMap);
+    });
+
+    const pos = interpolatePosition(stations, u.next_station)
+             || (u.next_station ? (() => { const c = getStationCoord(u.next_station); return c ? [c.lat, c.lon] : null; })() : null);
+
+    if(pos){
+      const popupHtml = `<div style="font-family:Trebuchet MS;font-size:12px">
+        <b>${u.username}</b><br>
+        🚂 ${u.consist||'—'}<br>
+        🚄 ${u.speed_kmh ? Math.round(u.speed_kmh)+' km/h' : '—'}<br>
+        ⏱ ${u.delay_min ? (u.delay_min>0?'+':'')+Math.round(u.delay_min)+' min' : 'Puntuale'}<br>
+        → ${u.next_station||'—'}
+      </div>`;
+      if(trainMarkers[u.username]){
+        trainMarkers[u.username].setLatLng(pos);
+        trainMarkers[u.username].getPopup().setContent(popupHtml);
+      } else {
+        trainMarkers[u.username] = L.marker(pos, {icon: TRAIN_ICON})
+          .bindPopup(popupHtml)
+          .addTo(leafletMap);
+      }
+    }
+  });
+
+  Object.keys(trainMarkers).forEach(username => {
+    if(!users.find(u => u.username === username)){
+      leafletMap.removeLayer(trainMarkers[username]);
+      delete trainMarkers[username];
+      if(routeLines[username]){
+        leafletMap.removeLayer(routeLines[username]);
+        delete routeLines[username];
+      }
+    }
+  });
+
+  if(users.length > 0 && Object.keys(trainMarkers).length > 0){
+    const positions = Object.values(trainMarkers).map(m => m.getLatLng());
+    if(positions.length === 1){
+      leafletMap.setView(positions[0], 10);
+    } else {
+      const group = L.featureGroup(Object.values(trainMarkers));
+      leafletMap.fitBounds(group.getBounds().pad(0.2));
+    }
+  }
+}
+
+// ── Init ──
+checkMe();
+loadLeaderboard();
+loadStationCoords().then(() => {
+  initMap();
+  loadLive();
+});
+setInterval(loadLeaderboard,15000);
+setInterval(loadLive,15000);
+setInterval(loadStationCoords,300000);
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+</body>
+</html>
