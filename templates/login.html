@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accesso — ViaggaTreno Virtual</title>
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<style>
+@font-face {
+  font-family: 'Futura';
+  src: url('/static/futur.woff2') format('woff2'),
+       url('/static/futur.ttf') format('truetype');
+  font-weight: normal;
+}
+@font-face {
+  font-family: 'Futura';
+  src: url('/static/futura_medium_bt.woff2') format('woff2'),
+       url('/static/futura_medium_bt.ttf') format('truetype');
+  font-weight: 500;
+}
+:root {
+  --accent:  #CE1B26;
+  --accent2: #A8141D;
+  --green:   #007A3D;
+  --font:    'Futura','Trebuchet MS',sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body, html { height: 100%; font-family: var(--font); }
+
+.bg {
+  background-image: url('/static/train-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  position: fixed; inset: 0; z-index: -1;
+  filter: brightness(0.45);
+}
+
+.container {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+
+.box {
+  background: #fff;
+  padding: 36px 32px;
+  border-radius: 4px;
+  width: 100%; max-width: 380px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+
+.logo { max-width: 160px; margin-bottom: 20px; }
+
+h2 {
+  font-size: 13px; font-weight: 500;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: #444; margin-bottom: 22px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px;
+}
+.tab {
+  flex: 1; padding: 8px; font-family: var(--font);
+  font-size: 11px; font-weight: 500; letter-spacing: .1em;
+  text-transform: uppercase; cursor: pointer;
+  background: none; border: none; color: #aaa;
+  border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: all .15s;
+}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Form fields */
+.field { text-align: left; margin-bottom: 12px; }
+.field label {
+  display: block; font-size: 9px; font-weight: 500;
+  color: #888; margin-bottom: 4px;
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.field input {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid #ddd; border-radius: 2px;
+  font-family: var(--font); font-size: 13px;
+  outline: none; transition: border-color .15s;
+}
+.field input:focus { border-color: var(--accent); }
+
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* Captcha */
+.captcha-wrap {
+  display: flex; justify-content: center;
+  margin: 12px 0 16px;
+}
+
+/* Button */
+.btn {
+  width: 100%; padding: 12px;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: 2px;
+  font-family: var(--font); font-size: 12px;
+  font-weight: 500; letter-spacing: .1em;
+  text-transform: uppercase; cursor: pointer;
+  transition: background .15s;
+}
+.btn:hover { background: var(--accent2); }
+.btn:disabled { background: #ccc; cursor: not-allowed; }
+
+/* Messages */
+.msg {
+  margin-top: 12px; font-size: 12px; min-height: 18px;
+  font-family: var(--font);
+}
+.msg.err { color: var(--accent); }
+.msg.ok  { color: var(--green); }
+
+/* Panel visibility */
+.panel { display: none; }
+.panel.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="bg"></div>
+
+<div class="container">
+  <div class="box">
+    <img src="/static/VTV_logo.jpg" alt="ViaggaTreno Virtual" class="logo">
+    <h2>Area Riservata</h2>
+
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('login')">Accedi</button>
+      <button class="tab" onclick="showTab('register')">Registrati</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="panel active" id="panel-login">
+      <div class="field">
+        <label>Username o Email</label>
+        <input type="text" id="l-user" placeholder="macchinista42" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn" id="l-btn" onclick="doLogin()">Entra</button>
+      <div class="msg" id="l-msg"></div>
+    </div>
+
+    <!-- REGISTER -->
+    <div class="panel" id="panel-register">
+      <div class="field-row">
+        <div class="field">
+          <label>Nome</label>
+          <input type="text" id="r-nome" placeholder="Mario">
+        </div>
+        <div class="field">
+          <label>Cognome</label>
+          <input type="text" id="r-cognome" placeholder="Rossi">
+        </div>
+      </div>
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="r-user" placeholder="macchinista42">
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="r-email" placeholder="mario@ferrovie.it">
+      </div>
+      <div class="field">
+        <label>Password (min. 6 caratteri)</label>
+        <input type="password" id="r-pass" placeholder="••••••••">
+      </div>
+      <div class="captcha-wrap">
+        <div class="g-recaptcha" data-sitekey="6Lfvwe8sAAAAALe8n5m9IYb4uB7UfIGqMgb7cFZK"></div>
+      </div>
+      <button class="btn" id="r-btn" onclick="doRegister()">Crea account</button>
+      <div class="msg" id="r-msg"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', (i===0&&name==='login')||(i===1&&name==='register'));
+  });
+  document.getElementById('panel-login').classList.toggle('active', name==='login');
+  document.getElementById('panel-register').classList.toggle('active', name==='register');
+}
+
+async function doLogin() {
+  const btn = document.getElementById('l-btn');
+  const msg = document.getElementById('l-msg');
+  const u = document.getElementById('l-user').value.trim();
+  const p = document.getElementById('l-pass').value;
+  if(!u || !p) return;
+  btn.disabled = true; msg.textContent = 'Accesso...'; msg.className = 'msg';
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username: u, password: p})
+    });
+    const d = await r.json();
+    if(d.ok) {
+      msg.textContent = '✓ Benvenuto!'; msg.className = 'msg ok';
+      setTimeout(() => window.location.href = '/leaderboard', 600);
+    } else {
+      msg.textContent = '✗ ' + d.error; msg.className = 'msg err';
+    }
+  } catch(e) {
+    msg.textContent = 'Errore di connessione'; msg.className = 'msg err';
+  }
+  btn.disabled = false;
+}
+
+async function doRegister() {
+  const btn = document.getElementById('r-btn');
+  const msg = document.getElementById('r-msg');
+  const nome    = document.getElementById('r-nome').value.trim();
+  const cognome = document.getElementById('r-cognome').value.trim();
+  const user    = document.getElementById('r-user').value.trim();
+  const email   = document.getElementById('r-email').value.trim();
+  const pass    = document.getElementById('r-pass').value;
+  const captcha = grecaptcha.getResponse();
+
+  if(!nome||!cognome||!user||!email||!pass) {
+    msg.textContent = '✗ Compila tutti i campi'; msg.className = 'msg err'; return;
+  }
+  if(!captcha) {
+    msg.textContent = '✗ Completa il captcha'; msg.className = 'msg err'; return;
+  }
+
+  btn.disabled = true; msg.textContent = 'Registrazione...'; msg.className = 'msg';
+  try {
+    const r = await fetch('/api/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({nome, cognome, username: user, email, password: pass, captcha})
+    });
+    const d = await r.json();
+    if(d.ok) {
+      msg.textContent = '✓ Account creato! Accedi ora.'; msg.className = 'msg ok';
+      grecaptcha.reset();
+      setTimeout(() => showTab('login'), 1500);
+    } else {
+      msg.textContent = '✗ ' + d.error; msg.className = 'msg err';
+      grecaptcha.reset();
+    }
+  } catch(e) {
+    msg.textContent = 'Errore di connessione'; msg.className = 'msg err';
+  }
+  btn.disabled = false;
+}
+
+document.addEventListener('keypress', e => { if(e.key==='Enter') doLogin(); });
+</script>
+</body>
+</html>
