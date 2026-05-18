@@ -667,7 +667,16 @@ function renderStopsTable(stations){
   if(!stations.length)return'<div style="padding:12px;font-size:10px;color:var(--dimgrey);text-align:center">Nessuna fermata</div>';
   const rows=stations.map(s=>{
     const cls=s.is_current?'current':s.passed?'passed':'';
-    const dly=s.delay_min?`<span class="${Math.abs(s.delay_min)>2?'dly-bad':'dly-ok'}">${s.delay_min>0?'+':''}${parseFloat(s.delay_min).toFixed(1)}'</span>`:'<span class="dly-ok">—</span>';
+    let dlyHtml;
+    if(!s.passed || s.sort_order===0){
+      dlyHtml='<span style="color:var(--dimgrey)">—</span>';
+    } else if(s.delay_min===0||s.delay_min===null){
+      dlyHtml='<span class="dly-ok">In orario</span>';
+    } else {
+      const dc=Math.abs(s.delay_min)>=2?'dly-bad':'dly-amber';
+      dlyHtml=`<span class="${dc}">+${Math.round(s.delay_min)} min</span>`;
+    }
+    const dly=dlyHtml;
     return`<tr class="${cls}"><td>${s.station_name}</td><td>${s.arrival||'—'}</td><td>${s.departure||'—'}</td><td>${dly}</td></tr>`;
   }).join('');
   return`<table class="live-stops-table"><thead><tr><th>Stazione</th><th>Arr.</th><th>Par.</th><th>Rit.</th></tr></thead><tbody>${rows}</tbody></table>`;
