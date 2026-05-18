@@ -422,7 +422,7 @@ async function doLogin(){
   btn.disabled=false;
 }
 
-async function doLogout(){await fetch('/api/logout',{method:'POST'});me=null;updateNav();loadLeaderboard();}
+async function doLogout(){await fetch('/api/logout',{method:'POST'});window.location.href='/login';}
 
 async function checkMe(){
   try{const r=await fetch('/api/me');const d=await r.json();me=d.logged_in?d:null;}
