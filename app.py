@@ -15,6 +15,7 @@ app.config["SESSION_COOKIE_SECURE"]   = False
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
+RECAPTCHA_SECRET = "6Lfvwe8sAAAAAAIUygWg0WMYdSx5TrP5wRCherlX"
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
@@ -218,6 +219,24 @@ def api_register():
     username = (data.get("username", "") or "").strip()
     email    = (data.get("email",    "") or "").strip().lower()
     password = data.get("password", "") or ""
+
+    captcha_token = data.get("captcha", "")
+    if not captcha_token:
+        return jsonify({"ok": False, "error": "Captcha mancante"}), 400
+
+    # Verifica reCAPTCHA con Google
+    import urllib.request as _ur, json as _json
+    try:
+        _resp = _ur.urlopen(
+            f"https://www.google.com/recaptcha/api/siteverify"
+            f"?secret={RECAPTCHA_SECRET}&response={captcha_token}",
+            timeout=5
+        )
+        _rc = _json.loads(_resp.read())
+        if not _rc.get("success"):
+            return jsonify({"ok": False, "error": "Captcha non valido"}), 400
+    except Exception:
+        return jsonify({"ok": False, "error": "Errore verifica captcha"}), 500
 
     if not all([nome, cognome, username, email, password]):
         return jsonify({"ok": False, "error": "Tutti i campi sono obbligatori"}), 400
