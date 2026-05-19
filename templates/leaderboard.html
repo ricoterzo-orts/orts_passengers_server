@@ -267,6 +267,7 @@ td.servizio{text-align:center}
     <div class="statusbar-left">
       <span><span class="dot"></span>SISTEMA ONLINE</span>
       <span id="lb-count">—</span>
+      <span id="lb-registered" style="opacity:.6">—</span>
     </div>
     <div class="statusbar-right" id="lb-updated">aggiornamento ogni 15s</div>
   </div>
@@ -489,6 +490,10 @@ async function loadLeaderboard(){
     const now=new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
     document.getElementById('lb-count').textContent=rows.length+' utenti in classifica';
     document.getElementById('lb-updated').textContent='Aggiornato alle '+now;
+    // Totale utenti registrati
+    fetch('/api/users/count').then(r=>r.json()).then(d=>{
+      document.getElementById('lb-registered').textContent='· '+d.count+' registrati';
+    }).catch(()=>{});
     const body=document.getElementById('lb-body');
     if(!rows.length){
       body.innerHTML='<tr><td colspan="5"><div class="empty-state">Nessuna sessione ancora. Completa una corsa con il monitor attivo!</div></td></tr>';
