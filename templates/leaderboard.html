@@ -230,8 +230,8 @@ td.servizio{text-align:center}
 
 /* ── MAPPA ── */
 .map-section{margin-bottom:24px}
-#live-map{height:420px;border:1px solid var(--border);border-radius:3px;background:var(--panel);z-index:1}
-.map-empty{height:420px;background:var(--card);border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--dimgrey);font-family:var(--font);font-size:11px}
+#live-map{height:560px;border:1px solid var(--border);border-radius:3px;background:var(--panel);z-index:1}
+.map-empty{height:560px;background:var(--card);border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--dimgrey);font-family:var(--font);font-size:11px}
 .map-empty .icon{font-size:32px;opacity:.3}
 
 ::-webkit-scrollbar{width:6px}
@@ -769,12 +769,18 @@ let routeLines = {};
 function initMap(){
   if(leafletMap) return;
   leafletMap = L.map('live-map', {
-    center: [38.0, 14.5],
-    zoom: 8,
-    zoomControl: true,
+    center: [42.5, 12.5],
+    zoom: 6,
+    zoomControl: false,
+    dragging: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    touchZoom: false,
+    boxZoom: false,
+    keyboard: false,
   });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
+    attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
     maxZoom: 18,
   }).addTo(leafletMap);
 }
@@ -912,17 +918,6 @@ function updateMap(users){
       }
     }
   });
-
-  // Centra mappa se ci sono treni
-  if(users.length > 0 && Object.keys(trainMarkers).length > 0){
-    const positions = Object.values(trainMarkers).map(m => m.getLatLng());
-    if(positions.length === 1){
-      leafletMap.setView(positions[0], 10);
-    } else {
-      const group = L.featureGroup(Object.values(trainMarkers));
-      leafletMap.fitBounds(group.getBounds().pad(0.2));
-    }
-  }
 }
 
 // ── Init ──
