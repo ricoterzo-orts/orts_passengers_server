@@ -364,6 +364,14 @@ def api_leaderboard():
             rows = fetchall(cur)
     return jsonify(rows)
 
+@app.route("/api/users/count")
+def api_users_count():
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) AS count FROM users")
+            row = fetchone(cur)
+    return jsonify({"count": row["count"] if row else 0})
+
 @app.route("/api/my_sessions")
 def api_my_sessions():
     if "user_id" not in session:
