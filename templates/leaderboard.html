@@ -551,6 +551,10 @@ function renderOnlineCards(users){
           <div class="instrument-lbl">km/h</div>
         </div>
         <div class="instrument">
+          <div class="instrument-val ${dlyClass(dly)}">${dlyText(dly)} min</div>
+          <div class="instrument-lbl">Ritardo</div>
+        </div>
+        <div class="instrument">
           <div class="instrument-val ${comfortClass(cft)}">${cft}</div>
           <div class="instrument-lbl">Comfort</div>
         </div>
@@ -602,6 +606,10 @@ function renderPanel(u,el){
         <div class="live-kpi">
           <div class="live-kpi-val" style="color:var(--accent)">${u.speed_kmh?Math.round(u.speed_kmh):'—'}</div>
           <div class="live-kpi-lbl">km/h</div>
+        </div>
+        <div class="live-kpi">
+          <div class="live-kpi-val ${dlyClass2}">${dlyTxt}</div>
+          <div class="live-kpi-lbl">Ritardo</div>
         </div>
         <div class="live-kpi">
           <div class="live-kpi-val" style="color:${comfortColor(cft)}">${cft}</div>
@@ -757,12 +765,7 @@ let trainMarkers = {};
 let stationCoords = {};
 let routeLines = {};
 
-const TRAIN_ICON = L.divIcon({
-  html: '<div style="font-size:20px;line-height:1;filter:drop-shadow(1px 1px 2px rgba(0,0,0,.4))">🚄</div>',
-  className: '',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-});
+
 
 function initMap(){
   if(leafletMap) return;
@@ -848,10 +851,9 @@ function updateMap(users){
         routeLines[u.username].setLatLngs(coords);
       } else {
         routeLines[u.username] = L.polyline(coords, {
-          color: '#CE1B26',
+          color: '#0047FF',
           weight: 3,
-          opacity: 0.5,
-          dashArray: '6,4',
+          opacity: 0.85,
         }).addTo(leafletMap);
       }
     }
@@ -889,9 +891,13 @@ function updateMap(users){
         trainMarkers[u.username].setLatLng(pos);
         trainMarkers[u.username].getPopup().setContent(popupHtml);
       } else {
-        trainMarkers[u.username] = L.marker(pos, {icon: TRAIN_ICON})
-          .bindPopup(popupHtml)
-          .addTo(leafletMap);
+        trainMarkers[u.username] = L.circleMarker(pos, {
+          radius: 7,
+          color: '#ffffff',
+          fillColor: '#0047FF',
+          fillOpacity: 1,
+          weight: 2,
+        }).bindPopup(popupHtml).addTo(leafletMap);
       }
     }
   });
