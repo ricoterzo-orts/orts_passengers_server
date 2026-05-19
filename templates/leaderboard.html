@@ -551,10 +551,6 @@ function renderOnlineCards(users){
           <div class="instrument-lbl">km/h</div>
         </div>
         <div class="instrument">
-          <div class="instrument-val ${dlyClass(dly)}">${dlyText(dly)} min</div>
-          <div class="instrument-lbl">Ritardo</div>
-        </div>
-        <div class="instrument">
           <div class="instrument-val ${comfortClass(cft)}">${cft}</div>
           <div class="instrument-lbl">Comfort</div>
         </div>
@@ -606,10 +602,6 @@ function renderPanel(u,el){
         <div class="live-kpi">
           <div class="live-kpi-val" style="color:var(--accent)">${u.speed_kmh?Math.round(u.speed_kmh):'—'}</div>
           <div class="live-kpi-lbl">km/h</div>
-        </div>
-        <div class="live-kpi">
-          <div class="live-kpi-val ${dlyClass2}">${dlyTxt}</div>
-          <div class="live-kpi-lbl">Ritardo</div>
         </div>
         <div class="live-kpi">
           <div class="live-kpi-val" style="color:${comfortColor(cft)}">${cft}</div>
