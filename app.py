@@ -109,7 +109,6 @@ def init_db():
                 id              SERIAL PRIMARY KEY,
                 user_id         INTEGER NOT NULL REFERENCES users(id),
                 punteggio       REAL    NOT NULL,
-                comfort         REAL    DEFAULT 100.0,
                 ultimo_servizio TEXT    NOT NULL,
                 frenate_brusche INTEGER DEFAULT 0,
                 accel_brusche   INTEGER DEFAULT 0,
@@ -151,8 +150,6 @@ def migrate_db():
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS sim_time TEXT DEFAULT ''""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS activity_name TEXT DEFAULT ''""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()""",
-        # sessions: aggiungi comfort se mancante (DB già esistenti)
-        """ALTER TABLE sessions ADD COLUMN IF NOT EXISTS comfort REAL DEFAULT 100.0""",
     ]
     with get_db() as conn:
         with conn.cursor() as cur:
@@ -374,7 +371,7 @@ def api_my_sessions():
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT punteggio, comfort, ultimo_servizio, grade, frenate_brusche,
+                SELECT punteggio, ultimo_servizio, grade, frenate_brusche,
                        accel_brusche, penalita, completamento,
                        registrata_at::text AS registrata_at
                 FROM sessions WHERE user_id=%s
@@ -402,7 +399,6 @@ def api_submit():
     data = request.get_json(force=True) or {}
     try:
         punteggio       = float(data.get("punteggio", 0))
-        comfort         = float(data.get("comfort", 100.0))
         ultimo_servizio = str(data.get("ultimo_servizio", "Sconosciuto"))[:200]
         frenate         = int(data.get("frenate_brusche", 0))
         accel           = int(data.get("accel_brusche", 0))
@@ -421,10 +417,10 @@ def api_submit():
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO sessions
-                  (user_id, punteggio, comfort, ultimo_servizio, frenate_brusche, accel_brusche,
+                  (user_id, punteggio, ultimo_servizio, frenate_brusche, accel_brusche,
                    penalita, completamento, durata_min, grade)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """, (user["id"], punteggio, comfort, ultimo_servizio, frenate, accel,
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (user["id"], punteggio, ultimo_servizio, frenate, accel,
                   penalita, completamento, durata_min, grade))
             # Aggiorna affidabilità totale: media di tutte le sessioni
             cur.execute("""
@@ -487,6 +483,14 @@ def api_heartbeat():
 
     with get_db() as conn:
         with conn.cursor() as cur:
+            # Controlla se l'utente era offline (nuova connessione = gap > 2 minuti)
+            cur.execute("""
+                SELECT last_seen < NOW() - INTERVAL '2 minutes' AS was_offline
+                FROM heartbeats WHERE user_id=%s
+            """, (user["id"],))
+            row = fetchone(cur)
+            new_session = row is None or row["was_offline"]
+
             cur.execute("""
                 INSERT INTO heartbeats (user_id, last_seen)
                 VALUES (%s, NOW())
@@ -506,6 +510,9 @@ def api_heartbeat():
                   comfort_live=EXCLUDED.comfort_live,
                   updated_at=NOW()
             """, (user["id"], speed_kmh, delay_min, next_station, consist, sim_time, activity_name, comfort_live))
+            # Nuova connessione: azzera lo storico velocità
+            if new_session:
+                cur.execute("DELETE FROM speed_history WHERE user_id=%s", (user["id"],))
             # Salva campione velocità nello storico (max 200 per utente)
             if speed_kmh > 0:
                 cur.execute("""
