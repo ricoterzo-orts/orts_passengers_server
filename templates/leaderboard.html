@@ -94,6 +94,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .consist-tag span{color:var(--grey)}
 
 /* comfort bar */
+.comfort-neutral{color:var(--grey)}
 .comfort-bar-wrap{margin-top:8px}
 .comfort-bar-track{height:4px;background:var(--panel);border-radius:2px;overflow:hidden}
 .comfort-bar-fill{height:100%;border-radius:2px;transition:width .5s}
@@ -512,8 +513,14 @@ async function loadLeaderboard(){
 }
 
 // ── Online cards ──
-function comfortClass(c){return c>=70?'comfort-hi':c>=40?'comfort-mid':'comfort-lo';}
-function comfortColor(c){return c>=70?'var(--green)':c>=40?'var(--amber)':'var(--red)';}
+function comfortClass(c){
+  if(c===null||c===undefined||c===100) return 'comfort-neutral';
+  return c>=70?'comfort-hi':c>=40?'comfort-mid':'comfort-lo';
+}
+function comfortColor(c){
+  if(c===null||c===undefined||c===100) return 'var(--grey)';
+  return c>=70?'var(--green)':c>=40?'var(--amber)':'var(--red)';
+}
 function dlyClass(d){
   const v=Math.abs(d||0);
   if(v===0||d===null||d===undefined)return'dly-ok';
