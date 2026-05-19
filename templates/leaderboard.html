@@ -470,7 +470,6 @@ async function loadProfile(){
     sl.innerHTML=d.map(s=>`
       <div class="sess-row">
         <span class="sess-score">${parseFloat(s.punteggio||0).toFixed(1)}/100</span>
-        <span class="sess-score" style="color:${comfortColor(parseFloat(s.comfort||100))};margin-left:6px;font-size:9px">cft ${parseFloat(s.comfort||100).toFixed(0)}</span>
         <span class="sess-serv">${s.ultimo_servizio||'—'}</span>
         <span class="sess-date">${(s.registrata_at||'').slice(0,10)}</span>
       </div>`).join('');
@@ -776,12 +775,12 @@ const TRAIN_ICON = L.divIcon({
 function initMap(){
   if(leafletMap) return;
   leafletMap = L.map('live-map', {
-    center: [38.0, 14.5],
-    zoom: 8,
+    center: [42.5, 12.5],
+    zoom: 6,
     zoomControl: true,
   });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
+    attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://openmaptiles.org/">OpenMapTiles</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
     maxZoom: 18,
   }).addTo(leafletMap);
 }
