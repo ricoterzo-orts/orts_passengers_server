@@ -229,8 +229,8 @@ td.servizio{text-align:center}
 
 /* ── MAPPA ── */
 .map-section{margin-bottom:24px}
-#live-map{height:560px;border:1px solid var(--border);border-radius:3px;background:var(--panel);z-index:1}
-.map-empty{height:560px;background:var(--card);border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--dimgrey);font-family:var(--font);font-size:11px}
+#live-map{height:420px;border:1px solid var(--border);border-radius:3px;background:var(--panel);z-index:1}
+.map-empty{height:420px;background:var(--card);border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--dimgrey);font-family:var(--font);font-size:11px}
 .map-empty .icon{font-size:32px;opacity:.3}
 
 ::-webkit-scrollbar{width:6px}
@@ -551,10 +551,6 @@ function renderOnlineCards(users){
           <div class="instrument-lbl">km/h</div>
         </div>
         <div class="instrument">
-          <div class="instrument-val ${dlyClass(dly)}">${dlyText(dly)} min</div>
-          <div class="instrument-lbl">Ritardo</div>
-        </div>
-        <div class="instrument">
           <div class="instrument-val ${comfortClass(cft)}">${cft}</div>
           <div class="instrument-lbl">Comfort</div>
         </div>
@@ -606,10 +602,6 @@ function renderPanel(u,el){
         <div class="live-kpi">
           <div class="live-kpi-val" style="color:var(--accent)">${u.speed_kmh?Math.round(u.speed_kmh):'—'}</div>
           <div class="live-kpi-lbl">km/h</div>
-        </div>
-        <div class="live-kpi">
-          <div class="live-kpi-val ${dlyClass2}">${dlyTxt}</div>
-          <div class="live-kpi-lbl">Ritardo</div>
         </div>
         <div class="live-kpi">
           <div class="live-kpi-val" style="color:${comfortColor(cft)}">${cft}</div>
@@ -775,12 +767,12 @@ const TRAIN_ICON = L.divIcon({
 function initMap(){
   if(leafletMap) return;
   leafletMap = L.map('live-map', {
-    center: [42.5, 12.5],
-    zoom: 6,
+    center: [38.0, 14.5],
+    zoom: 8,
     zoomControl: true,
   });
-  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
-    attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://openmaptiles.org/">OpenMapTiles</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
     maxZoom: 18,
   }).addTo(leafletMap);
 }
