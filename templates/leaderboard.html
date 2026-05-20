@@ -669,7 +669,7 @@ function renderStationsMap(stations){
   return`<div class="live-map">
     <div class="live-map-line"></div>
     <div class="live-map-progress" style="width:${progress}%"></div>
-    <div class="live-train-icon" style="left:${trainLeft}%">🚄</div>
+    <div class="live-train-icon" style="left:${trainLeft}%"><img src="/static/treno_linea.png" style="height:18px;width:auto;vertical-align:middle"></div>
     <div class="live-map-stations">${dotsHtml}</div>
   </div>`;
 }
@@ -900,7 +900,7 @@ function updateMap(users){
       const popupHtml = `<div style="font-family:Trebuchet MS;font-size:12px">
         <b>${u.username}</b><br>
         🚂 ${u.consist||'—'}<br>
-        🚄 ${u.speed_kmh ? Math.round(u.speed_kmh)+' km/h' : '—'}<br>
+        <img src="/static/treno_linea.png" style="height:14px;width:auto;vertical-align:middle"> ${u.speed_kmh ? Math.round(u.speed_kmh)+' km/h' : '—'}<br>
         ⏱ ${u.delay_min ? (u.delay_min>0?'+':'')+Math.round(u.delay_min)+' min' : 'Puntuale'}<br>
         → ${u.next_station||'—'}
       </div>`;
