@@ -238,6 +238,79 @@ td.servizio{text-align:center}
 ::-webkit-scrollbar-track{background:var(--card)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--dimgrey)}
+
+/* ══ RESPONSIVE ══════════════════════════════════════════ */
+
+/* ── Tablet (≤900px) ── */
+@media(max-width:900px){
+  main{padding:14px 12px}
+  .online-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+  table{font-size:12px}
+  thead th{padding:7px 8px;font-size:9px}
+  tbody td{padding:8px 8px}
+  .snum{font-size:15px}
+  #live-map,.map-empty{height:420px}
+}
+
+/* ── Mobile grande (≤600px) ── */
+@media(max-width:600px){
+  /* Header */
+  header{padding:0 12px;height:50px}
+  .logo img{height:32px}
+  nav{gap:4px}
+  .nav-btn{padding:3px 9px;font-size:10px}
+  #nav-username{display:none}
+
+  /* Layout */
+  main{padding:10px 10px}
+
+  /* Statusbar */
+  .statusbar{flex-direction:column;align-items:flex-start;gap:4px;padding:7px 10px}
+  .statusbar-left{flex-wrap:wrap;gap:8px}
+
+  /* Online cards: 1 colonna */
+  .online-grid{grid-template-columns:1fr;gap:8px}
+  .cluster{grid-template-columns:1fr 1fr;gap:6px}
+  .instrument-val{font-size:18px}
+
+  /* Tabella classifica: nascondi colonne secondarie, mostra solo rank/utente/score */
+  .col-sessioni,.col-servizio{display:none}
+  thead th.col-sessioni,thead th.col-servizio{display:none}
+  tbody td.col-sessioni,tbody td.col-servizio{display:none}
+  td.username{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .serv-pill{max-width:120px}
+  thead th{padding:6px 6px;font-size:9px}
+  tbody td{padding:7px 6px}
+  .snum{font-size:14px}
+  table{font-size:11px}
+
+  /* Live section: tab scrollabili */
+  .live-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;scrollbar-width:none}
+  .live-tabs::-webkit-scrollbar{display:none}
+  .live-tab{white-space:nowrap;flex-shrink:0}
+  .live-grid{grid-template-columns:1fr}
+
+  /* Mappa */
+  #live-map,.map-empty{height:300px}
+
+  /* Modali: full width su mobile */
+  .modal{max-width:calc(100vw - 24px);margin:12px}
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .frow{grid-template-columns:1fr}
+
+  /* Token banner */
+  #user-banner{flex-direction:column;align-items:flex-start;gap:6px}
+}
+
+/* ── Mobile piccolo (≤380px) ── */
+@media(max-width:380px){
+  .cluster{grid-template-columns:1fr 1fr}
+  .instrument-val{font-size:16px}
+  .nav-btn{padding:3px 7px;font-size:9px}
+  thead th{padding:5px 5px}
+  tbody td{padding:6px 5px}
+  #live-map,.map-empty{height:240px}
+}
 </style>
 </head>
 <body>
@@ -310,8 +383,8 @@ td.servizio{text-align:center}
           <tr>
             <th>#</th><th>Username</th>
             <th class="c">Affidabilità</th>
-            <th class="c">Ultima Tratta</th>
-            <th class="c">Corse</th>
+            <th class="c col-servizio">Ultima Tratta</th>
+            <th class="c col-sessioni">Corse</th>
           </tr>
         </thead>
         <tbody id="lb-body">
@@ -509,8 +582,8 @@ async function loadLeaderboard(){
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
         </td>
-        <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
-        <td class="c" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
+        <td class="servizio col-servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
+        <td class="c col-sessioni" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
       </tr>`).join('');
   }catch(e){
     document.getElementById('lb-body').innerHTML='<tr><td colspan="5"><div class="empty-state">Errore caricamento.</div></td></tr>';
