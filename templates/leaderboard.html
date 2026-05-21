@@ -377,6 +377,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
         <button class="delete-btn" onclick="showDeleteConfirm()">Elimina profilo</button>
         <div class="delete-confirm" id="delete-confirm">
           <p>Sei sicuro? Tutti i tuoi dati e sessioni verranno eliminati definitivamente.</p>
+          <input type="password" id="delete-password" placeholder="Conferma la tua password" style="width:100%;box-sizing:border-box;margin-bottom:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:12px;border-radius:1px;">
           <div class="delete-confirm-btns">
             <button class="delete-yes" onclick="doDeleteProfile()">Sì, elimina</button>
             <button class="delete-no" onclick="hideDeleteConfirm()">Annulla</button>
@@ -754,20 +755,27 @@ function showDeleteConfirm(){
 function hideDeleteConfirm(){
   document.getElementById('delete-confirm').style.display='none';
   document.getElementById('delete-msg').textContent='';
+  document.getElementById('delete-password').value='';
 }
 async function doDeleteProfile(){
   const msg=document.getElementById('delete-msg');
+  const pwd=document.getElementById('delete-password').value||'';
+  if(!pwd){msg.textContent='✗ Inserisci la password';msg.className='msg err';return;}
   msg.textContent='Eliminazione in corso...';msg.className='msg';
   try{
-    const r=await fetch('/api/delete_account',{method:'POST'});
+    const r=await fetch('/api/delete_account',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:pwd})
+    });
     const d=await r.json();
     if(d.ok){
       msg.textContent='✓ Profilo eliminato.';msg.className='msg ok';
       setTimeout(()=>{closeModal('profile');me=null;updateNav();loadLeaderboard();},1500);
     }else{
-      msg.textContent='✗ '+d.error;msg.className='msg err';
+      msg.textContent='✗ '+(d.error||'Errore sconosciuto');msg.className='msg err';
     }
-  }catch{msg.textContent='✗ Errore di rete';msg.className='msg err';}
+  }catch(e){msg.textContent='✗ Errore di rete: '+e.message;msg.className='msg err';}
 }
 
 // ── Mappa Leaflet ──
