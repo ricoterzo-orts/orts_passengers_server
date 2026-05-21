@@ -377,6 +377,10 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
         <button class="delete-btn" onclick="showDeleteConfirm()">Elimina profilo</button>
         <div class="delete-confirm" id="delete-confirm">
           <p>Sei sicuro? Tutti i tuoi dati e sessioni verranno eliminati definitivamente.</p>
+          <input type="password" id="delete-password" placeholder="Conferma la tua password"
+            style="width:100%;box-sizing:border-box;margin-bottom:8px;padding:6px 8px;
+                   background:var(--bg);border:1px solid var(--border);color:var(--white);
+                   font-family:var(--font);font-size:12px;border-radius:1px;outline:none">
           <div class="delete-confirm-btns">
             <button class="delete-yes" onclick="doDeleteProfile()">Sì, elimina</button>
             <button class="delete-no" onclick="hideDeleteConfirm()">Annulla</button>
@@ -436,7 +440,6 @@ async function doLogout(){await fetch('/api/logout',{method:'POST'});window.loca
 async function checkMe(){
   try{const r=await fetch('/api/me');const d=await r.json();me=d.logged_in?d:null;}
   catch{me=null;}
-  if(!me){ window.location.href='/login'; return; }
   updateNav();
 }
 
@@ -754,18 +757,25 @@ function showDeleteConfirm(){
 function hideDeleteConfirm(){
   document.getElementById('delete-confirm').style.display='none';
   document.getElementById('delete-msg').textContent='';
+  document.getElementById('delete-password').value='';
 }
 async function doDeleteProfile(){
   const msg=document.getElementById('delete-msg');
+  const pwd=document.getElementById('delete-password').value||'';
+  if(!pwd){msg.textContent='✗ Inserisci la password per confermare';msg.className='msg err';return;}
   msg.textContent='Eliminazione in corso...';msg.className='msg';
   try{
-    const r=await fetch('/api/delete_account',{method:'POST'});
+    const r=await fetch('/api/delete_account',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:pwd})
+    });
     const d=await r.json();
     if(d.ok){
       msg.textContent='✓ Profilo eliminato.';msg.className='msg ok';
       setTimeout(()=>{closeModal('profile');me=null;updateNav();loadLeaderboard();},1500);
     }else{
-      msg.textContent='✗ '+d.error;msg.className='msg err';
+      msg.textContent='✗ '+(d.error||'Errore sconosciuto');msg.className='msg err';
     }
   }catch{msg.textContent='✗ Errore di rete';msg.className='msg err';}
 }
@@ -773,6 +783,7 @@ async function doDeleteProfile(){
 // ── Mappa Leaflet ──
 let leafletMap = null;
 let trainMarkers = {};
+let stationMarkers = [];   // layer stazioni — svuotati ad ogni ciclo
 let stationCoords = {};
 let routeLines = {};
 
@@ -854,6 +865,10 @@ function updateMap(users){
 
   document.getElementById('map-count').textContent = users.length + ' treni';
 
+  // Rimuovi marker stazioni del ciclo precedente
+  stationMarkers.forEach(m => leafletMap.removeLayer(m));
+  stationMarkers = [];
+
   // Disegna linee percorso per ogni utente
   users.forEach(u => {
     const stations = u.stations || [];
@@ -875,16 +890,17 @@ function updateMap(users){
       }
     }
 
-    // Icona stazioni
+    // Icona stazioni (raccolte per essere rimosse al ciclo successivo)
     (stations || []).forEach(st => {
       const coord = getStationCoord(st.station_name);
       if(!coord) return;
       const cls = st.is_current ? '#007A3D' : st.passed ? '#CE1B26' : '#AAAAAA';
-      L.circleMarker([coord.lat, coord.lon], {
+      const m = L.circleMarker([coord.lat, coord.lon], {
         radius: 5,
         color: cls, fillColor: cls, fillOpacity: 0.8, weight: 1,
       }).bindTooltip(st.station_name, {permanent: false, direction: 'top'})
         .addTo(leafletMap);
+      stationMarkers.push(m);
     });
 
     // Posizione treno
@@ -935,12 +951,10 @@ function updateMap(users){
 // ── Init ──
 checkMe();
 loadLeaderboard();
-loadStationCoords().then(() => {
-  initMap();
-  loadLive();
-});
+initMap();
+loadStationCoords().then(() => loadLive()).catch(() => loadLive());
 setInterval(loadLeaderboard,15000);
-setInterval(loadLive,15000);
+setInterval(loadLive,5000);
 setInterval(loadStationCoords,300000); // aggiorna coordinate ogni 5 min
 </script>
 </body>
