@@ -665,15 +665,19 @@ def api_delete_account():
         return jsonify({"ok": False, "error": "Password non corretta"}), 401
 
     uid = session["user_id"]
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM speed_history   WHERE user_id=%s", (uid,))
-            cur.execute("DELETE FROM live_stations   WHERE user_id=%s", (uid,))
-            cur.execute("DELETE FROM live_sessions   WHERE user_id=%s", (uid,))
-            cur.execute("DELETE FROM heartbeats      WHERE user_id=%s", (uid,))
-            cur.execute("DELETE FROM sessions        WHERE user_id=%s", (uid,))
-            cur.execute("DELETE FROM users           WHERE id=%s",      (uid,))
-        conn.commit()
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM speed_history   WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM live_stations   WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM live_sessions   WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM heartbeats      WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM sessions        WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM user_stats      WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM users           WHERE id=%s",      (uid,))
+            conn.commit()
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Errore DB: {e}"}), 500
 
     session.clear()
     return jsonify({"ok": True, "message": "Account eliminato."})
