@@ -142,6 +142,8 @@ def migrate_db():
         )""",
         # live_sessions: aggiungi comfort_live se mancante
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_live REAL DEFAULT 100""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_grade TEXT DEFAULT ''""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_penalty REAL DEFAULT 0""",
         # live_sessions: aggiungi tutte le colonne nel caso la tabella fosse vecchia
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS speed_kmh REAL DEFAULT 0""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS delay_min REAL DEFAULT 0""",
@@ -487,7 +489,9 @@ def api_heartbeat():
     consist      = str(data.get("consist",       "") or "")[:100]
     sim_time     = str(data.get("sim_time",      "") or "")[:10]
     activity_name= str(data.get("activity_name", "") or "")[:200]
-    comfort_live = float(data.get("comfort_live", 100) or 100)
+    comfort_live    = float(data.get("comfort_live",    100) or 100)
+    comfort_grade   = str(data.get("comfort_grade",    "")  or "")[:20]
+    comfort_penalty = float(data.get("comfort_penalty",  0) or 0)
 
     with get_db() as conn:
         with conn.cursor() as cur:
@@ -506,8 +510,9 @@ def api_heartbeat():
             """, (user["id"],))
             cur.execute("""
                 INSERT INTO live_sessions
-                  (user_id, speed_kmh, delay_min, next_station, consist, sim_time, activity_name, comfort_live, updated_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+                  (user_id, speed_kmh, delay_min, next_station, consist, sim_time, activity_name,
+                   comfort_live, comfort_grade, comfort_penalty, updated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
                 ON CONFLICT (user_id) DO UPDATE SET
                   speed_kmh=EXCLUDED.speed_kmh,
                   delay_min=EXCLUDED.delay_min,
@@ -516,8 +521,11 @@ def api_heartbeat():
                   sim_time=EXCLUDED.sim_time,
                   activity_name=EXCLUDED.activity_name,
                   comfort_live=EXCLUDED.comfort_live,
+                  comfort_grade=EXCLUDED.comfort_grade,
+                  comfort_penalty=EXCLUDED.comfort_penalty,
                   updated_at=NOW()
-            """, (user["id"], speed_kmh, delay_min, next_station, consist, sim_time, activity_name, comfort_live))
+            """, (user["id"], speed_kmh, delay_min, next_station, consist, sim_time, activity_name,
+                  comfort_live, comfort_grade, comfort_penalty))
             # Nuova connessione: azzera lo storico velocità
             if new_session:
                 cur.execute("DELETE FROM speed_history WHERE user_id=%s", (user["id"],))
@@ -556,6 +564,9 @@ def api_live():
                     ls.consist,
                     ls.sim_time,
                     ls.activity_name,
+                    ls.comfort_live,
+                    ls.comfort_grade,
+                    ls.comfort_penalty,
                     ls.updated_at::text AS updated_at
                 FROM live_sessions ls
                 JOIN users u ON u.id = ls.user_id
