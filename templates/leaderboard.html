@@ -73,7 +73,6 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 
 /* Instrument cluster */
 .cluster{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
-.cluster.comfort-wide{grid-template-columns:1fr 2fr}
 .instrument{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:8px;text-align:center}
 .instrument-val{font-family:var(--font-md);font-size:22px;font-weight:500;line-height:1;color:var(--white)}
 .instrument-val.spd{color:var(--accent)}
@@ -378,7 +377,6 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
         <button class="delete-btn" onclick="showDeleteConfirm()">Elimina profilo</button>
         <div class="delete-confirm" id="delete-confirm">
           <p>Sei sicuro? Tutti i tuoi dati e sessioni verranno eliminati definitivamente.</p>
-          <input type="password" id="delete-password" placeholder="Conferma la tua password" style="width:100%;box-sizing:border-box;margin-bottom:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:12px;border-radius:1px;">
           <div class="delete-confirm-btns">
             <button class="delete-yes" onclick="doDeleteProfile()">Sì, elimina</button>
             <button class="delete-no" onclick="hideDeleteConfirm()">Annulla</button>
@@ -556,8 +554,6 @@ function renderOnlineCards(users){
     const spd=Math.round(u.speed_kmh||0);
     const dly=u.delay_min||0;
     const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
-    const cftGrade=u.comfort_grade||'';
-    const cftPen=u.comfort_penalty!=null?parseFloat(u.comfort_penalty).toFixed(1):'0.0';
     const barW=Math.max(0,Math.min(100,cft));
     const barCol=comfortColor(cft);
     return `<div class="online-card">
@@ -568,17 +564,14 @@ function renderOnlineCards(users){
         </div>
         <div class="online-dot-badge"><span class="pulse"></span>LIVE</div>
       </div>
-      <div class="cluster comfort-wide">
+      <div class="cluster">
         <div class="instrument">
           <div class="instrument-val spd">${spd}</div>
           <div class="instrument-lbl">km/h</div>
         </div>
-        <div class="instrument" style="grid-column:span 2">
-          <div style="display:flex;align-items:baseline;justify-content:center;gap:6px">
-            <div class="instrument-val ${comfortClass(cft)}">${cft}<span style="font-size:11px;opacity:.55">/100</span></div>
-            ${cftGrade?`<div style="font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.08em;text-transform:uppercase;color:${barCol}">${cftGrade}</div>`:''}
-          </div>
-          <div class="instrument-lbl">Comfort passeggeri${parseFloat(cftPen)>0?` · <span style="color:var(--red)">-${cftPen} pt pen.</span>`:''}</div>
+        <div class="instrument">
+          <div class="instrument-val ${comfortClass(cft)}">${cft}</div>
+          <div class="instrument-lbl">Comfort</div>
         </div>
       </div>
       ${u.next_station?`
@@ -618,8 +611,6 @@ function renderPanel(u,el){
   const dlyClass2=Math.abs(u.delay_min||0)<=2?'dly-ok':'dly-bad';
   const dlyTxt=dlyText(u.delay_min);
   const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
-  const cftGrade=u.comfort_grade||'';
-  const cftPen=u.comfort_penalty!=null?parseFloat(u.comfort_penalty).toFixed(1):'0.0';
   el.innerHTML=`
     <div class="live-run-hdr">
       <div>
@@ -632,9 +623,8 @@ function renderPanel(u,el){
           <div class="live-kpi-lbl">km/h</div>
         </div>
         <div class="live-kpi">
-          <div class="live-kpi-val" style="color:${comfortColor(cft)}">${cft}<span style="font-size:10px;opacity:.55">/100</span></div>
-          <div class="live-kpi-lbl">Comfort${cftGrade?' · '+cftGrade:''}</div>
-          ${parseFloat(cftPen)>0?`<div style="font-size:9px;color:var(--red);font-family:var(--font-md);margin-top:1px">-${cftPen} pt</div>`:''}
+          <div class="live-kpi-val" style="color:${comfortColor(cft)}">${cft}</div>
+          <div class="live-kpi-lbl">Comfort</div>
         </div>
         ${u.next_station?`<div class="live-kpi" style="min-width:100px">
           <div style="font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--white);line-height:1.2">${u.next_station}</div>
@@ -764,27 +754,20 @@ function showDeleteConfirm(){
 function hideDeleteConfirm(){
   document.getElementById('delete-confirm').style.display='none';
   document.getElementById('delete-msg').textContent='';
-  document.getElementById('delete-password').value='';
 }
 async function doDeleteProfile(){
   const msg=document.getElementById('delete-msg');
-  const pwd=document.getElementById('delete-password').value||'';
-  if(!pwd){msg.textContent='✗ Inserisci la password';msg.className='msg err';return;}
   msg.textContent='Eliminazione in corso...';msg.className='msg';
   try{
-    const r=await fetch('/api/delete_account',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({password:pwd})
-    });
+    const r=await fetch('/api/delete_account',{method:'POST'});
     const d=await r.json();
     if(d.ok){
       msg.textContent='✓ Profilo eliminato.';msg.className='msg ok';
       setTimeout(()=>{closeModal('profile');me=null;updateNav();loadLeaderboard();},1500);
     }else{
-      msg.textContent='✗ '+(d.error||'Errore sconosciuto');msg.className='msg err';
+      msg.textContent='✗ '+d.error;msg.className='msg err';
     }
-  }catch(e){msg.textContent='✗ Errore di rete: '+e.message;msg.className='msg err';}
+  }catch{msg.textContent='✗ Errore di rete';msg.className='msg err';}
 }
 
 // ── Mappa Leaflet ──
@@ -957,7 +940,7 @@ loadStationCoords().then(() => {
   loadLive();
 });
 setInterval(loadLeaderboard,15000);
-setInterval(loadLive,5000);
+setInterval(loadLive,15000);
 setInterval(loadStationCoords,300000); // aggiorna coordinate ogni 5 min
 </script>
 </body>
