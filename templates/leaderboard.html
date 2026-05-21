@@ -396,6 +396,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 let me = null;
 let liveData = [];
 let activeTab = 0;
+let lockedUsername = null;  // utente scelto manualmente — null = segui il primo
 
 // ── Modal helpers ──
 function openModal(n){document.getElementById('overlay-'+n).classList.add('open')}
@@ -594,7 +595,11 @@ function renderOnlineCards(users){
 }
 
 // ── Live section (Treni in Corsa) ──
-function switchTab(i){activeTab=i;renderLiveSection();}
+function switchTab(i){
+  lockedUsername = liveData[i] ? liveData[i].username : null;
+  activeTab = i;
+  renderLiveSection();
+}
 
 function renderLiveSection(){
   const sec=document.getElementById('live-section');
@@ -602,11 +607,25 @@ function renderLiveSection(){
   const panelEl=document.getElementById('live-panel-main');
   if(!liveData.length){sec.style.display='none';return;}
   sec.style.display='block';
+
+  // Riaggancia l'indice all'username bloccato (l'ordine può cambiare tra un poll e l'altro)
+  if(lockedUsername){
+    const idx=liveData.findIndex(u=>u.username===lockedUsername);
+    if(idx!==-1){
+      activeTab=idx;
+    } else {
+      // Utente bloccato andato offline: rilascia il lock e torna al primo
+      lockedUsername=null;
+      activeTab=0;
+    }
+  } else {
+    activeTab=0;
+  }
+
   tabsEl.innerHTML=liveData.map((u,i)=>`
-    <div class="live-tab ${i===activeTab?'active':''}" onclick="switchTab(${i})">
+    <div class="live-tab ${i===activeTab?'active':''}" onclick="switchTab(${i})" title="${u.username}">
       <span class="tab-dot"></span>${u.username}
     </div>`).join('');
-  if(activeTab>=liveData.length)activeTab=0;
   renderPanel(liveData[activeTab],panelEl);
 }
 
