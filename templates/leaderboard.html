@@ -73,6 +73,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 
 /* Instrument cluster */
 .cluster{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.cluster.comfort-wide{grid-template-columns:1fr 2fr}
 .instrument{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:8px;text-align:center}
 .instrument-val{font-family:var(--font-md);font-size:22px;font-weight:500;line-height:1;color:var(--white)}
 .instrument-val.spd{color:var(--accent)}
@@ -555,6 +556,8 @@ function renderOnlineCards(users){
     const spd=Math.round(u.speed_kmh||0);
     const dly=u.delay_min||0;
     const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
+    const cftGrade=u.comfort_grade||'';
+    const cftPen=u.comfort_penalty!=null?parseFloat(u.comfort_penalty).toFixed(1):'0.0';
     const barW=Math.max(0,Math.min(100,cft));
     const barCol=comfortColor(cft);
     return `<div class="online-card">
@@ -565,14 +568,17 @@ function renderOnlineCards(users){
         </div>
         <div class="online-dot-badge"><span class="pulse"></span>LIVE</div>
       </div>
-      <div class="cluster">
+      <div class="cluster comfort-wide">
         <div class="instrument">
           <div class="instrument-val spd">${spd}</div>
           <div class="instrument-lbl">km/h</div>
         </div>
-        <div class="instrument">
-          <div class="instrument-val ${comfortClass(cft)}">${cft}</div>
-          <div class="instrument-lbl">Comfort</div>
+        <div class="instrument" style="grid-column:span 2">
+          <div style="display:flex;align-items:baseline;justify-content:center;gap:6px">
+            <div class="instrument-val ${comfortClass(cft)}">${cft}<span style="font-size:11px;opacity:.55">/100</span></div>
+            ${cftGrade?`<div style="font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.08em;text-transform:uppercase;color:${barCol}">${cftGrade}</div>`:''}
+          </div>
+          <div class="instrument-lbl">Comfort passeggeri${parseFloat(cftPen)>0?` · <span style="color:var(--red)">-${cftPen} pt pen.</span>`:''}</div>
         </div>
       </div>
       ${u.next_station?`
@@ -612,6 +618,8 @@ function renderPanel(u,el){
   const dlyClass2=Math.abs(u.delay_min||0)<=2?'dly-ok':'dly-bad';
   const dlyTxt=dlyText(u.delay_min);
   const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
+  const cftGrade=u.comfort_grade||'';
+  const cftPen=u.comfort_penalty!=null?parseFloat(u.comfort_penalty).toFixed(1):'0.0';
   el.innerHTML=`
     <div class="live-run-hdr">
       <div>
@@ -624,8 +632,9 @@ function renderPanel(u,el){
           <div class="live-kpi-lbl">km/h</div>
         </div>
         <div class="live-kpi">
-          <div class="live-kpi-val" style="color:${comfortColor(cft)}">${cft}</div>
-          <div class="live-kpi-lbl">Comfort</div>
+          <div class="live-kpi-val" style="color:${comfortColor(cft)}">${cft}<span style="font-size:10px;opacity:.55">/100</span></div>
+          <div class="live-kpi-lbl">Comfort${cftGrade?' · '+cftGrade:''}</div>
+          ${parseFloat(cftPen)>0?`<div style="font-size:9px;color:var(--red);font-family:var(--font-md);margin-top:1px">-${cftPen} pt</div>`:''}
         </div>
         ${u.next_station?`<div class="live-kpi" style="min-width:100px">
           <div style="font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--white);line-height:1.2">${u.next_station}</div>
@@ -948,7 +957,7 @@ loadStationCoords().then(() => {
   loadLive();
 });
 setInterval(loadLeaderboard,15000);
-setInterval(loadLive,15000);
+setInterval(loadLive,5000);
 setInterval(loadStationCoords,300000); // aggiorna coordinate ogni 5 min
 </script>
 </body>
