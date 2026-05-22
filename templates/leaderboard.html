@@ -690,8 +690,6 @@ function vtLink(servizio){
   return ` <a class="vt-link" href="${tmUrl}" target="_blank" rel="noopener" title="Treno ${n} su Treniamo">↗ Treniamo</a>`;
 }
 
-}
-
 async function loadLeaderboard(){
   try{
     const r=await fetch('/api/leaderboard');
