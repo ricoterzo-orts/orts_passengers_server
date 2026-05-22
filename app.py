@@ -377,7 +377,7 @@ def api_users_count():
 @app.route("/api/my_sessions")
 def api_my_sessions():
     if "user_id" not in session:
-        return jsonify({"ok": False, "error": "Non autenticato"}), 401
+        return jsonify([]), 401
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -387,6 +387,25 @@ def api_my_sessions():
                 FROM sessions WHERE user_id=%s
                 ORDER BY registrata_at DESC LIMIT 50
             """, (session["user_id"],))
+            rows = fetchall(cur)
+    return jsonify(rows)
+
+@app.route("/api/user_sessions/<username>")
+def api_user_sessions(username):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE username=%s", (username,))
+            user = fetchone(cur)
+    if not user:
+        return jsonify([])
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT punteggio, ultimo_servizio, grade,
+                       registrata_at::text AS registrata_at
+                FROM sessions WHERE user_id=%s
+                ORDER BY registrata_at DESC LIMIT 50
+            """, (user["id"],))
             rows = fetchall(cur)
     return jsonify(rows)
 
@@ -454,7 +473,7 @@ def api_submit():
     return jsonify({"ok": True, "message": "Sessione registrata!"})
 
 # ─────────────────────────────────────────────────────────
-#  API heartbeat (dal .exe, ogni 60s)
+#  API heartbeat (dal .exe, ogni 30s)
 # ─────────────────────────────────────────────────────────
 
 @app.route("/api/heartbeat", methods=["POST"])
@@ -551,7 +570,7 @@ def api_heartbeat():
 
 @app.route("/api/live")
 def api_live():
-    """Restituisce tutti gli utenti online con dati live completi."""""
+    """Restituisce tutti gli utenti online con dati live completi."""
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -572,11 +591,11 @@ def api_live():
                 JOIN users u ON u.id = ls.user_id
                 JOIN heartbeats h ON h.user_id = ls.user_id
                 WHERE h.last_seen >= NOW() - INTERVAL '2 minutes'
-                ORDER BY ls.updated_at DESC
+                ORDER BY h.last_seen ASC
             """)
             users_online = fetchall(cur)
 
-    # Per ogni utente online, carica storico velocità (ultimi 20 campioni)
+    # Per ogni utente online, carica storico velocità e stazioni
     result = []
     for u in users_online:
         with get_db() as conn:
@@ -692,10 +711,6 @@ def api_delete_account():
 
     session.clear()
     return jsonify({"ok": True, "message": "Account eliminato."})
-
-# ─────────────────────────────────────────────────────────
-#  API elimina account
-# ─────────────────────────────────────────────────────────
 
 # ─────────────────────────────────────────────────────────
 #  API coordinate stazioni (per mappa)
