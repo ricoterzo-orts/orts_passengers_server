@@ -276,6 +276,8 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 .username-btn:hover{color:var(--accent)}
 .username-profile-hint{font-family:var(--font);font-size:9px;font-weight:normal;color:var(--dimgrey);letter-spacing:.04em;text-transform:none;text-decoration:none;opacity:.7}
 .username-btn:hover .username-profile-hint{color:var(--accent);opacity:1}
+.treno-reale-link{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--dimgrey);text-decoration:underline;text-decoration-color:rgba(170,170,170,.5);text-underline-offset:2px;transition:color .15s}
+.treno-reale-link:hover{color:var(--accent);text-decoration-color:rgba(206,27,38,.4)}
 @media(max-width:480px){
   .drawer{width:100vw;right:-100vw}
   .drawer-list-hdr,.drawer-row{grid-template-columns:1fr 70px 60px 30px;padding:8px 10px}
@@ -578,6 +580,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 <script>
 let me = null;
 let liveData = [];
+let lbRows = [];
 let activeTab = 0;
 let lockedUsername = null;  // utente scelto manualmente — null = segui il primo
 
@@ -706,10 +709,11 @@ async function loadLeaderboard(){
       body.innerHTML='<tr><td colspan="5"><div class="empty-state">Nessuna sessione ancora. Completa una corsa con il monitor attivo!</div></td></tr>';
       return;
     }
+    lbRows = rows;
     body.innerHTML=rows.map((row,i)=>`
       <tr>
         <td class="rank">${rankStr(i)}</td>
-        <td class="username"><button class="username-btn" onclick="openDrawer('${row.username}',${JSON.stringify(row).replace(/'/g,'\'').replace(/`/g,'\`')})">${row.username}<span class="username-profile-hint"> — profilo</span></button>
+        <td class="username"><button class="username-btn" onclick="openDrawer(${i})">${row.username}<span class="username-profile-hint"> — profilo</span></button>
           ${row.online?'<span style="margin-left:6px;font-size:9px;color:var(--green);font-family:var(--font-md)">● ONLINE</span>':''}
         </td>
         <td class="score">
@@ -760,7 +764,7 @@ function renderOnlineCards(users){
       <div class="online-card-hdr">
         <div>
           <div class="online-card-user">👤 ${u.username}</div>
-          <div class="online-card-act">${u.activity_name||'—'}${u.activity_name&&vtTrainNumber(u.activity_name)?` ${vtLink(u.activity_name)}`:''}</div>
+          <div class="online-card-act">${u.activity_name||'—'}</div>
         </div>
         <div class="online-dot-badge"><span class="pulse"></span>LIVE</div>
       </div>
@@ -832,7 +836,7 @@ function renderPanel(u,el){
   el.innerHTML=`
     <div class="live-run-hdr">
       <div>
-        <div class="live-run-name">${u.activity_name||'—'}</div>
+        <div class="live-run-name">${u.activity_name||'—'}${u.activity_name&&vtTrainNumber(u.activity_name)?` <a class="treno-reale-link" href="https://www.treniamo.it/treno/${vtTrainNumber(u.activity_name)}" target="_blank" rel="noopener">&mdash; treno reale</a>`:''}</div>
         <div class="live-run-consist">${u.consist?'🚂 '+u.consist:''}${u.sim_time?' · ⏰ '+u.sim_time:''}</div>
       </div>
       <div class="live-kpis">
@@ -1006,14 +1010,24 @@ let routeLines = {};
 
 function initMap(){
   if(leafletMap) return;
+  // Bounds Italia + margine
+  const italyBounds = L.latLngBounds(
+    L.latLng(35.2, 6.0),   // SW — Sicilia / Sardegna
+    L.latLng(47.5, 19.0)   // NE — Alto Adige / Friuli
+  );
+
   leafletMap = L.map('live-map', {
-    center: [41.5, 12.8],
+    center: [41.9, 12.5],
     zoom: 6,
+    minZoom: 6,
+    maxZoom: 18,
+    maxBounds: italyBounds,
+    maxBoundsViscosity: 1.0,
     zoomControl: true,
     dragging: true,
     scrollWheelZoom: true,
     doubleClickZoom: true,
-    touchZoom: false,
+    touchZoom: true,
     boxZoom: false,
     keyboard: false,
   });
@@ -1165,7 +1179,10 @@ function updateMap(users){
 
 
 // ── Drawer storico utente ──
-function openDrawer(username, row){
+function openDrawer(idx){
+  const row = lbRows[idx];
+  if(!row) return;
+  const username = row.username;
   const overlay = document.getElementById('drawer-overlay');
   document.getElementById('drawer-username').textContent = username;
   const sc = parseFloat(row.punteggio);
