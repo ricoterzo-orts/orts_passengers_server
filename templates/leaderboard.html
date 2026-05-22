@@ -237,7 +237,19 @@ td.servizio{text-align:center}
 /* ── FOOTER ── */
 footer{background:var(--card);border-top:2px solid var(--accent);padding:14px 20px;text-align:center;font-family:var(--font);font-size:10px;color:var(--dimgrey);letter-spacing:.06em}
 footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
-.footer-disclaimer{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:8.5px;color:var(--dimgrey);line-height:1.6;letter-spacing:.02em;max-width:860px;margin-left:auto;margin-right:auto;opacity:.75}
+.footer-disclaimer{margin-top:12px;padding-top:10px;font-size:8.5px;color:var(--dimgrey);line-height:1.6;letter-spacing:.02em;max-width:860px;margin-left:auto;margin-right:auto;opacity:.75}
+
+/* ── FOOTER STATS ── */
+.footer-stats{display:flex;justify-content:center;gap:0;margin:10px auto 0;max-width:700px;border:1px solid var(--border);border-radius:2px;overflow:hidden}
+.footer-stat{flex:1;padding:8px 6px;text-align:center;border-right:1px solid var(--border)}
+.footer-stat:last-child{border-right:none}
+.footer-stat-val{font-family:var(--font-md);font-size:15px;font-weight:500;line-height:1;color:var(--white)}
+.footer-stat-lbl{font-family:var(--font);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dimgrey);margin-top:3px}
+.footer-brand{font-family:var(--font);font-size:10px;color:var(--dimgrey);letter-spacing:.04em;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+
+/* ── VT LINK ── */
+.vt-link{display:inline-flex;align-items:center;gap:3px;color:var(--accent);font-family:var(--font);font-size:9px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;border:1px solid rgba(206,27,38,.25);border-radius:2px;padding:1px 5px;transition:all .15s;white-space:nowrap}
+.vt-link:hover{background:rgba(206,27,38,.07);border-color:var(--accent)}
 ::-webkit-scrollbar-track{background:var(--card)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--dimgrey)}
@@ -367,6 +379,13 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
   /* Footer */
   footer{padding:10px 12px;font-size:9px}
   .footer-disclaimer{font-size:7.5px}
+  .footer-stats{flex-wrap:wrap;max-width:100%}
+  .footer-stat{flex:1 1 45%;min-width:0;border-bottom:1px solid var(--border)}
+  .footer-stat:nth-child(odd){border-right:1px solid var(--border)}
+  .footer-stat:nth-child(even){border-right:none}
+  .footer-stat:nth-last-child(-n+2){border-bottom:none}
+  .footer-stat-val{font-size:13px}
+  .vt-link{font-size:8px;padding:1px 4px}
 
   /* Sezione live mappa stazioni: scroll orizzontale */
   .live-map-wrap{padding:8px 10px}
@@ -459,7 +478,25 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 </main>
 
 <footer>
-  <span>ViaggiaTreno Virtual</span> &mdash; by TSH Studio Repaint &copy; <span id="footer-year"></span>
+  <div class="footer-stats">
+    <div class="footer-stat">
+      <div class="footer-stat-val" id="fs-utenti">—</div>
+      <div class="footer-stat-lbl">Utenti</div>
+    </div>
+    <div class="footer-stat">
+      <div class="footer-stat-val" id="fs-corse">—</div>
+      <div class="footer-stat-lbl">Corse totali</div>
+    </div>
+    <div class="footer-stat">
+      <div class="footer-stat-val" id="fs-media">—</div>
+      <div class="footer-stat-lbl">Affidabilità media</div>
+    </div>
+    <div class="footer-stat">
+      <div class="footer-stat-val" id="fs-record">—</div>
+      <div class="footer-stat-lbl">Record assoluto</div>
+    </div>
+  </div>
+  <div class="footer-brand"><span>ViaggiaTreno Virtual</span> &mdash; by TSH Studio Repaint &copy; <span id="footer-year"></span></div>
   <div class="footer-disclaimer">
     <strong>Nota informativa importante:</strong> Il presente sito web è una piattaforma indipendente e non è in alcun modo affiliato, associato, autorizzato, patrocinato o ufficialmente collegato a Trenitalia S.p.A. o a qualsiasi sua controllata o filiale.
     Tutti i contenuti, i marchi registrati, i loghi e i nomi di servizi citati appartengono ai legittimi proprietari e sono utilizzati esclusivamente a scopo illustrativo, informativo o descrittivo.
@@ -634,6 +671,38 @@ function scoreColor(sc){return sc>=85?'var(--green)':sc>=65?'#1565C0':sc>=45?'va
 function gradeClass(g){if(!g)return'';const l=g.toLowerCase();if(l.includes('ott')||l.includes('ecc'))return'g-ecc';if(l.includes('buo'))return'g-buo';if(l.includes('suf')||l.includes('med'))return'g-suf';return'g-ins';}
 function rankStr(i){return i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);}
 
+// ── ViaggiaTreno link helper ──
+function vtTrainNumber(servizio){
+  if(!servizio||servizio==='—') return null;
+  const m = servizio.match(/\d{2,6}/);
+  return m ? m[0] : null;
+}
+function vtLink(servizio){
+  const n = vtTrainNumber(servizio);
+  if(!n) return '';
+  const tmUrl = 'https://www.treniamo.it/treno/'+n;
+  return ` <a class="vt-link" href="${tmUrl}" target="_blank" rel="noopener" title="Treno ${n} su Treniamo">↗ Treniamo</a>`;
+}
+
+// ── Footer stats ──
+async function loadFooterStats(){
+  try{
+    const [lb, uc] = await Promise.all([
+      fetch('/api/leaderboard').then(r=>r.json()).catch(()=>[]),
+      fetch('/api/users/count').then(r=>r.json()).catch(()=>({count:'—'}))
+    ]);
+    const utenti = uc.count ?? '—';
+    const corse = lb.reduce((s,r)=>s+(parseInt(r.corse)||0),0);
+    const scores = lb.map(r=>parseFloat(r.punteggio)).filter(v=>!isNaN(v));
+    const media = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : '—';
+    const best = scores.length ? Math.max(...scores).toFixed(1) : '—';
+    document.getElementById('fs-utenti').textContent = utenti;
+    document.getElementById('fs-corse').textContent = corse||'—';
+    document.getElementById('fs-media').textContent = media!=='—' ? media+'/100' : '—';
+    document.getElementById('fs-record').textContent = best!=='—' ? best+'/100' : '—';
+  }catch(e){}
+}
+
 async function loadLeaderboard(){
   try{
     const r=await fetch('/api/leaderboard');
@@ -660,7 +729,7 @@ async function loadLeaderboard(){
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
         </td>
-        <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
+        <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span>${vtLink(row.ultimo_servizio)}</td>
         <td class="c" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
       </tr>`).join('');
   }catch(e){
@@ -730,6 +799,7 @@ function renderOnlineCards(users){
         </div>
       </div>
       ${u.consist?`<div class="consist-tag">🚂 <span>${u.consist}</span></div>`:''}
+      ${u.activity_name&&vtTrainNumber(u.activity_name)?`<div style="margin-top:6px">${vtLink(u.activity_name)}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -1110,6 +1180,7 @@ function updateMap(users){
 // ── Init ──
 checkMe();
 loadLeaderboard();
+loadFooterStats();
 initMap();
 loadStationCoords().then(() => loadLive()).catch(() => loadLive());
 setInterval(loadLeaderboard,15000);
