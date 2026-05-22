@@ -241,6 +241,139 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 ::-webkit-scrollbar-track{background:var(--card)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--dimgrey)}
+
+/* ══ RESPONSIVE MOBILE / TABLET ══ */
+
+/* ── Tablet (≤768px) ── */
+@media(max-width:768px){
+  /* Header */
+  header{padding:0 12px;height:auto;min-height:52px;flex-wrap:wrap;gap:6px;padding-top:6px;padding-bottom:6px}
+  .logo img{height:32px}
+  nav{flex-wrap:wrap;gap:4px;justify-content:flex-end}
+  #nav-username{font-size:10px;width:100%;text-align:right;margin-right:0}
+  .nav-btn{padding:4px 10px;font-size:10px}
+
+  /* Main padding */
+  main{padding:12px 10px}
+
+  /* Statusbar */
+  .statusbar{flex-direction:column;align-items:flex-start;gap:4px;padding:8px 10px}
+  .statusbar-left{flex-wrap:wrap;gap:8px;font-size:10px}
+  .statusbar-right{font-size:9px}
+
+  /* Token banner */
+  #user-banner{flex-direction:column;align-items:flex-start;gap:6px;font-size:10px}
+  #user-banner .tv{word-break:break-all;font-size:9px}
+
+  /* Online grid: 1 colonna */
+  .online-grid{grid-template-columns:1fr}
+
+  /* Instrument cluster: font ridotto */
+  .instrument-val{font-size:17px}
+  .instrument-lbl{font-size:8px}
+
+  /* Live KPIs */
+  .live-kpis{gap:6px}
+  .live-kpi{padding:5px 8px;min-width:56px}
+  .live-kpi-val{font-size:15px}
+
+  /* Mappa */
+  #live-map{height:360px}
+  .map-empty{height:360px}
+
+  /* Tabella classifica: scroll orizzontale */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{min-width:480px}
+  thead th,tbody td{padding:7px 8px;font-size:10px}
+  td.username{font-size:12px}
+  .snum{font-size:15px}
+  .serv-pill{max-width:140px;font-size:9px}
+
+  /* Live tabs */
+  .live-tabs{gap:3px}
+  .live-tab{padding:5px 10px;font-size:10px}
+
+  /* Modal */
+  .modal{margin:12px;max-width:calc(100vw - 24px)}
+  .stat-grid{grid-template-columns:1fr 1fr 1fr}
+}
+
+/* ── Smartphone (≤480px) ── */
+@media(max-width:480px){
+  /* Header compatto */
+  header{padding:6px 10px}
+  .logo img{height:28px}
+  nav{gap:4px}
+  .nav-btn{padding:3px 8px;font-size:10px;line-height:20px}
+  #nav-username{font-size:9px}
+
+  /* Statusbar */
+  .statusbar-left{gap:6px;font-size:9px}
+  #lb-registered{display:none} /* nasconde il counter secondario per risparmiare spazio */
+
+  /* Sezione titoli */
+  .sec-title{font-size:10px}
+  .sec-badge{font-size:9px;padding:2px 6px}
+
+  /* Cluster strumenti: 3 colonne strette */
+  .cluster{gap:5px}
+  .instrument{padding:6px 4px}
+  .instrument-val{font-size:14px}
+  .instrument-lbl{font-size:7px;letter-spacing:.05em}
+
+  /* Card online */
+  .online-card{padding:10px}
+  .online-card-user{font-size:13px}
+
+  /* Next station */
+  .next-station-bar{padding:6px 8px;font-size:10px}
+  .next-station-arrow{font-size:12px}
+
+  /* Live KPIs: più compatti */
+  .live-kpis{gap:4px;flex-wrap:wrap}
+  .live-kpi{padding:4px 7px;min-width:50px}
+  .live-kpi-val{font-size:14px}
+  .live-kpi-lbl{font-size:8px}
+
+  /* Live panel */
+  .live-panel-main{padding:10px}
+  .live-run-name{font-size:12px}
+  .live-run-consist{font-size:9px}
+
+  /* Mappa ridotta */
+  #live-map{height:280px}
+  .map-empty{height:280px}
+
+  /* Tabella: scroll orizzontale, font minimo leggibile */
+  table{min-width:420px}
+  thead th,tbody td{padding:6px 6px;font-size:9px}
+  td.username{font-size:11px}
+  .snum{font-size:13px}
+  .serv-pill{max-width:110px;font-size:8px}
+  .sub{font-size:9px}
+
+  /* Live tabs scroll orizzontale */
+  .live-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;padding-bottom:2px}
+  .live-tab{white-space:nowrap;flex-shrink:0;font-size:10px;padding:5px 10px}
+
+  /* Modal full-width */
+  .overlay{align-items:flex-end}
+  .modal{margin:0;border-radius:4px 4px 0 0;max-width:100vw;max-height:92vh}
+  .modal-body{padding:14px}
+  .stat-grid{gap:4px}
+  .stat-num{font-size:17px}
+  .sessions-list{max-height:140px}
+
+  /* Footer */
+  footer{padding:10px 12px;font-size:9px}
+  .footer-disclaimer{font-size:7.5px}
+
+  /* Sezione live mappa stazioni: scroll orizzontale */
+  .live-map-wrap{padding:8px 10px}
+  .live-map{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .live-map-stations{min-width:400px}
+  .live-map-line,.live-map-progress{min-width:calc(400px - 40px)}
+}
 </style>
 </head>
 <body>
