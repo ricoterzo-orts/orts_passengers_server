@@ -237,15 +237,7 @@ td.servizio{text-align:center}
 /* ── FOOTER ── */
 footer{background:var(--card);border-top:2px solid var(--accent);padding:14px 20px;text-align:center;font-family:var(--font);font-size:10px;color:var(--dimgrey);letter-spacing:.06em}
 footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
-.footer-disclaimer{margin-top:12px;padding-top:10px;font-size:8.5px;color:var(--dimgrey);line-height:1.6;letter-spacing:.02em;max-width:860px;margin-left:auto;margin-right:auto;opacity:.75}
-
-/* ── FOOTER STATS ── */
-.footer-stats{display:flex;justify-content:center;gap:0;margin:10px auto 0;max-width:700px;border:1px solid var(--border);border-radius:2px;overflow:hidden}
-.footer-stat{flex:1;padding:8px 6px;text-align:center;border-right:1px solid var(--border)}
-.footer-stat:last-child{border-right:none}
-.footer-stat-val{font-family:var(--font-md);font-size:15px;font-weight:500;line-height:1;color:var(--white)}
-.footer-stat-lbl{font-family:var(--font);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dimgrey);margin-top:3px}
-.footer-brand{font-family:var(--font);font-size:10px;color:var(--dimgrey);letter-spacing:.04em;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.footer-disclaimer{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:8.5px;color:var(--dimgrey);line-height:1.6;letter-spacing:.02em;max-width:860px;margin-left:auto;margin-right:auto;opacity:.75}
 
 /* ── VT LINK ── */
 .vt-link{display:inline-flex;align-items:center;gap:3px;color:var(--accent);font-family:var(--font);font-size:9px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;border:1px solid rgba(206,27,38,.25);border-radius:2px;padding:1px 5px;transition:all .15s;white-space:nowrap}
@@ -282,6 +274,8 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 .drawer-loading{padding:32px 14px;text-align:center;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
 .username-btn{background:none;border:none;padding:0;font:inherit;color:inherit;cursor:pointer;font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white);text-align:left;text-decoration:underline;text-decoration-color:rgba(206,27,38,.3);text-underline-offset:2px;transition:color .15s}
 .username-btn:hover{color:var(--accent)}
+.username-profile-hint{font-family:var(--font);font-size:9px;font-weight:normal;color:var(--dimgrey);letter-spacing:.04em;text-transform:none;text-decoration:none;opacity:.7}
+.username-btn:hover .username-profile-hint{color:var(--accent);opacity:1}
 @media(max-width:480px){
   .drawer{width:100vw;right:-100vw}
   .drawer-list-hdr,.drawer-row{grid-template-columns:1fr 70px 60px 30px;padding:8px 10px}
@@ -415,12 +409,6 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
   /* Footer */
   footer{padding:10px 12px;font-size:9px}
   .footer-disclaimer{font-size:7.5px}
-  .footer-stats{flex-wrap:wrap;max-width:100%}
-  .footer-stat{flex:1 1 45%;min-width:0;border-bottom:1px solid var(--border)}
-  .footer-stat:nth-child(odd){border-right:1px solid var(--border)}
-  .footer-stat:nth-child(even){border-right:none}
-  .footer-stat:nth-last-child(-n+2){border-bottom:none}
-  .footer-stat-val{font-size:13px}
   .vt-link{font-size:8px;padding:1px 4px}
 
   /* Sezione live mappa stazioni: scroll orizzontale */
@@ -514,25 +502,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 </main>
 
 <footer>
-  <div class="footer-stats">
-    <div class="footer-stat">
-      <div class="footer-stat-val" id="fs-utenti">—</div>
-      <div class="footer-stat-lbl">Utenti</div>
-    </div>
-    <div class="footer-stat">
-      <div class="footer-stat-val" id="fs-corse">—</div>
-      <div class="footer-stat-lbl">Corse totali</div>
-    </div>
-    <div class="footer-stat">
-      <div class="footer-stat-val" id="fs-media">—</div>
-      <div class="footer-stat-lbl">Affidabilità media</div>
-    </div>
-    <div class="footer-stat">
-      <div class="footer-stat-val" id="fs-record">—</div>
-      <div class="footer-stat-lbl">Record assoluto</div>
-    </div>
-  </div>
-  <div class="footer-brand"><span>ViaggiaTreno Virtual</span> &mdash; by TSH Studio Repaint &copy; <span id="footer-year"></span></div>
+  <span>ViaggiaTreno Virtual</span> &mdash; by TSH Studio Repaint &copy; <span id="footer-year"></span>
   <div class="footer-disclaimer">
     <strong>Nota informativa importante:</strong> Il presente sito web è una piattaforma indipendente e non è in alcun modo affiliato, associato, autorizzato, patrocinato o ufficialmente collegato a Trenitalia S.p.A. o a qualsiasi sua controllata o filiale.
     Tutti i contenuti, i marchi registrati, i loghi e i nomi di servizi citati appartengono ai legittimi proprietari e sono utilizzati esclusivamente a scopo illustrativo, informativo o descrittivo.
@@ -720,23 +690,6 @@ function vtLink(servizio){
   return ` <a class="vt-link" href="${tmUrl}" target="_blank" rel="noopener" title="Treno ${n} su Treniamo">↗ Treniamo</a>`;
 }
 
-// ── Footer stats ──
-async function loadFooterStats(){
-  try{
-    const [lb, uc] = await Promise.all([
-      fetch('/api/leaderboard').then(r=>r.json()).catch(()=>[]),
-      fetch('/api/users/count').then(r=>r.json()).catch(()=>({count:'—'}))
-    ]);
-    const utenti = uc.count ?? '—';
-    const corse = lb.reduce((s,r)=>s+(parseInt(r.corse)||0),0);
-    const scores = lb.map(r=>parseFloat(r.punteggio)).filter(v=>!isNaN(v));
-    const media = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : '—';
-    const best = scores.length ? Math.max(...scores).toFixed(1) : '—';
-    document.getElementById('fs-utenti').textContent = utenti;
-    document.getElementById('fs-corse').textContent = corse||'—';
-    document.getElementById('fs-media').textContent = media!=='—' ? media+'/100' : '—';
-    document.getElementById('fs-record').textContent = best!=='—' ? best+'/100' : '—';
-  }catch(e){}
 }
 
 async function loadLeaderboard(){
@@ -758,14 +711,14 @@ async function loadLeaderboard(){
     body.innerHTML=rows.map((row,i)=>`
       <tr>
         <td class="rank">${rankStr(i)}</td>
-        <td class="username"><button class="username-btn" onclick="openDrawer('${row.username}',${JSON.stringify(row).replace(/'/g,'\'').replace(/`/g,'\`')})">${row.username}</button>
+        <td class="username"><button class="username-btn" onclick="openDrawer('${row.username}',${JSON.stringify(row).replace(/'/g,'\'').replace(/`/g,'\`')})">${row.username}<span class="username-profile-hint"> — profilo</span></button>
           ${row.online?'<span style="margin-left:6px;font-size:9px;color:var(--green);font-family:var(--font-md)">● ONLINE</span>':''}
         </td>
         <td class="score">
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
         </td>
-        <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span>${vtLink(row.ultimo_servizio)}</td>
+        <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
         <td class="c" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
       </tr>`).join('');
   }catch(e){
@@ -809,7 +762,7 @@ function renderOnlineCards(users){
       <div class="online-card-hdr">
         <div>
           <div class="online-card-user">👤 ${u.username}</div>
-          <div class="online-card-act">${u.activity_name||'—'}</div>
+          <div class="online-card-act">${u.activity_name||'—'}${u.activity_name&&vtTrainNumber(u.activity_name)?` ${vtLink(u.activity_name)}`:''}</div>
         </div>
         <div class="online-dot-badge"><span class="pulse"></span>LIVE</div>
       </div>
@@ -835,7 +788,6 @@ function renderOnlineCards(users){
         </div>
       </div>
       ${u.consist?`<div class="consist-tag">🚂 <span>${u.consist}</span></div>`:''}
-      ${u.activity_name&&vtTrainNumber(u.activity_name)?`<div style="margin-top:6px">${vtLink(u.activity_name)}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -1267,7 +1219,6 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
 // ── Init ──
 checkMe();
 loadLeaderboard();
-loadFooterStats();
 initMap();
 loadStationCoords().then(() => loadLive()).catch(() => loadLive());
 setInterval(loadLeaderboard,15000);
