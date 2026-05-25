@@ -718,10 +718,6 @@ function renderOnlineCards(users){
     const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
     const barW=Math.max(0,Math.min(100,cft));
     const barCol=comfortColor(cft);
-    const lbEntry=lbRows.find(r=>r.username===u.username);
-    const pts=lbEntry!=null?parseFloat(lbEntry.punteggio):null;
-    const ptsStr=pts!=null?pts.toFixed(1):'—';
-    const ptsCol=pts!=null?scoreColor(pts):'var(--dimgrey)';
     return `<div class="online-card">
       <div class="online-card-hdr">
         <div>
@@ -736,8 +732,8 @@ function renderOnlineCards(users){
           <div class="instrument-lbl">km/h</div>
         </div>
         <div class="instrument">
-          <div class="instrument-val" style="color:${ptsCol}">${ptsStr}</div>
-          <div class="instrument-lbl">Punteggio</div>
+          <div class="instrument-val ${comfortClass(cft)}">${cft}</div>
+          <div class="instrument-lbl">Comfort</div>
         </div>
       </div>
       ${u.next_station?`
@@ -746,6 +742,11 @@ function renderOnlineCards(users){
         <span class="next-station-name">${u.next_station}</span>
         ${u.sim_time?`<span class="next-station-time">${u.sim_time}</span>`:''}
       </div>`:''}
+      <div class="comfort-bar-wrap">
+        <div class="comfort-bar-track">
+          <div class="comfort-bar-fill" style="width:${barW}%;background:${barCol}"></div>
+        </div>
+      </div>
       ${u.consist?`<div class="consist-tag">🚂 <span>${u.consist}</span></div>`:''}
     </div>`;
   }).join('');
