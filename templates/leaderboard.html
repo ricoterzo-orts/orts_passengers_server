@@ -1089,13 +1089,36 @@ function updateMap(users){
     if(pos){
       const delayMin = u.delay_min || 0;
       const markerColor = delayMin <= 15 ? '#007A3D' : delayMin <= 45 ? '#E07B00' : '#CE1B26';
-      const delayLabel  = delayMin <= 0 ? 'In orario' : `ritardo +${Math.round(delayMin)} min.`;
-      const popupHtml = `<div style="font-family:Trebuchet MS;font-size:12px;min-width:160px">
-        <div style="background:#CE1B26;color:#fff;margin:-7px -7px 8px -7px;padding:5px 8px;font-weight:bold;font-size:13px;border-radius:2px 2px 0 0">${u.activity_name||u.username}</div>
-        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#5A5A5A">
-          <span style="width:8px;height:8px;border-radius:50%;background:${markerColor};flex-shrink:0;display:inline-block"></span>
-          ${delayLabel}
-        </div>
+      const delayLabel = delayMin <= 0 ? 'in orario' : `ritardo ${Math.round(delayMin)} min.`;
+      const stops = (u.stations || []);
+      const origin = stops.length > 0 ? (stops[0].name || '—') : '—';
+      const dest   = stops.length > 1 ? (stops[stops.length-1].name || '—') : (u.next_station || '—');
+      const trainNum = u.activity_name || u.username;
+      const popupHtml = `<div style="font-family:Trebuchet MS;font-size:11px;min-width:340px;background:#fff;border-radius:2px;overflow:hidden">
+        <div style="background:#CE1B26;color:#fff;padding:6px 10px;font-weight:bold;font-size:12px;letter-spacing:.04em;text-align:center">${trainNum}</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#E4E4E4">
+              <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">Treno</th>
+              <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">Da</th>
+              <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">A</th>
+              <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">Ritardo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background:#fff">
+              <td style="padding:7px 8px;color:#2B2B2B;font-weight:500;white-space:nowrap">${trainNum}</td>
+              <td style="padding:7px 8px;color:#2B2B2B;white-space:nowrap">${origin}</td>
+              <td style="padding:7px 8px;color:#2B2B2B;white-space:nowrap">${dest}</td>
+              <td style="padding:7px 8px;white-space:nowrap">
+                <span style="display:inline-flex;align-items:center;gap:5px">
+                  <span style="width:8px;height:8px;border-radius:50%;background:${markerColor};flex-shrink:0;display:inline-block"></span>
+                  <span style="color:#2B2B2B">${delayLabel}</span>
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>`;
       if(trainMarkers[u.username]){
         trainMarkers[u.username].setLatLng(pos);
