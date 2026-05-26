@@ -1,23 +1,65 @@
 """
-OpenRails Monitor — Piattaforma Web v1.1
+OpenRails Monitor — Piattaforma Web v1.2 (SECURE)
 Backend Flask con PostgreSQL (persistente su Render)
+
+Modifiche sicurezza rispetto a v1.1:
+  - Password hashate con bcrypt (invece di SHA-256 semplice)
+  - SESSION_COOKIE_SECURE = True
+  - Rate limiting su login/register/submit (Flask-Limiter)
+  - reCAPTCHA secret rimosso dal codice → solo env var
+  - CSRF protection su endpoint sensibili (token in sessione)
+  - Validazione username più restrittiva (solo [a-zA-Z0-9_.-])
+  - Endpoint per rigenerare api_token
+  - Logging tentativi di login falliti
 """
 
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from functools import wraps
 import psycopg2, psycopg2.extras, psycopg2.errorcodes
-import hashlib, os, secrets, re
+import os, secrets, re, logging
 
+import bcrypt
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from datetime import timedelta
+
+# ─────────────────────────────────────────────────────────
+#  App setup
+# ─────────────────────────────────────────────────────────
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
-app.config["SESSION_COOKIE_SECURE"]   = False
+
+app.config["SESSION_COOKIE_SECURE"]   = True   # ← era False, CORRETTO
 app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SAMESITE"] = "Strict"  # ← era "Lax", più sicuro
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
-RECAPTCHA_SECRET = "6Lfvwe8sAAAAAAIUygWg0WMYdSx5TrP5wRCherlX"
+
+# reCAPTCHA secret SOLO da env var — mai hardcoded nel codice
+RECAPTCHA_SECRET = os.environ.get("RECAPTCHA_SECRET", "")
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
+# ─────────────────────────────────────────────────────────
+#  Logging
+# ─────────────────────────────────────────────────────────
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# ─────────────────────────────────────────────────────────
+#  Rate Limiting
+# ─────────────────────────────────────────────────────────
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri=os.environ.get("REDIS_URL", "memory://")
+)
 
 # ─────────────────────────────────────────────────────────
 #  Database
@@ -63,7 +105,6 @@ def init_db():
                 activity_name   TEXT    DEFAULT '',
                 updated_at      TIMESTAMPTZ DEFAULT NOW()
             );
-
             CREATE TABLE IF NOT EXISTS heartbeats (
                 user_id     INTEGER PRIMARY KEY REFERENCES users(id),
                 last_seen   TIMESTAMPTZ NOT NULL
@@ -75,7 +116,6 @@ def init_db():
                 sim_time    TEXT    DEFAULT '',
                 recorded_at TIMESTAMPTZ DEFAULT NOW()
             );
-
             CREATE TABLE IF NOT EXISTS live_stations (
                 id              SERIAL PRIMARY KEY,
                 user_id         INTEGER NOT NULL REFERENCES users(id),
@@ -88,7 +128,6 @@ def init_db():
                 sort_order      INTEGER DEFAULT 0,
                 updated_at      TIMESTAMPTZ DEFAULT NOW()
             );
-
             CREATE TABLE IF NOT EXISTS station_coords (
                 id          SERIAL PRIMARY KEY,
                 name        TEXT    NOT NULL UNIQUE,
@@ -96,7 +135,6 @@ def init_db():
                 lon         REAL    NOT NULL,
                 updated_at  TIMESTAMPTZ DEFAULT NOW()
             );
-
             CREATE TABLE IF NOT EXISTS user_stats (
                 user_id         INTEGER PRIMARY KEY REFERENCES users(id),
                 affidabilita    REAL    DEFAULT 0,
@@ -104,7 +142,6 @@ def init_db():
                 grade           TEXT    DEFAULT '',
                 updated_at      TIMESTAMPTZ DEFAULT NOW()
             );
-
             CREATE TABLE IF NOT EXISTS sessions (
                 id              SERIAL PRIMARY KEY,
                 user_id         INTEGER NOT NULL REFERENCES users(id),
@@ -124,7 +161,6 @@ def init_db():
 init_db()
 
 def migrate_db():
-    """Aggiunge colonne mancanti a tabelle esistenti (migrazioni sicure)."""
     migrations = [
         """CREATE TABLE IF NOT EXISTS station_coords (
             id SERIAL PRIMARY KEY,
@@ -140,11 +176,9 @@ def migrate_db():
             grade TEXT DEFAULT '',
             updated_at TIMESTAMPTZ DEFAULT NOW()
         )""",
-        # live_sessions: aggiungi comfort_live se mancante
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_live REAL DEFAULT 100""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_grade TEXT DEFAULT ''""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_penalty REAL DEFAULT 0""",
-        # live_sessions: aggiungi tutte le colonne nel caso la tabella fosse vecchia
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS speed_kmh REAL DEFAULT 0""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS delay_min REAL DEFAULT 0""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS next_station TEXT DEFAULT ''""",
@@ -159,17 +193,76 @@ def migrate_db():
                 try:
                     cur.execute(sql)
                 except Exception:
-                    pass  # colonna già esistente o altro errore non bloccante
+                    pass
         conn.commit()
 
 migrate_db()
 
 # ─────────────────────────────────────────────────────────
-#  Utility
+#  Utility — Password (bcrypt)
 # ─────────────────────────────────────────────────────────
 
 def hash_password(pw: str) -> str:
-    return hashlib.sha256(pw.encode()).hexdigest()
+    """Genera hash bcrypt della password. Sicuro contro rainbow table."""
+    return bcrypt.hashpw(pw.encode(), bcrypt.gensalt(rounds=12)).decode()
+
+def check_password(pw: str, hashed: str) -> bool:
+    """Verifica password contro hash bcrypt.
+    Supporta anche hash SHA-256 legacy per utenti pre-migrazione."""
+    try:
+        # Tenta verifica bcrypt (nuovo formato)
+        return bcrypt.checkpw(pw.encode(), hashed.encode())
+    except Exception:
+        # Fallback: confronto SHA-256 legacy (da rimuovere dopo migrazione completa)
+        import hashlib
+        return hashlib.sha256(pw.encode()).hexdigest() == hashed
+
+def migrate_password_if_needed(user_id: int, pw: str, current_hash: str):
+    """Se l'hash è SHA-256 legacy, lo aggiorna a bcrypt silenziosamente."""
+    import hashlib
+    if not current_hash.startswith("$2b$"):
+        new_hash = hash_password(pw)
+        try:
+            with get_db() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE users SET password_hash=%s WHERE id=%s",
+                        (new_hash, user_id)
+                    )
+                conn.commit()
+        except Exception:
+            pass
+
+# ─────────────────────────────────────────────────────────
+#  Utility — Validazione
+# ─────────────────────────────────────────────────────────
+
+def validate_email(email: str) -> bool:
+    return bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email))
+
+def validate_username(username: str) -> bool:
+    """Solo lettere, numeri, underscore, punto, trattino. Lunghezza 3-30."""
+    return bool(re.match(r"^[a-zA-Z0-9_.\-]{3,30}$", username))
+
+# ─────────────────────────────────────────────────────────
+#  Utility — CSRF
+# ─────────────────────────────────────────────────────────
+
+def generate_csrf_token() -> str:
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(32)
+    return session["csrf_token"]
+
+def verify_csrf(f):
+    """Decorator: verifica X-CSRF-Token header per endpoint POST sensibili."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get("X-CSRF-Token", "")
+        if not token or not secrets.compare_digest(token, session.get("csrf_token", "")):
+            logger.warning("CSRF check fallito da IP %s", request.remote_addr)
+            return jsonify({"ok": False, "error": "Token CSRF non valido"}), 403
+        return f(*args, **kwargs)
+    return decorated
 
 def require_login(f):
     @wraps(f)
@@ -178,9 +271,6 @@ def require_login(f):
             return redirect(url_for("login_page"))
         return f(*args, **kwargs)
     return decorated
-
-def validate_email(email: str) -> bool:
-    return bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email))
 
 # ─────────────────────────────────────────────────────────
 #  Pagine HTML
@@ -196,7 +286,8 @@ def register_page():
 
 @app.route("/login")
 def login_page():
-    return render_template("login.html")
+    token = generate_csrf_token()
+    return render_template("login.html", csrf_token=token)
 
 @app.route("/leaderboard")
 def leaderboard_page():
@@ -213,7 +304,13 @@ def profile_page():
 #  API Auth
 # ─────────────────────────────────────────────────────────
 
+@app.route("/api/csrf_token")
+def api_csrf_token():
+    """Endpoint per ottenere il CSRF token corrente (usato dal frontend)."""
+    return jsonify({"csrf_token": generate_csrf_token()})
+
 @app.route("/api/register", methods=["POST"])
+@limiter.limit("5 per minute; 20 per hour")   # anti-spam registrazione
 def api_register():
     data     = request.get_json(force=True) or {}
     nome     = (data.get("nome",     "") or "").strip()
@@ -226,7 +323,10 @@ def api_register():
     if not captcha_token:
         return jsonify({"ok": False, "error": "Captcha mancante"}), 400
 
-    # Verifica reCAPTCHA con Google
+    if not RECAPTCHA_SECRET:
+        logger.error("RECAPTCHA_SECRET non configurato nelle env var!")
+        return jsonify({"ok": False, "error": "Configurazione server incompleta"}), 500
+
     import urllib.request as _ur, json as _json
     try:
         _resp = _ur.urlopen(
@@ -246,8 +346,8 @@ def api_register():
         return jsonify({"ok": False, "error": "La password deve essere di almeno 6 caratteri"}), 400
     if not validate_email(email):
         return jsonify({"ok": False, "error": "Email non valida"}), 400
-    if len(username) < 3:
-        return jsonify({"ok": False, "error": "Username troppo corto (min 3 caratteri)"}), 400
+    if not validate_username(username):
+        return jsonify({"ok": False, "error": "Username non valido (solo lettere, numeri, _, ., - ; 3-30 caratteri)"}), 400
 
     token = secrets.token_hex(32)
     try:
@@ -259,6 +359,7 @@ def api_register():
                     (nome, cognome, username, email, hash_password(password), token)
                 )
             conn.commit()
+        logger.info("Nuovo utente registrato: %s", username)
         return jsonify({"ok": True, "message": "Registrazione completata!"})
     except psycopg2.errors.UniqueViolation as e:
         msg = str(e)
@@ -267,6 +368,7 @@ def api_register():
         return jsonify({"ok": False, "error": "Email già registrata"}), 409
 
 @app.route("/api/login", methods=["POST"])
+@limiter.limit("10 per minute; 50 per hour")   # anti brute-force
 def api_login():
     data     = request.get_json(force=True) or {}
     username = (data.get("username", "") or "").strip()
@@ -278,21 +380,32 @@ def api_login():
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT * FROM users WHERE (username=%s OR email=%s) AND password_hash=%s",
-                (username, username, hash_password(password))
+                "SELECT * FROM users WHERE (username=%s OR email=%s)",
+                (username, username)
             )
             user = fetchone(cur)
 
-    if not user:
+    # Verifica password separata dall'interrogazione (evita timing oracle)
+    if not user or not check_password(password, user["password_hash"]):
+        logger.warning("Login fallito per '%s' da IP %s", username, request.remote_addr)
         return jsonify({"ok": False, "error": "Credenziali non valide"}), 401
+
+    # Migra hash SHA-256 legacy → bcrypt se necessario
+    migrate_password_if_needed(user["id"], password, user["password_hash"])
 
     session.permanent   = True
     session["user_id"]  = user["id"]
     session["username"] = user["username"]
-    return jsonify({"ok": True, "username": user["username"]})
+    # Rigenera CSRF token ad ogni login
+    session.pop("csrf_token", None)
+    csrf = generate_csrf_token()
+
+    logger.info("Login utente: %s da IP %s", user["username"], request.remote_addr)
+    return jsonify({"ok": True, "username": user["username"], "csrf_token": csrf})
 
 @app.route("/api/logout", methods=["POST"])
 def api_logout():
+    logger.info("Logout utente: %s", session.get("username", "?"))
     session.clear()
     return jsonify({"ok": True})
 
@@ -322,7 +435,24 @@ def api_me():
         "runs":       stats["runs"] or 0,
         "best_score": round(float(stats["best"] or 0), 1),
         "avg_score":  round(float(stats["avg"]  or 0), 1),
+        "csrf_token": generate_csrf_token(),
     })
+
+@app.route("/api/regenerate_token", methods=["POST"])
+@require_login
+@verify_csrf
+def api_regenerate_token():
+    """Permette all'utente di rigenerare il proprio api_token se compromesso."""
+    new_token = secrets.token_hex(32)
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET api_token=%s WHERE id=%s",
+                (new_token, session["user_id"])
+            )
+        conn.commit()
+    logger.info("API token rigenerato per user_id=%s", session["user_id"])
+    return jsonify({"ok": True, "api_token": new_token})
 
 # ─────────────────────────────────────────────────────────
 #  API Leaderboard
@@ -414,6 +544,7 @@ def api_user_sessions(username):
 # ─────────────────────────────────────────────────────────
 
 @app.route("/api/submit", methods=["POST"])
+@limiter.limit("30 per minute")   # anti-spam submit sessioni
 def api_submit():
     token = request.headers.get("X-API-Token", "").strip()
     if not token:
@@ -423,6 +554,7 @@ def api_submit():
             cur.execute("SELECT * FROM users WHERE api_token=%s", (token,))
             user = fetchone(cur)
     if not user:
+        logger.warning("Submit con token non valido da IP %s", request.remote_addr)
         return jsonify({"ok": False, "error": "Token non valido"}), 401
 
     data = request.get_json(force=True) or {}
@@ -438,7 +570,6 @@ def api_submit():
     except (ValueError, TypeError) as e:
         return jsonify({"ok": False, "error": f"Dati non validi: {e}"}), 400
 
-    # Accetta solo sessioni completate almeno al 50%
     if completamento < 50:
         return jsonify({"ok": False, "error": f"Sessione troppo breve ({completamento}% < 50%)"}), 400
 
@@ -451,7 +582,6 @@ def api_submit():
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (user["id"], punteggio, ultimo_servizio, frenate, accel,
                   penalita, completamento, durata_min, grade))
-            # Aggiorna affidabilità totale: media di tutte le sessioni
             cur.execute("""
                 INSERT INTO user_stats (user_id, affidabilita, ultima_tratta, grade, updated_at)
                 SELECT
@@ -477,20 +607,8 @@ def api_submit():
 # ─────────────────────────────────────────────────────────
 
 @app.route("/api/heartbeat", methods=["POST"])
+@limiter.limit("120 per minute")   # max 2/s per utente
 def api_heartbeat():
-    """
-    Chiamato dal .exe ogni 30s con dati live.
-    Header: X-API-Token: <token>
-    Body JSON (opzionale):
-      {
-        "speed_kmh": 120.5,
-        "delay_min": 2.3,
-        "next_station": "Firenze SMN",
-        "consist": "E464.001",
-        "sim_time": "14:32",
-        "activity_name": "Roma → Firenze"
-      }
-    """
     token = request.headers.get("X-API-Token", "").strip()
     if not token:
         return jsonify({"ok": False, "error": "Token mancante"}), 401
@@ -514,7 +632,6 @@ def api_heartbeat():
 
     with get_db() as conn:
         with conn.cursor() as cur:
-            # Controlla se l'utente era offline (nuova connessione = gap > 2 minuti)
             cur.execute("""
                 SELECT last_seen < NOW() - INTERVAL '2 minutes' AS was_offline
                 FROM heartbeats WHERE user_id=%s
@@ -545,10 +662,8 @@ def api_heartbeat():
                   updated_at=NOW()
             """, (user["id"], speed_kmh, delay_min, next_station, consist, sim_time, activity_name,
                   comfort_live, comfort_grade, comfort_penalty))
-            # Nuova connessione: azzera lo storico velocità
             if new_session:
                 cur.execute("DELETE FROM speed_history WHERE user_id=%s", (user["id"],))
-            # Salva campione velocità nello storico (max 200 per utente)
             if speed_kmh > 0:
                 cur.execute("""
                     INSERT INTO speed_history (user_id, speed_kmh, sim_time)
@@ -565,12 +680,11 @@ def api_heartbeat():
     return jsonify({"ok": True})
 
 # ─────────────────────────────────────────────────────────
-#  API dati live (per sezione LIVE leaderboard)
+#  API dati live
 # ─────────────────────────────────────────────────────────
 
 @app.route("/api/live")
 def api_live():
-    """Restituisce tutti gli utenti online con dati live completi."""
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -595,7 +709,6 @@ def api_live():
             """)
             users_online = fetchall(cur)
 
-    # Per ogni utente online, carica storico velocità e stazioni
     result = []
     for u in users_online:
         with get_db() as conn:
@@ -625,20 +738,8 @@ def api_live():
     return jsonify(result)
 
 @app.route("/api/live_stations", methods=["POST"])
+@limiter.limit("120 per minute")
 def api_live_stations():
-    """
-    Riceve la lista delle stazioni con ritardi aggiornati dal .exe.
-    Header: X-API-Token: <token>
-    Body JSON:
-      {
-        "stations": [
-          {"name": "Roma Termini", "arrival": "08:00", "departure": "08:05",
-           "delay_min": 0, "passed": true, "is_current": false},
-          {"name": "Firenze SMN", "arrival": "09:45", "departure": "09:50",
-           "delay_min": 2.5, "passed": false, "is_current": true}
-        ]
-      }
-    """
     token = request.headers.get("X-API-Token", "").strip()
     if not token:
         return jsonify({"ok": False, "error": "Token mancante"}), 401
@@ -679,10 +780,9 @@ def api_live_stations():
 # ─────────────────────────────────────────────────────────
 
 @app.route("/api/delete_account", methods=["POST"])
+@require_login
+@verify_csrf
 def api_delete_account():
-    if "user_id" not in session:
-        return jsonify({"ok": False, "error": "Non autenticato"}), 401
-
     data     = request.get_json(force=True) or {}
     password = data.get("password", "") or ""
 
@@ -691,7 +791,8 @@ def api_delete_account():
             cur.execute("SELECT * FROM users WHERE id=%s", (session["user_id"],))
             user = fetchone(cur)
 
-    if not user or user["password_hash"] != hash_password(password):
+    if not user or not check_password(password, user["password_hash"]):
+        logger.warning("Tentativo eliminazione account fallito per user_id=%s", session["user_id"])
         return jsonify({"ok": False, "error": "Password non corretta"}), 401
 
     uid = session["user_id"]
@@ -709,11 +810,12 @@ def api_delete_account():
     except Exception as e:
         return jsonify({"ok": False, "error": f"Errore DB: {e}"}), 500
 
+    logger.info("Account eliminato: user_id=%s", uid)
     session.clear()
     return jsonify({"ok": True, "message": "Account eliminato."})
 
 # ─────────────────────────────────────────────────────────
-#  API coordinate stazioni (per mappa)
+#  API coordinate stazioni
 # ─────────────────────────────────────────────────────────
 
 @app.route("/api/station_coords", methods=["GET", "POST"])
@@ -725,7 +827,6 @@ def api_station_coords():
                 rows = fetchall(cur)
         return jsonify({r["name"]: {"lat": r["lat"], "lon": r["lon"]} for r in rows})
 
-    # POST — riceve coordinate dal monitor
     token = request.headers.get("X-API-Token", "").strip()
     if not token:
         return jsonify({"ok": False, "error": "Token mancante"}), 401
