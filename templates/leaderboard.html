@@ -158,6 +158,7 @@ tbody tr:hover{background:rgba(206,27,38,.04)}
 tbody tr:last-child{border-bottom:none}
 tbody td{padding:9px 12px;vertical-align:middle}
 td.rank{font-family:var(--font-md);font-size:11px;color:var(--grey);width:40px;font-weight:500}
+@media(max-width:600px){.lb-col-corse{display:none}}
 tr:nth-child(1) td.rank{color:#B8860B}
 tr:nth-child(2) td.rank{color:#888}
 tr:nth-child(3) td.rank{color:#A0522D}
@@ -444,7 +445,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
             <th>#</th><th>Username</th>
             <th class="c">Affidabilità</th>
             <th class="c">Ultima Tratta</th>
-            <th class="c">Corse</th>
+            <th class="c lb-col-corse">Corse</th>
           </tr>
         </thead>
         <tbody id="lb-body">
@@ -679,7 +680,7 @@ async function loadLeaderboard(){
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
         </td>
         <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
-        <td class="c" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
+        <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
       </tr>`).join('');
   }catch(e){
     document.getElementById('lb-body').innerHTML='<tr><td colspan="5"><div class="empty-state">Errore caricamento.</div></td></tr>';
