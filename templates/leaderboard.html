@@ -1089,26 +1089,13 @@ function updateMap(users){
     if(pos){
       const delayMin = u.delay_min || 0;
       const markerColor = delayMin <= 15 ? '#007A3D' : delayMin <= 45 ? '#E07B00' : '#CE1B26';
-      const delayColor  = delayMin <= 15 ? '#007A3D' : delayMin <= 45 ? '#E07B00' : '#CE1B26';
-      const delayText   = delayMin <= 0 ? 'In orario' : `+${Math.round(delayMin)}`;
-      const consistName = u.consist || null;
-      const popupHtml = `<div style="font-family:Trebuchet MS;font-size:12px;min-width:190px">
-        <div style="background:#CE1B26;color:#fff;margin:-7px -7px 8px -7px;padding:5px 8px;font-weight:bold;font-size:13px;border-radius:2px 2px 0 0">
-          ${u.username}
+      const delayText   = delayMin <= 0 ? 'In orario' : `+${Math.round(delayMin)} min`;
+      const popupHtml = `<div style="font-family:Trebuchet MS;font-size:12px;min-width:160px">
+        <div style="background:#CE1B26;color:#fff;margin:-7px -7px 8px -7px;padding:5px 8px;font-weight:bold;font-size:13px;border-radius:2px 2px 0 0">${u.username}</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#5A5A5A">
+          <span style="width:8px;height:8px;border-radius:50%;background:${markerColor};flex-shrink:0;display:inline-block"></span>
+          ritardo ${delayText}
         </div>
-        ${u.activity_name ? `<div style="font-size:10px;color:#5A5A5A;margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px" title="${u.activity_name}">🎫 ${u.activity_name}</div>` : ''}
-        ${consistName ? `<div style="margin-bottom:6px;font-size:11px">🚂 <b>${consistName}</b></div>` : ''}
-        <div style="display:flex;gap:8px;margin-bottom:6px">
-          <div style="text-align:center;background:#F2F2F2;padding:4px 8px;border-radius:2px;flex:1">
-            <div style="font-size:18px;font-weight:bold;color:#CE1B26;line-height:1">${u.speed_kmh ? Math.round(u.speed_kmh) : '—'}</div>
-            <div style="font-size:9px;color:#AAAAAA;letter-spacing:.08em;margin-top:2px">KM/H</div>
-          </div>
-          <div style="text-align:center;background:#F2F2F2;padding:4px 8px;border-radius:2px;flex:1">
-            <div style="font-size:18px;font-weight:bold;color:${delayColor};line-height:1">${delayText}</div>
-            <div style="font-size:9px;color:#AAAAAA;letter-spacing:.08em;margin-top:2px">RITARDO</div>
-          </div>
-        </div>
-        ${u.next_station ? `<div style="font-size:10px;color:#5A5A5A">→ <b>${u.next_station}</b></div>` : ''}
       </div>`;
       if(trainMarkers[u.username]){
         trainMarkers[u.username].setLatLng(pos);
