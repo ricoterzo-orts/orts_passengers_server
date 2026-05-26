@@ -1088,34 +1088,37 @@ function updateMap(users){
 
     if(pos){
       const delayMin = u.delay_min || 0;
-      const delayColor = delayMin <= 0 ? '#007A3D' : delayMin <= 2 ? '#E07B00' : '#CE1B26';
-      const delayText = delayMin <= 0 ? 'Puntuale' : `+${Math.round(delayMin)} min`;
-      const popupHtml = `<div style="font-family:Trebuchet MS;font-size:12px;min-width:180px">
+      const markerColor = delayMin <= 15 ? '#007A3D' : delayMin <= 45 ? '#E07B00' : '#CE1B26';
+      const delayColor  = delayMin <= 15 ? '#007A3D' : delayMin <= 45 ? '#E07B00' : '#CE1B26';
+      const delayText   = delayMin <= 0 ? 'In orario' : `+${Math.round(delayMin)}`;
+      const consistName = u.consist || null;
+      const popupHtml = `<div style="font-family:Trebuchet MS;font-size:12px;min-width:190px">
         <div style="background:#CE1B26;color:#fff;margin:-7px -7px 8px -7px;padding:5px 8px;font-weight:bold;font-size:13px;border-radius:2px 2px 0 0">
           ${u.username}
         </div>
-        ${u.activity_name ? `<div style="font-size:10px;color:#5A5A5A;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px" title="${u.activity_name}">🎫 ${u.activity_name}</div>` : ''}
-        <div style="margin-bottom:4px">🚂 <b>${u.consist||'—'}</b></div>
-        <div style="display:flex;gap:10px;margin-bottom:6px">
+        ${u.activity_name ? `<div style="font-size:10px;color:#5A5A5A;margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px" title="${u.activity_name}">🎫 ${u.activity_name}</div>` : ''}
+        ${consistName ? `<div style="margin-bottom:6px;font-size:11px">🚂 <b>${consistName}</b></div>` : ''}
+        <div style="display:flex;gap:8px;margin-bottom:6px">
           <div style="text-align:center;background:#F2F2F2;padding:4px 8px;border-radius:2px;flex:1">
-            <div style="font-size:16px;font-weight:bold;color:#CE1B26">${u.speed_kmh ? Math.round(u.speed_kmh) : '—'}</div>
-            <div style="font-size:9px;color:#AAAAAA;letter-spacing:.08em">KM/H</div>
+            <div style="font-size:18px;font-weight:bold;color:#CE1B26;line-height:1">${u.speed_kmh ? Math.round(u.speed_kmh) : '—'}</div>
+            <div style="font-size:9px;color:#AAAAAA;letter-spacing:.08em;margin-top:2px">KM/H</div>
           </div>
           <div style="text-align:center;background:#F2F2F2;padding:4px 8px;border-radius:2px;flex:1">
-            <div style="font-size:16px;font-weight:bold;color:${delayColor}">${delayText}</div>
-            <div style="font-size:9px;color:#AAAAAA;letter-spacing:.08em">RITARDO</div>
+            <div style="font-size:18px;font-weight:bold;color:${delayColor};line-height:1">${delayText}</div>
+            <div style="font-size:9px;color:#AAAAAA;letter-spacing:.08em;margin-top:2px">RITARDO</div>
           </div>
         </div>
-        <div style="font-size:10px;color:#5A5A5A">→ ${u.next_station||'—'}</div>
+        ${u.next_station ? `<div style="font-size:10px;color:#5A5A5A">→ <b>${u.next_station}</b></div>` : ''}
       </div>`;
       if(trainMarkers[u.username]){
         trainMarkers[u.username].setLatLng(pos);
+        trainMarkers[u.username].setStyle({ fillColor: markerColor });
         trainMarkers[u.username].getPopup().setContent(popupHtml);
       } else {
         trainMarkers[u.username] = L.circleMarker(pos, {
           radius: 7,
           color: '#ffffff',
-          fillColor: '#0047FF',
+          fillColor: markerColor,
           fillOpacity: 1,
           weight: 2,
         }).bindPopup(popupHtml).addTo(leafletMap);
