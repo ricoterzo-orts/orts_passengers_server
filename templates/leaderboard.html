@@ -1089,12 +1089,12 @@ function updateMap(users){
     if(pos){
       const delayMin = u.delay_min || 0;
       const markerColor = delayMin <= 15 ? '#007A3D' : delayMin <= 45 ? '#E07B00' : '#CE1B26';
-      const delayText   = delayMin <= 0 ? 'In orario' : `+${Math.round(delayMin)} min`;
+      const delayLabel  = delayMin <= 0 ? 'In orario' : `ritardo +${Math.round(delayMin)} min.`;
       const popupHtml = `<div style="font-family:Trebuchet MS;font-size:12px;min-width:160px">
-        <div style="background:#CE1B26;color:#fff;margin:-7px -7px 8px -7px;padding:5px 8px;font-weight:bold;font-size:13px;border-radius:2px 2px 0 0">${u.username}</div>
+        <div style="background:#CE1B26;color:#fff;margin:-7px -7px 8px -7px;padding:5px 8px;font-weight:bold;font-size:13px;border-radius:2px 2px 0 0">${u.activity_name||u.username}</div>
         <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#5A5A5A">
           <span style="width:8px;height:8px;border-radius:50%;background:${markerColor};flex-shrink:0;display:inline-block"></span>
-          ritardo ${delayText}
+          ${delayLabel}
         </div>
       </div>`;
       if(trainMarkers[u.username]){
