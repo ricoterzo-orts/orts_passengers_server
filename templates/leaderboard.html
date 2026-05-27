@@ -7,7 +7,6 @@
 <link rel="icon" href="/static/favicon.png" type="image/png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 @font-face {
   font-family: 'Futura';
@@ -890,7 +889,7 @@ function renderPanel(u,el){
     <div class="live-grid">
       <div class="live-chart-wrap">
         <div class="live-chart-title">Velocità</div>
-        <div style="position:relative;width:100%;height:100px"><canvas id="speed-chart-${u.username}" role="img" aria-label="Grafico velocità"></canvas></div>
+        <canvas class="live-chart-canvas" id="speed-chart-${u.username}"></canvas>
       </div>
       <div class="live-stops-wrap">
         <div class="live-stops-title">Fermate</div>
@@ -941,105 +940,110 @@ function renderStopsTable(stations){
   return`<table class="live-stops-table"><thead><tr><th>Stazione</th><th>Arr.</th><th>Par.</th><th>Rit.</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-const _speedCharts={};
 function drawSpeedChart(u){
   const canvas=document.getElementById('speed-chart-'+u.username);
   if(!canvas)return;
   const history=u.speed_history||[];
-  const labels=history.map(h=>h.sim_time||'');
-  const data=history.map(h=>h.speed_kmh);
+  const W=canvas.offsetWidth||300,H=100;
+  canvas.width=W;canvas.height=H;
 
-  if(_speedCharts[u.username]){
-    _speedCharts[u.username].destroy();
-    delete _speedCharts[u.username];
-  }
+  const pad={t:8,r:8,b:20,l:32};
+  const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
 
-  if(!history.length){
-    const ctx2=canvas.getContext('2d');
-    ctx2.clearRect(0,0,canvas.width,canvas.height);
-    ctx2.fillStyle='#AAAAAA';
-    ctx2.font="10px 'Trebuchet MS',sans-serif";
-    ctx2.textAlign='center';
-    ctx2.fillText('Dati non ancora disponibili',canvas.width/2,50);
-    return;
-  }
+  const newCanvas=canvas.cloneNode(false);
+  newCanvas.width=W;newCanvas.height=H;
+  canvas.parentNode.replaceChild(newCanvas,canvas);
+  newCanvas.style.cursor='crosshair';
 
-  const chartInst=new Chart(canvas,{    type:'line',
-    data:{
-      labels,
-      datasets:[{
-        data,
-        borderColor:'#AAAAAA',
-        hoverBorderColor:'#CE1B26',
-        borderWidth:1.5,
-        pointRadius:0,
-        pointHoverRadius:5,
-        pointHoverBackgroundColor:'#CE1B26',
-        pointHoverBorderColor:'#CE1B26',
-        pointHoverBorderWidth:2,
-        tension:0.45,
-        fill:true,
-        backgroundColor:'rgba(206,27,38,0.08)',
-      }]
-    },
-    options:{
-      onHover:(e,els,chart)=>{
-        if(els.length){
-          chart.data.datasets[0].borderColor='#CE1B26';
-          chart.update('none');
-        }
-      },
-      maintainAspectRatio:false,
+  const ctx2=newCanvas.getContext('2d');
 
-      interaction:{mode:'index',intersect:false},
-      plugins:{
-        legend:{display:false},
-        tooltip:{
-          backgroundColor:'#ffffff',
-          borderColor:'#CCCCCC',
-          borderWidth:1,
-          titleColor:'#888888',
-          bodyColor:'#CE1B26',
-          titleFont:{family:"'Trebuchet MS',sans-serif",size:9},
-          bodyFont:{family:"'Trebuchet MS',sans-serif",size:11,weight:'500'},
-          padding:6,
-          displayColors:false,
-          callbacks:{
-            title:ctx=>ctx[0].label||'',
-            label:ctx=>Math.round(ctx.parsed.y)+' km/h'
-          }
-        }
-      },
-      scales:{
-        x:{
-          grid:{color:'rgba(204,204,204,0.3)',lineWidth:0.5},
-          border:{display:false},
-          ticks:{
-            color:'#888888',
-            font:{family:"'Trebuchet MS',sans-serif",size:8},
-            maxRotation:0,
-            autoSkip:true,
-            maxTicksLimit:4
-          }
-        },
-        y:{
-          min:0,
-          grid:{color:'rgba(204,204,204,0.3)',lineWidth:0.5},
-          border:{display:false},
-          ticks:{
-            color:'#888888',
-            font:{family:"'Trebuchet MS',sans-serif",size:8},
-            maxTicksLimit:4,
-            callback:v=>v+' km/h'
-          }
-        }
-      }
+  function drawBase2(crosshairX){
+    ctx2.clearRect(0,0,W,H);
+    if(!history.length){
+      ctx2.fillStyle='#AAAAAA';ctx2.font='10px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='center';
+      ctx2.fillText('Dati non ancora disponibili',W/2,50);return;
     }
+    const speeds=history.map(h=>h.speed_kmh);
+    const maxSpd=Math.max(...speeds,10);
+    ctx2.strokeStyle='rgba(204,204,204,0.3)';ctx2.lineWidth=1;
+    [0,.25,.5,.75,1].forEach(f=>{
+      const y=pad.t+ch*(1-f);
+      ctx2.beginPath();ctx2.moveTo(pad.l,y);ctx2.lineTo(pad.l+cw,y);ctx2.stroke();
+      ctx2.fillStyle='#888';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='right';
+      ctx2.fillText(Math.round(maxSpd*f),pad.l-3,y+3);
+    });
+    ctx2.beginPath();
+    history.forEach((h,i)=>{
+      const x=pad.l+(i/(history.length-1||1))*cw;
+      const y=pad.t+ch*(1-h.speed_kmh/maxSpd);
+      i===0?ctx2.moveTo(x,y):ctx2.lineTo(x,y);
+    });
+    ctx2.strokeStyle='#CE1B26';ctx2.lineWidth=2;ctx2.stroke();
+    ctx2.lineTo(pad.l+cw,pad.t+ch);ctx2.lineTo(pad.l,pad.t+ch);ctx2.closePath();
+    ctx2.fillStyle='rgba(206,27,38,0.1)';ctx2.fill();
+    const last=history[history.length-1];
+    const lx=pad.l+cw,ly=pad.t+ch*(1-last.speed_kmh/maxSpd);
+    ctx2.beginPath();ctx2.arc(lx,ly,4,0,Math.PI*2);ctx2.fillStyle='#CE1B26';ctx2.fill();
+    ctx2.fillStyle='#888';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='center';
+    [0,Math.floor(history.length/2),history.length-1].forEach(i=>{
+      if(history[i]&&history[i].sim_time){
+        const x=pad.l+(i/(history.length-1||1))*cw;
+        ctx2.fillText(history[i].sim_time,x,H-4);
+      }
+    });
+    if(crosshairX!==null&&crosshairX>=pad.l&&crosshairX<=pad.l+cw){
+      const ratio=(crosshairX-pad.l)/cw;
+      const clampedIdx=Math.max(0,Math.min(history.length-1,Math.round(ratio*(history.length-1))));
+      const pt=history[clampedIdx];
+      const ptX=pad.l+(clampedIdx/(history.length-1||1))*cw;
+      const ptY=pad.t+ch*(1-pt.speed_kmh/maxSpd);
+      ctx2.save();
+      ctx2.strokeStyle='rgba(100,100,100,0.5)';ctx2.lineWidth=1;ctx2.setLineDash([3,3]);
+      ctx2.beginPath();ctx2.moveTo(ptX,pad.t);ctx2.lineTo(ptX,pad.t+ch);ctx2.stroke();
+      ctx2.setLineDash([]);
+      ctx2.beginPath();ctx2.arc(ptX,ptY,4,0,Math.PI*2);
+      ctx2.fillStyle='#CE1B26';ctx2.strokeStyle='#fff';ctx2.lineWidth=1.5;
+      ctx2.fill();ctx2.stroke();
+      const speedLabel=Math.round(pt.speed_kmh)+' km/h';
+      const timeLabel=pt.sim_time||'';
+      ctx2.font='500 9px Futura,\'Trebuchet MS\',sans-serif';
+      const sw=ctx2.measureText(speedLabel).width;
+      ctx2.font='9px Futura,\'Trebuchet MS\',sans-serif';
+      const tw2=timeLabel?ctx2.measureText(timeLabel).width:0;
+      const bw=Math.max(sw,tw2)+14,bh=timeLabel?26:16;
+      let bx=ptX+8;
+      if(bx+bw>W-4)bx=ptX-bw-8;
+      const by=Math.max(pad.t,ptY-bh/2-2);
+      ctx2.fillStyle='#ffffff';
+      ctx2.beginPath();
+      ctx2.roundRect?ctx2.roundRect(bx,by,bw,bh,2):ctx2.rect(bx,by,bw,bh);
+      ctx2.fill();
+      ctx2.strokeStyle='#CCCCCC';ctx2.lineWidth=1;
+      ctx2.beginPath();
+      ctx2.roundRect?ctx2.roundRect(bx,by,bw,bh,2):ctx2.rect(bx,by,bw,bh);
+      ctx2.stroke();
+      ctx2.fillStyle='#CE1B26';ctx2.textAlign='left';
+      ctx2.font='500 9px Futura,\'Trebuchet MS\',sans-serif';
+      ctx2.fillText(speedLabel,bx+7,by+(timeLabel?11:bh-4));
+      if(timeLabel){
+        ctx2.fillStyle='#888888';
+        ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';
+        ctx2.fillText(timeLabel,bx+7,by+22);
+      }
+      ctx2.restore();
+    }
+  }
+
+  drawBase2(null);
+
+  newCanvas.addEventListener('mousemove',e=>{
+    const rect=newCanvas.getBoundingClientRect();
+    const scaleX=newCanvas.width/rect.width;
+    const mx=(e.clientX-rect.left)*scaleX;
+    drawBase2(mx);
   });
-  _speedCharts[u.username]=chartInst;
-  canvas.addEventListener('mouseleave',()=>{
-    chartInst.data.datasets[0].borderColor='#AAAAAA';
-    chartInst.update('none');
+  newCanvas.addEventListener('mouseleave',()=>{
+    drawBase2(null);
   });
 }
 
