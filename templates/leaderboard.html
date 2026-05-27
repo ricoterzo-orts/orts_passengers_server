@@ -954,109 +954,97 @@ function drawSpeedChart(u){
   const history=u.speed_history||[];
   const W=canvas.offsetWidth||300,H=100;
   canvas.width=W;canvas.height=H;
-  const ctx=canvas.getContext('2d');
 
   const pad={t:8,r:8,b:20,l:32};
   const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
 
-  function drawBase(crosshairX){
-    ctx.clearRect(0,0,W,H);
+  // Sostituisci il canvas con un clone pulito per rimuovere vecchi listener
+  const newCanvas=canvas.cloneNode(false);
+  newCanvas.width=W;newCanvas.height=H;
+  canvas.parentNode.replaceChild(newCanvas,canvas);
+  newCanvas.style.cursor='crosshair';
+
+  const ctx2=newCanvas.getContext('2d');
+
+  function drawBase2(crosshairX){
+    ctx2.clearRect(0,0,W,H);
     if(!history.length){
-      ctx.fillStyle='#AAAAAA';ctx.font='10px Futura,\'Trebuchet MS\',sans-serif';ctx.textAlign='center';
-      ctx.fillText('Dati non ancora disponibili',W/2,50);return;
+      ctx2.fillStyle='#AAAAAA';ctx2.font='10px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='center';
+      ctx2.fillText('Dati non ancora disponibili',W/2,50);return;
     }
     const speeds=history.map(h=>h.speed_kmh);
     const maxSpd=Math.max(...speeds,10);
-
     // Griglia
-    ctx.strokeStyle='rgba(204,204,204,0.3)';ctx.lineWidth=1;
+    ctx2.strokeStyle='rgba(204,204,204,0.3)';ctx2.lineWidth=1;
     [0,.25,.5,.75,1].forEach(f=>{
       const y=pad.t+ch*(1-f);
-      ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();
-      ctx.fillStyle='#888';ctx.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx.textAlign='right';
-      ctx.fillText(Math.round(maxSpd*f),pad.l-3,y+3);
+      ctx2.beginPath();ctx2.moveTo(pad.l,y);ctx2.lineTo(pad.l+cw,y);ctx2.stroke();
+      ctx2.fillStyle='#888';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='right';
+      ctx2.fillText(Math.round(maxSpd*f),pad.l-3,y+3);
     });
-
     // Area e linea
-    ctx.beginPath();
+    ctx2.beginPath();
     history.forEach((h,i)=>{
       const x=pad.l+(i/(history.length-1||1))*cw;
       const y=pad.t+ch*(1-h.speed_kmh/maxSpd);
-      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      i===0?ctx2.moveTo(x,y):ctx2.lineTo(x,y);
     });
-    ctx.strokeStyle='#CE1B26';ctx.lineWidth=2;ctx.stroke();
-    ctx.lineTo(pad.l+cw,pad.t+ch);ctx.lineTo(pad.l,pad.t+ch);ctx.closePath();
-    ctx.fillStyle='rgba(206,27,38,0.1)';ctx.fill();
-
+    ctx2.strokeStyle='#CE1B26';ctx2.lineWidth=2;ctx2.stroke();
+    ctx2.lineTo(pad.l+cw,pad.t+ch);ctx2.lineTo(pad.l,pad.t+ch);ctx2.closePath();
+    ctx2.fillStyle='rgba(206,27,38,0.1)';ctx2.fill();
     // Punto finale
     const last=history[history.length-1];
     const lx=pad.l+cw,ly=pad.t+ch*(1-last.speed_kmh/maxSpd);
-    ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fillStyle='#CE1B26';ctx.fill();
-
+    ctx2.beginPath();ctx2.arc(lx,ly,4,0,Math.PI*2);ctx2.fillStyle='#CE1B26';ctx2.fill();
     // Etichette tempo
-    ctx.fillStyle='#888';ctx.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx.textAlign='center';
+    ctx2.fillStyle='#888';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='center';
     [0,Math.floor(history.length/2),history.length-1].forEach(i=>{
       if(history[i]&&history[i].sim_time){
         const x=pad.l+(i/(history.length-1||1))*cw;
-        ctx.fillText(history[i].sim_time,x,H-4);
+        ctx2.fillText(history[i].sim_time,x,H-4);
       }
     });
-
-    // Barra verticale crosshair
+    // Crosshair
     if(crosshairX!==null&&crosshairX>=pad.l&&crosshairX<=pad.l+cw){
-      // Indice interpolato
       const ratio=(crosshairX-pad.l)/cw;
-      const idx=Math.round(ratio*(history.length-1));
-      const clampedIdx=Math.max(0,Math.min(history.length-1,idx));
+      const clampedIdx=Math.max(0,Math.min(history.length-1,Math.round(ratio*(history.length-1))));
       const pt=history[clampedIdx];
       const ptX=pad.l+(clampedIdx/(history.length-1||1))*cw;
       const ptY=pad.t+ch*(1-pt.speed_kmh/maxSpd);
-
-      // Linea verticale
-      ctx.save();
-      ctx.strokeStyle='rgba(100,100,100,0.5)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
-      ctx.beginPath();ctx.moveTo(ptX,pad.t);ctx.lineTo(ptX,pad.t+ch);ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Punto evidenziato
-      ctx.beginPath();ctx.arc(ptX,ptY,4,0,Math.PI*2);
-      ctx.fillStyle='#CE1B26';ctx.strokeStyle='#fff';ctx.lineWidth=1.5;
-      ctx.fill();ctx.stroke();
-
-      // Tooltip velocità
+      ctx2.save();
+      ctx2.strokeStyle='rgba(100,100,100,0.5)';ctx2.lineWidth=1;ctx2.setLineDash([3,3]);
+      ctx2.beginPath();ctx2.moveTo(ptX,pad.t);ctx2.lineTo(ptX,pad.t+ch);ctx2.stroke();
+      ctx2.setLineDash([]);
+      ctx2.beginPath();ctx2.arc(ptX,ptY,4,0,Math.PI*2);
+      ctx2.fillStyle='#CE1B26';ctx2.strokeStyle='#fff';ctx2.lineWidth=1.5;
+      ctx2.fill();ctx2.stroke();
       const label=Math.round(pt.speed_kmh)+' km/h'+(pt.sim_time?' · '+pt.sim_time:'');
-      ctx.font='bold 9px Futura,\'Trebuchet MS\',sans-serif';
-      const tw=ctx.measureText(label).width;
+      ctx2.font='bold 9px Futura,\'Trebuchet MS\',sans-serif';
+      const tw=ctx2.measureText(label).width;
       const bw=tw+10,bh=15;
       let bx=ptX+7;
       if(bx+bw>W-4)bx=ptX-bw-7;
       const by=Math.max(pad.t,ptY-bh/2-2);
-
-      ctx.fillStyle='rgba(40,40,40,0.85)';
-      ctx.beginPath();
-      ctx.roundRect?ctx.roundRect(bx,by,bw,bh,3):ctx.rect(bx,by,bw,bh);
-      ctx.fill();
-      ctx.fillStyle='#fff';ctx.textAlign='left';
-      ctx.fillText(label,bx+5,by+bh-4);
-      ctx.restore();
+      ctx2.fillStyle='rgba(40,40,40,0.85)';
+      ctx2.beginPath();
+      ctx2.roundRect?ctx2.roundRect(bx,by,bw,bh,3):ctx2.rect(bx,by,bw,bh);
+      ctx2.fill();
+      ctx2.fillStyle='#fff';ctx2.textAlign='left';
+      ctx2.fillText(label,bx+5,by+bh-4);
+      ctx2.restore();
     }
   }
 
-  drawBase(null);
-
-  // Rimuovi vecchi listener clonando il canvas
-  const newCanvas=canvas.cloneNode(true);
-  canvas.parentNode.replaceChild(newCanvas,canvas);
-  newCanvas.style.cursor='crosshair';
+  drawBase2(null);
 
   newCanvas.addEventListener('mousemove',e=>{
     const rect=newCanvas.getBoundingClientRect();
     const scaleX=newCanvas.width/rect.width;
     const mx=(e.clientX-rect.left)*scaleX;
-    drawBase(mx);
+    drawBase2(mx);
   });
   newCanvas.addEventListener('mouseleave',()=>{
-    drawBase(null);
+    drawBase2(null);
   });
 }
 
