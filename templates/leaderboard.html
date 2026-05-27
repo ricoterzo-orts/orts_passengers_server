@@ -1148,7 +1148,7 @@ function updateMap(users){
     if(pos){
       // ── RITARDO: legge dall'ultima fermata passata nella timetable ──
       const delayMin = getDelayFromStations(u);
-      const markerColor = delayMin <= 15 ? '#007A3D' : delayMin <= 45 ? '#E07B00' : '#CE1B26';
+      const markerColor = delayMin <= 0 ? '#007A3D' : delayMin < 15 ? '#E07B00' : '#CE1B26';
       const delayLabel = delayMin <= 0 ? 'in orario' : `+${Math.round(delayMin)} min`;
       const trainNum = u.activity_name || u.username;
       const popupHtml = `<div style="font-family:'Futura','Trebuchet MS',sans-serif;font-size:11px;min-width:220px;background:#fff;border-radius:2px;overflow:hidden">
