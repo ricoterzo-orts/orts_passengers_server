@@ -1202,7 +1202,7 @@ function updateMap(users){
     (stations || []).forEach(st => {
       const coord = getStationCoord(st.station_name);
       if(!coord) return;
-      const cls = st.is_current ? '#007A3D' : st.passed ? '#CE1B26' : '#AAAAAA';
+      const cls = st.is_current ? '#007A3D' : '#AAAAAA';
       const m = L.circleMarker([coord.lat, coord.lon], {
         radius: 5,
         color: cls, fillColor: cls, fillOpacity: 0.8, weight: 1,
