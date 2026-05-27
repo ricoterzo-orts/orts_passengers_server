@@ -288,15 +288,53 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--dimgrey)}
 
+/* ══ HAMBURGER MENU ══ */
+.hamburger{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:6px;border-radius:2px;flex-shrink:0}
+.hamburger span{display:block;width:22px;height:2px;background:var(--accent);border-radius:1px;transition:all .22s}
+.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}
+.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+#nav-drawer{display:flex;gap:6px;align-items:center}
+
 /* ══ RESPONSIVE MOBILE / TABLET ══ */
+
+/* ── Tablet (≤900px) ── */
+@media(max-width:900px){
+  .live-grid{grid-template-columns:1fr}
+}
 
 /* ── Tablet (≤768px) ── */
 @media(max-width:768px){
-  header{padding:0 12px;height:auto;min-height:52px;flex-wrap:wrap;gap:6px;padding-top:6px;padding-bottom:6px}
+  header{padding:0 14px;height:52px}
   .logo img{height:32px}
-  nav{flex-wrap:wrap;gap:4px;justify-content:flex-end}
-  #nav-username{font-size:10px;width:100%;text-align:right;margin-right:0}
-  .nav-btn{padding:4px 10px;font-size:10px}
+  .hamburger{display:flex}
+  #nav-drawer{
+    display:none;
+    position:fixed;top:52px;right:0;
+    width:220px;
+    background:#fff;
+    border:1px solid var(--border);
+    border-top:2px solid var(--accent);
+    box-shadow:-2px 4px 16px rgba(0,0,0,.15);
+    flex-direction:column;
+    align-items:stretch;
+    gap:0;
+    z-index:99;
+    padding:8px;
+  }
+  #nav-drawer.open{display:flex}
+  #nav-username{
+    font-size:11px;width:100%;text-align:left;
+    margin:0 0 4px 0;padding:4px 6px;
+    border-bottom:1px solid var(--border);
+    display:block;
+  }
+  .nav-btn{
+    width:100%;text-align:center;
+    padding:7px 10px;font-size:11px;
+    border-radius:2px;margin-bottom:4px;
+    line-height:1.4;
+  }
   main{padding:12px 10px}
   .statusbar{flex-direction:column;align-items:flex-start;gap:4px;padding:8px 10px}
   .statusbar-left{flex-wrap:wrap;gap:8px;font-size:10px}
@@ -309,27 +347,30 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
   .live-kpis{gap:6px}
   .live-kpi{padding:5px 8px;min-width:56px}
   .live-kpi-val{font-size:15px}
-  #live-map{height:360px}
-  .map-empty{height:360px}
+  #live-map{height:320px}
+  .map-empty{height:320px}
   .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   table{min-width:480px}
   thead th,tbody td{padding:7px 8px;font-size:10px}
   td.username{font-size:12px}
   .snum{font-size:15px}
   .serv-pill{max-width:140px;font-size:9px}
-  .live-tabs{gap:3px}
-  .live-tab{padding:5px 10px;font-size:10px}
+  .live-tabs{gap:3px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;padding-bottom:2px}
+  .live-tab{padding:5px 10px;font-size:10px;white-space:nowrap;flex-shrink:0}
   .modal{margin:12px;max-width:calc(100vw - 24px)}
   .stat-grid{grid-template-columns:1fr 1fr 1fr}
 }
 
 /* ── Smartphone (≤480px) ── */
 @media(max-width:480px){
-  header{padding:6px 10px}
+  header{padding:0 10px;height:50px}
   .logo img{height:28px}
-  nav{gap:4px}
-  .nav-btn{padding:3px 8px;font-size:10px;line-height:20px}
-  #nav-username{font-size:9px}
+  #nav-drawer{
+    width:calc(100vw - 20px);
+    right:10px;
+    top:50px;
+  }
+  main{padding:10px 8px}
   .statusbar-left{gap:6px;font-size:9px}
   #lb-registered{display:none}
   .sec-title{font-size:10px}
@@ -349,16 +390,16 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
   .live-panel-main{padding:10px}
   .live-run-name{font-size:12px}
   .live-run-consist{font-size:9px}
-  #live-map{height:280px}
-  .map-empty{height:280px}
-  table{min-width:420px}
+  #live-map{height:260px}
+  .map-empty{height:260px}
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{min-width:400px}
   thead th,tbody td{padding:6px 6px;font-size:9px}
   td.username{font-size:11px}
   .snum{font-size:13px}
-  .serv-pill{max-width:110px;font-size:8px}
+  .serv-pill{max-width:100px;font-size:8px}
   .sub{font-size:9px}
-  .live-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;padding-bottom:2px}
-  .live-tab{white-space:nowrap;flex-shrink:0;font-size:10px;padding:5px 10px}
+  td.rank{width:28px;font-size:10px}
   .overlay{align-items:flex-end}
   .modal{margin:0;border-radius:4px 4px 0 0;max-width:100vw;max-height:92vh}
   .modal-body{padding:14px}
@@ -370,8 +411,18 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
   .vt-link{font-size:8px;padding:1px 4px}
   .live-map-wrap{padding:8px 10px}
   .live-map{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .live-map-stations{min-width:400px}
-  .live-map-line,.live-map-progress{min-width:calc(400px - 40px)}
+  .live-map-stations{min-width:380px}
+  .live-map-line,.live-map-progress{min-width:calc(380px - 40px)}
+}
+
+/* ── Extra small (≤360px) ── */
+@media(max-width:360px){
+  .cluster{grid-template-columns:1fr 1fr;gap:4px}
+  .cluster .instrument:last-child{grid-column:1/-1}
+  .instrument-val{font-size:13px}
+  table{min-width:360px}
+  .live-kpi{min-width:44px;padding:4px 5px}
+  .live-kpi-val{font-size:13px}
 }
 </style>
 </head>
@@ -381,11 +432,14 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
   <div class="logo">
     <img src="/static/VTV_logo.jpg" alt="ViaggaTreno Virtual" style="height:40px;width:auto;display:block;object-fit:contain">
   </div>
-  <nav>
+  <button class="hamburger" id="hamburger-btn" onclick="toggleNav()" aria-label="Menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+  <nav id="nav-drawer">
     <span id="nav-username"></span>
-    <button class="nav-btn" id="btn-login" onclick="openModal('login')">Accedi</button>
-    <button class="nav-btn sec" id="btn-register" onclick="openModal('register')">Registrati</button>
-    <button class="nav-btn" id="btn-profile" style="display:none" onclick="loadProfile()">Profilo</button>
+    <button class="nav-btn" id="btn-login" onclick="openModal('login');closeNav()">Accedi</button>
+    <button class="nav-btn sec" id="btn-register" onclick="openModal('register');closeNav()">Registrati</button>
+    <button class="nav-btn" id="btn-profile" style="display:none" onclick="loadProfile();closeNav()">Profilo</button>
     <button class="nav-btn" id="btn-logout" style="display:none" onclick="doLogout()">Esci</button>
   </nav>
 </header>
@@ -534,10 +588,10 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 <script>
 let me = null;
 let liveData = [];
-let liveOrder = []; // ordine stabile: primo heartbeat ricevuto = prima scheda
+let liveOrder = [];
 let lbRows = [];
 let activeTab = 0;
-let lockedUsername = null;  // utente scelto manualmente — null = segui il primo
+let lockedUsername = null;
 
 // ── Modal helpers ──
 function openModal(n){document.getElementById('overlay-'+n).classList.add('open')}
@@ -621,7 +675,6 @@ async function loadProfile(){
   try{
     const r=await fetch('/api/my_sessions');
     const d=await r.json();
-    // Gestisce sia array diretto che risposta di errore
     const sessions=Array.isArray(d)?d:[];
     if(!sessions.length){
       sl.innerHTML='<div style="color:var(--dimgrey);padding:8px 0">Nessuna sessione ancora.</div>';
@@ -755,7 +808,6 @@ function renderOnlineCards(users){
 }
 
 // ── Live section (Treni in Corsa) ──
-// liveOrder mantiene l'ordine stabile delle schede (primo arrivato = prima scheda)
 function switchTab(i){
   lockedUsername = liveData[i] ? liveData[i].username : null;
   activeTab = i;
@@ -769,13 +821,11 @@ function renderLiveSection(){
   if(!liveData.length){sec.style.display='none';return;}
   sec.style.display='block';
 
-  // Riaggancia l'indice all'username bloccato (l'ordine può cambiare tra un poll e l'altro)
   if(lockedUsername){
     const idx=liveData.findIndex(u=>u.username===lockedUsername);
     if(idx!==-1){
       activeTab=idx;
     } else {
-      // Utente bloccato andato offline: rilascia il lock e torna al primo
       lockedUsername=null;
       activeTab=0;
     }
@@ -791,8 +841,6 @@ function renderLiveSection(){
 }
 
 function renderPanel(u,el){
-  const dlyClass2=Math.abs(u.delay_min||0)<=2?'dly-ok':'dly-bad';
-  const dlyTxt=dlyText(u.delay_min);
   const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
   el.innerHTML=`
     <div class="live-run-hdr">
@@ -924,16 +972,13 @@ async function loadLive(){
     const r=await fetch('/api/live');
     const fresh=await r.json();
 
-    // Aggiorna liveOrder: aggiungi nuovi username in coda (ordine di prima apparizione)
     fresh.forEach(u=>{
       if(!liveOrder.includes(u.username)) liveOrder.push(u.username);
     });
 
-    // Rimuovi utenti che non sono più online
     const onlineNow=fresh.map(u=>u.username);
     liveOrder=liveOrder.filter(name=>onlineNow.includes(name));
 
-    // Ricostruisce liveData nell'ordine stabile
     liveData=liveOrder.map(name=>fresh.find(u=>u.username===name)).filter(Boolean);
 
     renderOnlineCards(liveData);
@@ -1042,6 +1087,18 @@ function interpolatePosition(stations, nextStation){
   return null;
 }
 
+// ── Helper: ricava il ritardo aggiornato dalla timetable delle fermate ──
+// Prende il delay_min dell'ultima fermata passata che ha un valore valido.
+// Fallback: u.delay_min generico dal client.
+function getDelayFromStations(u){
+  const stations = u.stations || [];
+  const passedWithDelay = stations.filter(s => s.passed && s.delay_min != null);
+  if(passedWithDelay.length){
+    return passedWithDelay[passedWithDelay.length - 1].delay_min;
+  }
+  return u.delay_min || 0;
+}
+
 function updateMap(users){
   if(!leafletMap) initMap();
   document.getElementById('map-count').textContent = users.length + ' treni';
@@ -1089,9 +1146,10 @@ function updateMap(users){
                 })();
 
     if(pos){
-      const delayMin = u.delay_min || 0;
+      // ── RITARDO: legge dall'ultima fermata passata nella timetable ──
+      const delayMin = getDelayFromStations(u);
       const markerColor = delayMin <= 15 ? '#007A3D' : delayMin <= 45 ? '#E07B00' : '#CE1B26';
-      const delayLabel = delayMin <= 0 ? 'in orario' : `+${Math.round(delayMin)} min.`;
+      const delayLabel = delayMin <= 0 ? 'in orario' : `+${Math.round(delayMin)} min`;
       const trainNum = u.activity_name || u.username;
       const popupHtml = `<div style="font-family:'Futura','Trebuchet MS',sans-serif;font-size:11px;min-width:220px;background:#fff;border-radius:2px;overflow:hidden">
         <div style="background:#CE1B26;height:6px"></div>
@@ -1117,7 +1175,7 @@ function updateMap(users){
       </div>`;
       if(trainMarkers[u.username]){
         trainMarkers[u.username].setLatLng(pos);
-        trainMarkers[u.username].setStyle({ fillColor: markerColor });
+        trainMarkers[u.username].setStyle({ fillColor: markerColor, color: '#ffffff' });
         trainMarkers[u.username].getPopup().setContent(popupHtml);
       } else {
         trainMarkers[u.username] = L.circleMarker(pos, {
@@ -1194,6 +1252,27 @@ function closeDrawer(){
   document.body.style.overflow='';
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
+
+// ── Hamburger nav ──
+function toggleNav(){
+  const btn=document.getElementById('hamburger-btn');
+  const nav=document.getElementById('nav-drawer');
+  const open=nav.classList.toggle('open');
+  btn.classList.toggle('open',open);
+  btn.setAttribute('aria-expanded',open);
+}
+function closeNav(){
+  const btn=document.getElementById('hamburger-btn');
+  const nav=document.getElementById('nav-drawer');
+  nav.classList.remove('open');
+  btn.classList.remove('open');
+  btn.setAttribute('aria-expanded','false');
+}
+document.addEventListener('click',e=>{
+  const nav=document.getElementById('nav-drawer');
+  const btn=document.getElementById('hamburger-btn');
+  if(nav.classList.contains('open')&&!nav.contains(e.target)&&!btn.contains(e.target)){closeNav();}
+});
 
 // ── Init ──
 checkMe();
