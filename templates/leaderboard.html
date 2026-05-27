@@ -983,7 +983,10 @@ function drawSpeedChart(u){
     });
     ctx2.strokeStyle='#CE1B26';ctx2.lineWidth=2;ctx2.stroke();
     ctx2.lineTo(pad.l+cw,pad.t+ch);ctx2.lineTo(pad.l,pad.t+ch);ctx2.closePath();
-    ctx2.fillStyle='rgba(206,27,38,0.1)';ctx2.fill();
+    const grad=ctx2.createLinearGradient(0,pad.t,0,pad.t+ch);
+    grad.addColorStop(0,'rgba(206,27,38,0.0)');
+    grad.addColorStop(1,'rgba(206,27,38,0.18)');
+    ctx2.fillStyle=grad;ctx2.fill();
     // Punto finale
     const last=history[history.length-1];
     const lx=pad.l+cw,ly=pad.t+ch*(1-last.speed_kmh/maxSpd);
