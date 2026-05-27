@@ -964,13 +964,13 @@ function drawSpeedChart(u){
     return;
   }
 
-  _speedCharts[u.username]=new Chart(canvas,{
-    type:'line',
+  const chartInst=new Chart(canvas,{    type:'line',
     data:{
       labels,
       datasets:[{
         data,
         borderColor:'#AAAAAA',
+        hoverBorderColor:'#CE1B26',
         borderWidth:1.5,
         pointRadius:0,
         pointHoverRadius:5,
@@ -983,7 +983,12 @@ function drawSpeedChart(u){
       }]
     },
     options:{
-      responsive:true,
+      onHover:(e,els,chart)=>{
+        if(els.length){
+          chart.data.datasets[0].borderColor='#CE1B26';
+          chart.update('none');
+        }
+      },
       maintainAspectRatio:false,
       animation:false,
       transitions:{active:{animation:{duration:0}}},
@@ -1031,6 +1036,11 @@ function drawSpeedChart(u){
         }
       }
     }
+  });
+  _speedCharts[u.username]=chartInst;
+  canvas.addEventListener('mouseleave',()=>{
+    chartInst.data.datasets[0].borderColor='#AAAAAA';
+    chartInst.update('none');
   });
 }
 
