@@ -790,6 +790,10 @@ function renderOnlineCards(users){
           <div class="instrument-val ${comfortClass(cft)}">${cft}</div>
           <div class="instrument-lbl">Comfort</div>
         </div>
+        ${u.comfort_grade?`<div class="instrument">
+          <div class="instrument-val" style="font-size:14px;color:${gradeColorFromLabel(u.comfort_grade)}">${u.comfort_grade}</div>
+          <div class="instrument-lbl">Valutazione</div>
+        </div>`:''}
       </div>
       ${u.next_station?`
       <div class="next-station-bar">
@@ -840,12 +844,29 @@ function renderLiveSection(){
   renderPanel(liveData[activeTab],panelEl);
 }
 
+function renderActivityName(name){
+  if(!name) return '—';
+  const n = vtTrainNumber(name);
+  const link = n ? ` <a class="treno-reale-link" href="https://www.treniamo.it/treno/${n}" target="_blank" rel="noopener">&mdash; treno reale</a>` : '';
+  return name + link;
+}
+
+function gradeColorFromLabel(g){
+  if(!g) return 'var(--grey)';
+  const l = g.toLowerCase();
+  if(l.includes('ott')||l.includes('ecc')) return 'var(--green)';
+  if(l.includes('buo'))                    return '#1565C0';
+  if(l.includes('suf'))                    return 'var(--amber)';
+  if(l.includes('sca'))                    return 'var(--amber)';
+  return 'var(--red)';
+}
+
 function renderPanel(u,el){
   const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
   el.innerHTML=`
     <div class="live-run-hdr">
       <div>
-        <div class="live-run-name">${u.activity_name||'—'}${u.activity_name&&vtTrainNumber(u.activity_name)?` <a class="treno-reale-link" href="https://www.treniamo.it/treno/${vtTrainNumber(u.activity_name)}" target="_blank" rel="noopener">&mdash; treno reale</a>`:''}</div>
+        <div class="live-run-name">${renderActivityName(u.activity_name)}</div>
         <div class="live-run-consist">${u.consist?'🚂 '+u.consist:''}${u.sim_time?' · ⏰ '+u.sim_time:''}</div>
       </div>
       <div class="live-kpis">
@@ -857,6 +878,10 @@ function renderPanel(u,el){
           <div class="live-kpi-val" style="color:${comfortColor(cft)}">${cft}</div>
           <div class="live-kpi-lbl">Comfort</div>
         </div>
+        ${u.comfort_grade?`<div class="live-kpi">
+          <div class="live-kpi-val" style="font-size:12px;color:${gradeColorFromLabel(u.comfort_grade)}">${u.comfort_grade}</div>
+          <div class="live-kpi-lbl">Valutazione</div>
+        </div>`:''}
         ${u.next_station?`<div class="live-kpi" style="min-width:100px">
           <div style="font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--white);line-height:1.2">${u.next_station}</div>
           <div class="live-kpi-lbl">Prossima</div>
