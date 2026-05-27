@@ -136,6 +136,18 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .live-chart-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:10px 12px}
 .live-chart-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
 .live-chart-canvas{width:100%;height:100px;display:block}
+/* ── SVG SPEED CHART ── */
+.spd-svg-wrap{width:100%;overflow:visible;display:block}
+.spd-svg-wrap svg{width:100%;height:120px;display:block;overflow:visible}
+.spd-grid-line{stroke:#CCCCCC;stroke-width:0.6;opacity:0.45}
+.spd-line{stroke:#AAAAAA;stroke-width:1.4;fill:none;stroke-linejoin:round;stroke-linecap:round}
+.spd-dot{fill:#AAAAAA;r:3}
+.spd-axis-lbl{font-family:var(--font);font-size:8px;fill:#AAAAAA;letter-spacing:.04em}
+.spd-tooltip-line{stroke:rgba(90,90,90,.5);stroke-width:1;stroke-dasharray:3 3}
+.spd-tooltip-dot{fill:#CE1B26;stroke:#fff;stroke-width:1.5;r:4}
+.spd-tooltip-box{fill:#fff;stroke:#CCCCCC;stroke-width:1}
+.spd-tooltip-val{font-family:var(--font-md);font-size:9px;font-weight:500;fill:#CE1B26}
+.spd-tooltip-time{font-family:var(--font);font-size:8px;fill:#888}
 .live-stops-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden}
 .live-stops-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border)}
 .live-stops-table{width:100%;border-collapse:collapse}
@@ -889,7 +901,7 @@ function renderPanel(u,el){
     <div class="live-grid">
       <div class="live-chart-wrap">
         <div class="live-chart-title">Velocità</div>
-        <canvas class="live-chart-canvas" id="speed-chart-${u.username}"></canvas>
+        <div class="spd-svg-wrap" id="speed-chart-${u.username}"></div>
       </div>
       <div class="live-stops-wrap">
         <div class="live-stops-title">Fermate</div>
@@ -941,110 +953,172 @@ function renderStopsTable(stations){
 }
 
 function drawSpeedChart(u){
-  const canvas=document.getElementById('speed-chart-'+u.username);
-  if(!canvas)return;
-  const history=u.speed_history||[];
-  const W=canvas.offsetWidth||300,H=100;
-  canvas.width=W;canvas.height=H;
+  const wrap = document.getElementById('speed-chart-' + u.username);
+  if(!wrap) return;
+  const history = u.speed_history || [];
 
-  const pad={t:8,r:8,b:20,l:32};
-  const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+  // Dimensions
+  const W = wrap.offsetWidth || 300;
+  const H = 120;
+  const pad = {t: 8, r: 10, b: 20, l: 34};
+  const cw = W - pad.l - pad.r;
+  const ch = H - pad.t - pad.b;
 
-  const newCanvas=canvas.cloneNode(false);
-  newCanvas.width=W;newCanvas.height=H;
-  canvas.parentNode.replaceChild(newCanvas,canvas);
-  newCanvas.style.cursor='crosshair';
+  const ns = 'http://www.w3.org/2000/svg';
 
-  const ctx2=newCanvas.getContext('2d');
+  function buildSvg(crosshairRatio) {
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('width', W);
+    svg.setAttribute('height', H);
 
-  function drawBase2(crosshairX){
-    ctx2.clearRect(0,0,W,H);
     if(!history.length){
-      ctx2.fillStyle='#AAAAAA';ctx2.font='10px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='center';
-      ctx2.fillText('Dati non ancora disponibili',W/2,50);return;
+      const t = document.createElementNS(ns, 'text');
+      t.setAttribute('x', W/2); t.setAttribute('y', H/2);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('class', 'spd-axis-lbl');
+      t.textContent = 'Dati non ancora disponibili';
+      svg.appendChild(t);
+      return svg;
     }
-    const speeds=history.map(h=>h.speed_kmh);
-    const maxSpd=Math.max(...speeds,10);
-    ctx2.strokeStyle='rgba(204,204,204,0.3)';ctx2.lineWidth=1;
-    [0,.25,.5,.75,1].forEach(f=>{
-      const y=pad.t+ch*(1-f);
-      ctx2.beginPath();ctx2.moveTo(pad.l,y);ctx2.lineTo(pad.l+cw,y);ctx2.stroke();
-      ctx2.fillStyle='#888';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='right';
-      ctx2.fillText(Math.round(maxSpd*f),pad.l-3,y+3);
+
+    const speeds = history.map(h => h.speed_kmh);
+    const maxSpd = Math.max(...speeds, 10);
+
+    // Grid lines (horizontal) — fine like screenshot
+    const gridLevels = [0, 0.25, 0.5, 0.75, 1];
+    gridLevels.forEach(f => {
+      const y = pad.t + ch * (1 - f);
+      // grid line
+      const line = document.createElementNS(ns, 'line');
+      line.setAttribute('x1', pad.l); line.setAttribute('x2', pad.l + cw);
+      line.setAttribute('y1', y); line.setAttribute('y2', y);
+      line.setAttribute('class', 'spd-grid-line');
+      svg.appendChild(line);
+      // Y label
+      const lbl = document.createElementNS(ns, 'text');
+      lbl.setAttribute('x', pad.l - 4);
+      lbl.setAttribute('y', y + 3);
+      lbl.setAttribute('text-anchor', 'end');
+      lbl.setAttribute('class', 'spd-axis-lbl');
+      lbl.textContent = Math.round(maxSpd * f);
+      svg.appendChild(lbl);
     });
-    ctx2.beginPath();
-    history.forEach((h,i)=>{
-      const x=pad.l+(i/(history.length-1||1))*cw;
-      const y=pad.t+ch*(1-h.speed_kmh/maxSpd);
-      i===0?ctx2.moveTo(x,y):ctx2.lineTo(x,y);
-    });
-    ctx2.strokeStyle='#CE1B26';ctx2.lineWidth=2;ctx2.stroke();
-    ctx2.lineTo(pad.l+cw,pad.t+ch);ctx2.lineTo(pad.l,pad.t+ch);ctx2.closePath();
-    ctx2.fillStyle='rgba(206,27,38,0.1)';ctx2.fill();
-    const last=history[history.length-1];
-    const lx=pad.l+cw,ly=pad.t+ch*(1-last.speed_kmh/maxSpd);
-    ctx2.beginPath();ctx2.arc(lx,ly,4,0,Math.PI*2);ctx2.fillStyle='#CE1B26';ctx2.fill();
-    ctx2.fillStyle='#888';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='center';
-    [0,Math.floor(history.length/2),history.length-1].forEach(i=>{
-      if(history[i]&&history[i].sim_time){
-        const x=pad.l+(i/(history.length-1||1))*cw;
-        ctx2.fillText(history[i].sim_time,x,H-4);
+
+    // Vertical grid lines (columns) — fine grid
+    const vCols = 8;
+    for(let i = 0; i <= vCols; i++){
+      const x = pad.l + (i / vCols) * cw;
+      const vl = document.createElementNS(ns, 'line');
+      vl.setAttribute('x1', x); vl.setAttribute('x2', x);
+      vl.setAttribute('y1', pad.t); vl.setAttribute('y2', pad.t + ch);
+      vl.setAttribute('class', 'spd-grid-line');
+      svg.appendChild(vl);
+    }
+
+    // X axis time labels
+    const timeIdxs = [0, Math.floor(history.length / 2), history.length - 1];
+    timeIdxs.forEach(i => {
+      if(history[i] && history[i].sim_time){
+        const x = pad.l + (i / (history.length - 1 || 1)) * cw;
+        const lbl = document.createElementNS(ns, 'text');
+        lbl.setAttribute('x', x);
+        lbl.setAttribute('y', H - 4);
+        lbl.setAttribute('text-anchor', 'middle');
+        lbl.setAttribute('class', 'spd-axis-lbl');
+        lbl.textContent = history[i].sim_time;
+        svg.appendChild(lbl);
       }
     });
-    if(crosshairX!==null&&crosshairX>=pad.l&&crosshairX<=pad.l+cw){
-      const ratio=(crosshairX-pad.l)/cw;
-      const clampedIdx=Math.max(0,Math.min(history.length-1,Math.round(ratio*(history.length-1))));
-      const pt=history[clampedIdx];
-      const ptX=pad.l+(clampedIdx/(history.length-1||1))*cw;
-      const ptY=pad.t+ch*(1-pt.speed_kmh/maxSpd);
-      ctx2.save();
-      ctx2.strokeStyle='rgba(100,100,100,0.5)';ctx2.lineWidth=1;ctx2.setLineDash([3,3]);
-      ctx2.beginPath();ctx2.moveTo(ptX,pad.t);ctx2.lineTo(ptX,pad.t+ch);ctx2.stroke();
-      ctx2.setLineDash([]);
-      ctx2.beginPath();ctx2.arc(ptX,ptY,4,0,Math.PI*2);
-      ctx2.fillStyle='#CE1B26';ctx2.strokeStyle='#fff';ctx2.lineWidth=1.5;
-      ctx2.fill();ctx2.stroke();
-      const speedLabel=Math.round(pt.speed_kmh)+' km/h';
-      const timeLabel=pt.sim_time||'';
-      ctx2.font='500 9px Futura,\'Trebuchet MS\',sans-serif';
-      const sw=ctx2.measureText(speedLabel).width;
-      ctx2.font='9px Futura,\'Trebuchet MS\',sans-serif';
-      const tw2=timeLabel?ctx2.measureText(timeLabel).width:0;
-      const bw=Math.max(sw,tw2)+14,bh=timeLabel?26:16;
-      let bx=ptX+8;
-      if(bx+bw>W-4)bx=ptX-bw-8;
-      const by=Math.max(pad.t,ptY-bh/2-2);
-      ctx2.fillStyle='#ffffff';
-      ctx2.beginPath();
-      ctx2.roundRect?ctx2.roundRect(bx,by,bw,bh,2):ctx2.rect(bx,by,bw,bh);
-      ctx2.fill();
-      ctx2.strokeStyle='#CCCCCC';ctx2.lineWidth=1;
-      ctx2.beginPath();
-      ctx2.roundRect?ctx2.roundRect(bx,by,bw,bh,2):ctx2.rect(bx,by,bw,bh);
-      ctx2.stroke();
-      ctx2.fillStyle='#CE1B26';ctx2.textAlign='left';
-      ctx2.font='500 9px Futura,\'Trebuchet MS\',sans-serif';
-      ctx2.fillText(speedLabel,bx+7,by+(timeLabel?11:bh-4));
+
+    // Polyline path
+    const pts = history.map((h, i) => {
+      const x = pad.l + (i / (history.length - 1 || 1)) * cw;
+      const y = pad.t + ch * (1 - h.speed_kmh / maxSpd);
+      return `${x},${y}`;
+    }).join(' ');
+
+    const polyline = document.createElementNS(ns, 'polyline');
+    polyline.setAttribute('points', pts);
+    polyline.setAttribute('class', 'spd-line');
+    svg.appendChild(polyline);
+
+    // End dot
+    const last = history[history.length - 1];
+    const lx = pad.l + cw;
+    const ly = pad.t + ch * (1 - last.speed_kmh / maxSpd);
+    const endDot = document.createElementNS(ns, 'circle');
+    endDot.setAttribute('cx', lx); endDot.setAttribute('cy', ly);
+    endDot.setAttribute('r', 3); endDot.setAttribute('class', 'spd-dot');
+    svg.appendChild(endDot);
+
+    // Crosshair
+    if(crosshairRatio !== null){
+      const clampedIdx = Math.max(0, Math.min(history.length - 1, Math.round(crosshairRatio * (history.length - 1))));
+      const pt = history[clampedIdx];
+      const ptX = pad.l + (clampedIdx / (history.length - 1 || 1)) * cw;
+      const ptY = pad.t + ch * (1 - pt.speed_kmh / maxSpd);
+
+      const vLine = document.createElementNS(ns, 'line');
+      vLine.setAttribute('x1', ptX); vLine.setAttribute('x2', ptX);
+      vLine.setAttribute('y1', pad.t); vLine.setAttribute('y2', pad.t + ch);
+      vLine.setAttribute('class', 'spd-tooltip-line');
+      svg.appendChild(vLine);
+
+      const tDot = document.createElementNS(ns, 'circle');
+      tDot.setAttribute('cx', ptX); tDot.setAttribute('cy', ptY);
+      tDot.setAttribute('r', 4); tDot.setAttribute('class', 'spd-tooltip-dot');
+      svg.appendChild(tDot);
+
+      const speedLabel = Math.round(pt.speed_kmh) + ' km/h';
+      const timeLabel = pt.sim_time || '';
+      const bw = 56, bh = timeLabel ? 28 : 16;
+      let bx = ptX + 8;
+      if(bx + bw > W - 4) bx = ptX - bw - 8;
+      const by = Math.max(pad.t, ptY - bh / 2);
+
+      const tBox = document.createElementNS(ns, 'rect');
+      tBox.setAttribute('x', bx); tBox.setAttribute('y', by);
+      tBox.setAttribute('width', bw); tBox.setAttribute('height', bh);
+      tBox.setAttribute('rx', 2); tBox.setAttribute('class', 'spd-tooltip-box');
+      svg.appendChild(tBox);
+
+      const tVal = document.createElementNS(ns, 'text');
+      tVal.setAttribute('x', bx + 6); tVal.setAttribute('y', by + (timeLabel ? 11 : bh - 4));
+      tVal.setAttribute('class', 'spd-tooltip-val');
+      tVal.textContent = speedLabel;
+      svg.appendChild(tVal);
+
       if(timeLabel){
-        ctx2.fillStyle='#888888';
-        ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';
-        ctx2.fillText(timeLabel,bx+7,by+22);
+        const tTime = document.createElementNS(ns, 'text');
+        tTime.setAttribute('x', bx + 6); tTime.setAttribute('y', by + 22);
+        tTime.setAttribute('class', 'spd-tooltip-time');
+        tTime.textContent = timeLabel;
+        svg.appendChild(tTime);
       }
-      ctx2.restore();
     }
+
+    return svg;
   }
 
-  drawBase2(null);
+  function render(ratio) {
+    wrap.innerHTML = '';
+    wrap.appendChild(buildSvg(ratio));
+    // Re-attach events on the new svg
+    const svgEl = wrap.querySelector('svg');
+    if(!svgEl) return;
+    svgEl.style.cursor = 'crosshair';
+    svgEl.addEventListener('mousemove', e => {
+      const rect = svgEl.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const ratio = (mx - pad.l) / cw;
+      if(ratio >= 0 && ratio <= 1) render(ratio);
+      else render(null);
+    });
+    svgEl.addEventListener('mouseleave', () => render(null));
+  }
 
-  newCanvas.addEventListener('mousemove',e=>{
-    const rect=newCanvas.getBoundingClientRect();
-    const scaleX=newCanvas.width/rect.width;
-    const mx=(e.clientX-rect.left)*scaleX;
-    drawBase2(mx);
-  });
-  newCanvas.addEventListener('mouseleave',()=>{
-    drawBase2(null);
-  });
+  render(null);
 }
 
 // ── Load live data ──
