@@ -871,7 +871,7 @@ function renderPanel(u,el){
     </div>
     <div class="live-grid">
       <div class="live-chart-wrap">
-        <div class="live-chart-title">Velocità (storico)</div>
+        <div class="live-chart-title">Velocità</div>
         <canvas class="live-chart-canvas" id="speed-chart-${u.username}"></canvas>
       </div>
       <div class="live-stops-wrap">
@@ -930,39 +930,108 @@ function drawSpeedChart(u){
   const W=canvas.offsetWidth||300,H=100;
   canvas.width=W;canvas.height=H;
   const ctx=canvas.getContext('2d');
-  if(!history.length){
-    ctx.fillStyle='var(--dimgrey)';ctx.font='10px Futura,\'Trebuchet MS\',sans-serif';ctx.textAlign='center';
-    ctx.fillText('Dati non ancora disponibili',W/2,50);return;
-  }
-  const speeds=history.map(h=>h.speed_kmh);
-  const maxSpd=Math.max(...speeds,10);
+
   const pad={t:8,r:8,b:20,l:32};
   const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
-  ctx.strokeStyle='rgba(204,204,204,0.3)';ctx.lineWidth=1;
-  [0,.25,.5,.75,1].forEach(f=>{
-    const y=pad.t+ch*(1-f);
-    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();
-    ctx.fillStyle='#888';ctx.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx.textAlign='right';
-    ctx.fillText(Math.round(maxSpd*f),pad.l-3,y+3);
-  });
-  ctx.beginPath();
-  history.forEach((h,i)=>{
-    const x=pad.l+(i/(history.length-1||1))*cw;
-    const y=pad.t+ch*(1-h.speed_kmh/maxSpd);
-    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-  });
-  ctx.strokeStyle='#CE1B26';ctx.lineWidth=2;ctx.stroke();
-  ctx.lineTo(pad.l+cw,pad.t+ch);ctx.lineTo(pad.l,pad.t+ch);ctx.closePath();
-  ctx.fillStyle='rgba(206,27,38,0.1)';ctx.fill();
-  const last=history[history.length-1];
-  const lx=pad.l+cw,ly=pad.t+ch*(1-last.speed_kmh/maxSpd);
-  ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fillStyle='#CE1B26';ctx.fill();
-  ctx.fillStyle='#888';ctx.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx.textAlign='center';
-  [0,Math.floor(history.length/2),history.length-1].forEach(i=>{
-    if(history[i]&&history[i].sim_time){
-      const x=pad.l+(i/(history.length-1||1))*cw;
-      ctx.fillText(history[i].sim_time,x,H-4);
+
+  function drawBase(crosshairX){
+    ctx.clearRect(0,0,W,H);
+    if(!history.length){
+      ctx.fillStyle='#AAAAAA';ctx.font='10px Futura,\'Trebuchet MS\',sans-serif';ctx.textAlign='center';
+      ctx.fillText('Dati non ancora disponibili',W/2,50);return;
     }
+    const speeds=history.map(h=>h.speed_kmh);
+    const maxSpd=Math.max(...speeds,10);
+
+    // Griglia
+    ctx.strokeStyle='rgba(204,204,204,0.3)';ctx.lineWidth=1;
+    [0,.25,.5,.75,1].forEach(f=>{
+      const y=pad.t+ch*(1-f);
+      ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();
+      ctx.fillStyle='#888';ctx.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx.textAlign='right';
+      ctx.fillText(Math.round(maxSpd*f),pad.l-3,y+3);
+    });
+
+    // Area e linea
+    ctx.beginPath();
+    history.forEach((h,i)=>{
+      const x=pad.l+(i/(history.length-1||1))*cw;
+      const y=pad.t+ch*(1-h.speed_kmh/maxSpd);
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle='#CE1B26';ctx.lineWidth=2;ctx.stroke();
+    ctx.lineTo(pad.l+cw,pad.t+ch);ctx.lineTo(pad.l,pad.t+ch);ctx.closePath();
+    ctx.fillStyle='rgba(206,27,38,0.1)';ctx.fill();
+
+    // Punto finale
+    const last=history[history.length-1];
+    const lx=pad.l+cw,ly=pad.t+ch*(1-last.speed_kmh/maxSpd);
+    ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fillStyle='#CE1B26';ctx.fill();
+
+    // Etichette tempo
+    ctx.fillStyle='#888';ctx.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx.textAlign='center';
+    [0,Math.floor(history.length/2),history.length-1].forEach(i=>{
+      if(history[i]&&history[i].sim_time){
+        const x=pad.l+(i/(history.length-1||1))*cw;
+        ctx.fillText(history[i].sim_time,x,H-4);
+      }
+    });
+
+    // Barra verticale crosshair
+    if(crosshairX!==null&&crosshairX>=pad.l&&crosshairX<=pad.l+cw){
+      // Indice interpolato
+      const ratio=(crosshairX-pad.l)/cw;
+      const idx=Math.round(ratio*(history.length-1));
+      const clampedIdx=Math.max(0,Math.min(history.length-1,idx));
+      const pt=history[clampedIdx];
+      const ptX=pad.l+(clampedIdx/(history.length-1||1))*cw;
+      const ptY=pad.t+ch*(1-pt.speed_kmh/maxSpd);
+
+      // Linea verticale
+      ctx.save();
+      ctx.strokeStyle='rgba(100,100,100,0.5)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(ptX,pad.t);ctx.lineTo(ptX,pad.t+ch);ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Punto evidenziato
+      ctx.beginPath();ctx.arc(ptX,ptY,4,0,Math.PI*2);
+      ctx.fillStyle='#CE1B26';ctx.strokeStyle='#fff';ctx.lineWidth=1.5;
+      ctx.fill();ctx.stroke();
+
+      // Tooltip velocità
+      const label=Math.round(pt.speed_kmh)+' km/h'+(pt.sim_time?' · '+pt.sim_time:'');
+      ctx.font='bold 9px Futura,\'Trebuchet MS\',sans-serif';
+      const tw=ctx.measureText(label).width;
+      const bw=tw+10,bh=15;
+      let bx=ptX+7;
+      if(bx+bw>W-4)bx=ptX-bw-7;
+      const by=Math.max(pad.t,ptY-bh/2-2);
+
+      ctx.fillStyle='rgba(40,40,40,0.85)';
+      ctx.beginPath();
+      ctx.roundRect?ctx.roundRect(bx,by,bw,bh,3):ctx.rect(bx,by,bw,bh);
+      ctx.fill();
+      ctx.fillStyle='#fff';ctx.textAlign='left';
+      ctx.fillText(label,bx+5,by+bh-4);
+      ctx.restore();
+    }
+  }
+
+  drawBase(null);
+
+  // Rimuovi vecchi listener clonando il canvas
+  const newCanvas=canvas.cloneNode(true);
+  canvas.parentNode.replaceChild(newCanvas,canvas);
+  newCanvas.style.cursor='crosshair';
+
+  newCanvas.addEventListener('mousemove',e=>{
+    const rect=newCanvas.getBoundingClientRect();
+    const scaleX=newCanvas.width/rect.width;
+    const mx=(e.clientX-rect.left)*scaleX;
+    drawBase(mx);
+  });
+  newCanvas.addEventListener('mouseleave',()=>{
+    drawBase(null);
   });
 }
 
@@ -1148,7 +1217,7 @@ function updateMap(users){
     if(pos){
       // ── RITARDO: legge dall'ultima fermata passata nella timetable ──
       const delayMin = getDelayFromStations(u);
-      const markerColor = delayMin <= 0 ? '#007A3D' : delayMin < 15 ? '#E07B00' : '#CE1B26';
+      const markerColor = delayMin <= 15 ? '#007A3D' : delayMin <= 45 ? '#E07B00' : '#CE1B26';
       const delayLabel = delayMin <= 0 ? 'in orario' : `+${Math.round(delayMin)} min`;
       const trainNum = u.activity_name || u.username;
       const popupHtml = `<div style="font-family:'Futura','Trebuchet MS',sans-serif;font-size:11px;min-width:220px;background:#fff;border-radius:2px;overflow:hidden">
