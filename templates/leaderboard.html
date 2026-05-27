@@ -1145,72 +1145,20 @@ function getStationCoord(name){
 
 function interpolatePosition(stations, nextStation){
   if(!stations || !stations.length) return null;
-
-  // Costruisci la lista ordinata di stazioni con coordinate note
-  const sorted = [...stations].sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
-  const withCoords = sorted.map(s => ({
-    ...s,
-    coord: getStationCoord(s.station_name)
-  })).filter(s => s.coord);
-
-  if(!withCoords.length) return null;
-
-  // Determina tra quale coppia di stazioni si trova il treno
-  const passed   = withCoords.filter(s => s.passed);
-  const notPassed= withCoords.filter(s => !s.passed);
-  const fromSt   = passed.length ? passed[passed.length-1] : null;
-  const toSt     = withCoords.find(s => s.is_current)
-                || (nextStation ? withCoords.find(s => s.station_name === nextStation) : null)
-                || (notPassed.length ? notPassed[0] : null);
-
-  if(!fromSt && !toSt) return null;
-  if(!fromSt) return [toSt.coord.lat, toSt.coord.lon];
-  if(!toSt)   return [fromSt.coord.lat, fromSt.coord.lon];
-
-  // Calcola la frazione di avanzamento nel tratto fromSt → toSt
-  // usando sort_order: quante stazioni sono passate nel tratto corrente vs totale tratto
-  const totalStations = withCoords.length;
-  const fromIdx = withCoords.indexOf(fromSt);
-  const toIdx   = withCoords.indexOf(toSt);
-
-  // Frazione globale: posizione lungo l'intera rotta (0=partenza, 1=arrivo)
-  // Aggiunge 0.5 per posizionarsi a metà del tratto corrente
-  const globalFrac = totalStations > 1
-    ? (fromIdx + 0.5) / (totalStations - 1)
-    : 0.5;
-
-  // Interpola lungo la polilinea completa della rotta
-  // Calcola le lunghezze cumulative dei segmenti
-  const segLengths = [];
-  let totalLen = 0;
-  for(let i = 0; i < withCoords.length - 1; i++){
-    const a = withCoords[i].coord;
-    const b = withCoords[i+1].coord;
-    const d = Math.hypot(b.lat - a.lat, b.lon - a.lon);
-    segLengths.push(d);
-    totalLen += d;
+  const passed = stations.filter(s => s.passed);
+  const notPassed = stations.filter(s => !s.passed);
+  const lastPassed = passed.length ? passed[passed.length-1] : null;
+  const nextSt = stations.find(s => s.is_current)
+              || (nextStation ? stations.find(s => s.station_name === nextStation) : null)
+              || (notPassed.length ? notPassed[0] : null);
+  const fromCoord = lastPassed ? getStationCoord(lastPassed.station_name) : null;
+  const toCoord   = nextSt    ? getStationCoord(nextSt.station_name)      : null;
+  if(fromCoord && toCoord){
+    return [(fromCoord.lat + toCoord.lat)/2, (fromCoord.lon + toCoord.lon)/2];
   }
-
-  if(totalLen === 0) return [fromSt.coord.lat, fromSt.coord.lon];
-
-  // Trova il punto sulla polilinea alla distanza globalFrac * totalLen
-  const targetDist = globalFrac * totalLen;
-  let cumLen = 0;
-  for(let i = 0; i < withCoords.length - 1; i++){
-    const segLen = segLengths[i];
-    if(cumLen + segLen >= targetDist || i === withCoords.length - 2){
-      const t = segLen > 0 ? (targetDist - cumLen) / segLen : 0;
-      const a = withCoords[i].coord;
-      const b = withCoords[i+1].coord;
-      return [
-        a.lat + (b.lat - a.lat) * Math.max(0, Math.min(1, t)),
-        a.lon + (b.lon - a.lon) * Math.max(0, Math.min(1, t))
-      ];
-    }
-    cumLen += segLen;
-  }
-
-  return [fromSt.coord.lat, fromSt.coord.lon];
+  if(fromCoord) return [fromCoord.lat, fromCoord.lon];
+  if(toCoord)   return [toCoord.lat,   toCoord.lon];
+  return null;
 }
 
 // ── Helper: ricava il ritardo aggiornato dalla timetable delle fermate ──
