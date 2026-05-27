@@ -983,6 +983,7 @@ function drawSpeedChart(u){
     });
     ctx2.strokeStyle='#CE1B26';ctx2.lineWidth=2;ctx2.stroke();
     ctx2.lineTo(pad.l+cw,pad.t+ch);ctx2.lineTo(pad.l,pad.t+ch);ctx2.closePath();
+    ctx2.fillStyle='rgba(206,27,38,0.08)';ctx2.fill();
     // Punto finale
     const last=history[history.length-1];
     const lx=pad.l+cw,ly=pad.t+ch*(1-last.speed_kmh/maxSpd);
@@ -1009,19 +1010,32 @@ function drawSpeedChart(u){
       ctx2.beginPath();ctx2.arc(ptX,ptY,4,0,Math.PI*2);
       ctx2.fillStyle='#CE1B26';ctx2.strokeStyle='#fff';ctx2.lineWidth=1.5;
       ctx2.fill();ctx2.stroke();
-      const label=Math.round(pt.speed_kmh)+' km/h'+(pt.sim_time?' · '+pt.sim_time:'');
-      ctx2.font='bold 9px Futura,\'Trebuchet MS\',sans-serif';
-      const tw=ctx2.measureText(label).width;
-      const bw=tw+10,bh=15;
-      let bx=ptX+7;
-      if(bx+bw>W-4)bx=ptX-bw-7;
+      const speedLabel=Math.round(pt.speed_kmh)+' km/h';
+      const timeLabel=pt.sim_time||'';
+      ctx2.font='500 9px Futura,\'Trebuchet MS\',sans-serif';
+      const sw=ctx2.measureText(speedLabel).width;
+      ctx2.font='9px Futura,\'Trebuchet MS\',sans-serif';
+      const tw2=timeLabel?ctx2.measureText(timeLabel).width:0;
+      const bw=Math.max(sw,tw2)+14,bh=timeLabel?26:16;
+      let bx=ptX+8;
+      if(bx+bw>W-4)bx=ptX-bw-8;
       const by=Math.max(pad.t,ptY-bh/2-2);
-      ctx2.fillStyle='rgba(40,40,40,0.85)';
+      ctx2.fillStyle='#ffffff';
       ctx2.beginPath();
-      ctx2.roundRect?ctx2.roundRect(bx,by,bw,bh,3):ctx2.rect(bx,by,bw,bh);
+      ctx2.roundRect?ctx2.roundRect(bx,by,bw,bh,2):ctx2.rect(bx,by,bw,bh);
       ctx2.fill();
-      ctx2.fillStyle='#fff';ctx2.textAlign='left';
-      ctx2.fillText(label,bx+5,by+bh-4);
+      ctx2.strokeStyle='#CCCCCC';ctx2.lineWidth=1;
+      ctx2.beginPath();
+      ctx2.roundRect?ctx2.roundRect(bx,by,bw,bh,2):ctx2.rect(bx,by,bw,bh);
+      ctx2.stroke();
+      ctx2.fillStyle='#CE1B26';ctx2.textAlign='left';
+      ctx2.font='500 9px Futura,\'Trebuchet MS\',sans-serif';
+      ctx2.fillText(speedLabel,bx+7,by+(timeLabel?11:bh-4));
+      if(timeLabel){
+        ctx2.fillStyle='#888888';
+        ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';
+        ctx2.fillText(timeLabel,bx+7,by+22);
+      }
       ctx2.restore();
     }
   }
