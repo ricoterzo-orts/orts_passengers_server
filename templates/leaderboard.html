@@ -159,7 +159,7 @@ tbody tr:hover{background:rgba(206,27,38,.04)}
 tbody tr:last-child{border-bottom:none}
 tbody td{padding:9px 12px;vertical-align:middle}
 td.rank{font-family:var(--font-md);font-size:11px;color:var(--grey);width:40px;font-weight:500}
-@media(max-width:600px){.lb-col-corse{display:none}}
+@media(max-width:600px){.lb-col-corse{display:none}.lb-col-vel{display:none}}
 tr:nth-child(1) td.rank{color:#B8860B}
 tr:nth-child(2) td.rank{color:#888}
 tr:nth-child(3) td.rank{color:#A0522D}
@@ -172,6 +172,10 @@ td.score{text-align:center}
 td.servizio{text-align:center}
 .serv-pill{display:inline-block;background:rgba(206,27,38,.08);border:1px solid rgba(206,27,38,.2);color:var(--accent2);font-family:var(--font);font-size:10px;padding:2px 8px;border-radius:2px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .empty-state{text-align:center;padding:40px;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
+td.speed-col{text-align:center;min-width:110px}
+.speed-badge{font-family:var(--font-md);font-size:15px;font-weight:500;color:var(--accent);line-height:1}
+.speed-badge span{font-size:9px;color:var(--dimgrey);font-weight:400;margin-left:1px}
+.speed-spark{display:block;width:90px;height:24px;margin:3px auto 0}
 
 /* ── STATUSBAR ── */
 .statusbar{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-bottom:2px solid var(--accent2);padding:5px 12px;margin-bottom:20px;border-radius:2px}
@@ -499,12 +503,13 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
           <tr>
             <th>#</th><th>Username</th>
             <th class="c">Affidabilità</th>
+            <th class="c lb-col-vel">Velocità</th>
             <th class="c">Ultima Tratta</th>
             <th class="c lb-col-corse">Corse</th>
           </tr>
         </thead>
         <tbody id="lb-body">
-          <tr><td colspan="5"><div class="empty-state">Caricamento...</div></td></tr>
+          <tr><td colspan="6"><div class="empty-state">Caricamento...</div></td></tr>
         </tbody>
       </table>
     </div>
@@ -719,7 +724,7 @@ async function loadLeaderboard(){
     }).catch(()=>{});
     const body=document.getElementById('lb-body');
     if(!rows.length){
-      body.innerHTML='<tr><td colspan="5"><div class="empty-state">Nessuna sessione ancora. Completa una corsa con il monitor attivo!</div></td></tr>';
+      body.innerHTML='<tr><td colspan="6"><div class="empty-state">Nessuna sessione ancora. Completa una corsa con il monitor attivo!</div></td></tr>';
       return;
     }
     lbRows = rows;
@@ -733,11 +738,18 @@ async function loadLeaderboard(){
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
         </td>
+        <td class="speed-col lb-col-vel">
+          ${row.speed_kmh!=null?`<div class="speed-badge">${Math.round(row.speed_kmh)}<span>km/h</span></div>`:'<span style="color:var(--dimgrey);font-size:11px">—</span>'}
+          ${(row.speed_history&&row.speed_history.length>1)?`<canvas class="speed-spark" id="spark-${i}"></canvas>`:''}
+        </td>
         <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
         <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
       </tr>`).join('');
+    rows.forEach((row,i)=>{
+      if(row.speed_history&&row.speed_history.length>1) drawSparkline(i,row.speed_history);
+    });
   }catch(e){
-    document.getElementById('lb-body').innerHTML='<tr><td colspan="5"><div class="empty-state">Errore caricamento.</div></td></tr>';
+    document.getElementById('lb-body').innerHTML='<tr><td colspan="6"><div class="empty-state">Errore caricamento.</div></td></tr>';
   }
 }
 
@@ -1004,31 +1016,43 @@ function drawSpeedChart(u){
       ctx2.beginPath();ctx2.arc(ptX,ptY,4,0,Math.PI*2);
       ctx2.fillStyle='#CE1B26';ctx2.strokeStyle='#fff';ctx2.lineWidth=1.5;
       ctx2.fill();ctx2.stroke();
-      const speedLabel=Math.round(pt.speed_kmh)+' km/h';
+      const speedVal=Math.round(pt.speed_kmh);
       const timeLabel=pt.sim_time||'';
-      ctx2.font='500 9px Futura,\'Trebuchet MS\',sans-serif';
-      const sw=ctx2.measureText(speedLabel).width;
-      ctx2.font='9px Futura,\'Trebuchet MS\',sans-serif';
+      // measure text
+      ctx2.font='bold 15px Futura,\'Trebuchet MS\',sans-serif';
+      const sw=ctx2.measureText(speedVal).width;
+      const unitFont='8px Futura,\'Trebuchet MS\',sans-serif';
+      ctx2.font=unitFont;
+      const uw=ctx2.measureText('km/h').width;
+      ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';
       const tw2=timeLabel?ctx2.measureText(timeLabel).width:0;
-      const bw=Math.max(sw,tw2)+14,bh=timeLabel?26:16;
-      let bx=ptX+8;
-      if(bx+bw>W-4)bx=ptX-bw-8;
-      const by=Math.max(pad.t,ptY-bh/2-2);
+      const innerW=sw+4+uw;
+      const bw=Math.max(innerW,tw2)+18, bh=timeLabel?38:22;
+      let bx=ptX+10;
+      if(bx+bw>W-4) bx=ptX-bw-10;
+      const by=Math.max(pad.t, ptY-bh/2-2);
+      // box
       ctx2.fillStyle='#ffffff';
+      ctx2.strokeStyle='rgba(204,204,204,0.7)';ctx2.lineWidth=.8;
       ctx2.beginPath();
       ctx2.roundRect?ctx2.roundRect(bx,by,bw,bh,2):ctx2.rect(bx,by,bw,bh);
-      ctx2.fill();
-      ctx2.strokeStyle='#CCCCCC';ctx2.lineWidth=1;
-      ctx2.beginPath();
-      ctx2.roundRect?ctx2.roundRect(bx,by,bw,bh,2):ctx2.rect(bx,by,bw,bh);
-      ctx2.stroke();
-      ctx2.fillStyle='#CE1B26';ctx2.textAlign='left';
-      ctx2.font='500 9px Futura,\'Trebuchet MS\',sans-serif';
-      ctx2.fillText(speedLabel,bx+7,by+(timeLabel?11:bh-4));
+      ctx2.fill();ctx2.stroke();
+      // speed number in red
+      const cx=bx+bw/2;
+      const numY=by+(timeLabel?16:bh/2+5);
+      ctx2.textAlign='center';
+      ctx2.fillStyle='#CE1B26';
+      ctx2.font='bold 15px Futura,\'Trebuchet MS\',sans-serif';
+      ctx2.fillText(speedVal, cx-(uw/2+2), numY);
+      // unit
+      ctx2.fillStyle='#CE1B26';
+      ctx2.font='7px Futura,\'Trebuchet MS\',sans-serif';
+      ctx2.fillText('km/h', cx+(sw/2-1), numY);
+      // time below
       if(timeLabel){
-        ctx2.fillStyle='#888888';
+        ctx2.fillStyle='#BBBBBB';
         ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';
-        ctx2.fillText(timeLabel,bx+7,by+22);
+        ctx2.fillText(timeLabel, cx, by+bh-7);
       }
       ctx2.restore();
     }
@@ -1045,6 +1069,44 @@ function drawSpeedChart(u){
   newCanvas.addEventListener('mouseleave',()=>{
     drawBase2(null);
   });
+}
+
+function drawSparkline(idx, history){
+  const canvas=document.getElementById('spark-'+idx);
+  if(!canvas)return;
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth||90, H=canvas.offsetHeight||24;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const speeds=history.map(h=>h.speed_kmh!=null?h.speed_kmh:(h.speed!=null?h.speed:0));
+  const maxS=Math.max(...speeds,1), minS=Math.min(...speeds);
+  const range=maxS-minS||1;
+  const pad={t:2,r:2,b:2,l:2};
+  const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
+  const toX=i=>pad.l+(i/(speeds.length-1||1))*cw;
+  const toY=v=>pad.t+ch*(1-(v-minS)/range);
+  function catmull(p0,p1,p2,p3,t){
+    const t2=t*t,t3=t2*t;
+    return{
+      x:.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
+      y:.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3)
+    };
+  }
+  const pts=speeds.map((v,i)=>({x:toX(i),y:toY(v)}));
+  ctx.clearRect(0,0,W,H);
+  ctx.beginPath();
+  pts.forEach((p,i)=>{
+    if(i===0){ctx.moveTo(p.x,p.y);return;}
+    const p0=pts[Math.max(0,i-2)],p1=pts[i-1],p2=pts[i],p3=pts[Math.min(pts.length-1,i+1)];
+    for(let t=0;t<=1;t+=.1){const pt=catmull(p0,p1,p2,p3,t);ctx.lineTo(pt.x,pt.y);}
+  });
+  ctx.strokeStyle='rgba(180,180,172,0.7)';
+  ctx.lineWidth=1;
+  ctx.stroke();
+  const last=pts[pts.length-1];
+  ctx.beginPath();ctx.arc(last.x,last.y,1.8,0,Math.PI*2);
+  ctx.fillStyle='#AAAAAA';ctx.fill();
 }
 
 // ── Load live data ──
