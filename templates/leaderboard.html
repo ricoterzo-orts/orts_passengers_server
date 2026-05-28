@@ -713,6 +713,7 @@ let liveOrder = [];
 let lbRows = [];
 let activeTab = 0;
 let lockedUsername = null;
+const chartZoomState = {}; // persistenza zoom/pan per username
 
 // ── Modal helpers ──
 function openModal(n){document.getElementById('overlay-'+n).classList.add('open')}
@@ -1091,22 +1092,23 @@ function drawSpeedChart(u){
   const pad={t:8,r:8,b:20,l:32};
   const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
 
-  // ── Zoom/pan state ──
+  // ── Zoom/pan state: persistente tra re-render ──
   const MAX_ZOOM=8, ZOOM_STEP=1.5;
-  let zoomLevel=1;       // current zoom multiplier
-  let panOffset=0;       // fraction [0..1-1/zoomLevel] of visible window start
-  let isDragging=false;
-  let dragStartX=0, dragStartPan=0;
-  let crosshairX=null;
+  if(!chartZoomState[u.username]) chartZoomState[u.username]={zoomLevel:1,panOffset:0};
+  const zs = chartZoomState[u.username];
 
   function clampPan(){
-    const maxPan=1-1/zoomLevel;
-    panOffset=Math.max(0,Math.min(maxPan,panOffset));
+    const maxPan=1-1/zs.zoomLevel;
+    zs.panOffset=Math.max(0,Math.min(maxPan,zs.panOffset));
   }
   function updateZoomLabel(){
     const lbl=document.getElementById('zoom-lbl-'+u.username);
-    if(lbl) lbl.textContent=(zoomLevel===1?'1':zoomLevel%1===0?zoomLevel+'':'×')+( zoomLevel===1?'×':'');
+    if(lbl) lbl.textContent=(zs.zoomLevel===1?'1':zs.zoomLevel%1===0?zs.zoomLevel+'':'×')+( zs.zoomLevel===1?'×':'');
   }
+
+  let isDragging=false;
+  let dragStartX=0, dragStartPan=0;
+  let crosshairX=null;
 
   function catmull(p0,p1,p2,p3,t){
     const t2=t*t,t3=t2*t;
@@ -1124,8 +1126,8 @@ function drawSpeedChart(u){
     }
     const n=history.length;
     // visible window in data-index space
-    const winSize=n/zoomLevel;
-    const iStart=panOffset*(n-1);
+    const winSize=n/zs.zoomLevel;
+    const iStart=zs.panOffset*(n-1);
     const iEnd=iStart+winSize;
     const visStart=Math.max(0,Math.floor(iStart));
     const visEnd=Math.min(n-1,Math.ceil(iEnd));
@@ -1200,15 +1202,13 @@ function drawSpeedChart(u){
     });
 
     // Pan hint when zoomed
-    if(zoomLevel>1){
+    if(zs.zoomLevel>1){
       const barH=3, barY=H-3;
       ctx2.fillStyle='rgba(170,170,170,0.2)';
       ctx2.fillRect(pad.l,barY,cw,barH);
-      const thumbW=cw/zoomLevel;
-      const thumbX=pad.l+panOffset*zoomLevel/(1)*cw/zoomLevel*Math.min(1,(zoomLevel-1)/zoomLevel*zoomLevel);
-      // simpler: thumb position = panOffset / maxPan * (cw - thumbW)
-      const maxPan=1-1/zoomLevel;
-      const tX=pad.l+(maxPan>0?panOffset/maxPan*(cw-thumbW):0);
+      const thumbW=cw/zs.zoomLevel;
+      const maxPan=1-1/zs.zoomLevel;
+      const tX=pad.l+(maxPan>0?zs.panOffset/maxPan*(cw-thumbW):0);
       ctx2.fillStyle='rgba(206,27,38,0.35)';
       ctx2.fillRect(tX,barY,thumbW,barH);
     }
@@ -1233,7 +1233,7 @@ function drawSpeedChart(u){
     ctx2.restore();
     updateZoomLabel();
     // cursor
-    newCanvas.style.cursor= zoomLevel>1 ? (isDragging?'grabbing':'grab') : 'crosshair';
+    newCanvas.style.cursor= zs.zoomLevel>1 ? (isDragging?'grabbing':'grab') : 'crosshair';
   }
 
   drawBase2(null);
@@ -1244,14 +1244,14 @@ function drawSpeedChart(u){
     crosshairX=e.clientX-rect.left;
     if(isDragging){
       const dx=(crosshairX-dragStartX)/cw;
-      const maxPan=1-1/zoomLevel;
-      panOffset=Math.max(0,Math.min(maxPan, dragStartPan - dx));
+      const maxPan=1-1/zs.zoomLevel;
+      zs.panOffset=Math.max(0,Math.min(maxPan, dragStartPan - dx));
     }
     drawBase2(isDragging?null:crosshairX);
   });
   newCanvas.addEventListener('mouseleave',()=>{crosshairX=null;isDragging=false;drawBase2(null);});
   newCanvas.addEventListener('mousedown',e=>{
-    if(zoomLevel>1){isDragging=true;dragStartX=e.clientX-newCanvas.getBoundingClientRect().left;dragStartPan=panOffset;}
+    if(zs.zoomLevel>1){isDragging=true;dragStartX=e.clientX-newCanvas.getBoundingClientRect().left;dragStartPan=zs.panOffset;}
   });
   newCanvas.addEventListener('mouseup',()=>{isDragging=false;});
 
@@ -1259,21 +1259,20 @@ function drawSpeedChart(u){
   newCanvas.addEventListener('wheel',e=>{
     e.preventDefault();
     const rect=newCanvas.getBoundingClientRect();
-    const mx=(e.clientX-rect.left-pad.l)/cw; // 0..1 position under cursor
-    const oldZoom=zoomLevel;
-    if(e.deltaY<0) zoomLevel=Math.min(MAX_ZOOM,zoomLevel*ZOOM_STEP);
-    else            zoomLevel=Math.max(1,zoomLevel/ZOOM_STEP);
-    zoomLevel=Math.round(zoomLevel*100)/100;
-    // keep the data point under cursor fixed
-    const dataFrac=mx/oldZoom+panOffset;
-    panOffset=dataFrac-mx/zoomLevel;
+    const mx=(e.clientX-rect.left-pad.l)/cw;
+    const oldZoom=zs.zoomLevel;
+    if(e.deltaY<0) zs.zoomLevel=Math.min(MAX_ZOOM,zs.zoomLevel*ZOOM_STEP);
+    else            zs.zoomLevel=Math.max(1,zs.zoomLevel/ZOOM_STEP);
+    zs.zoomLevel=Math.round(zs.zoomLevel*100)/100;
+    const dataFrac=mx/oldZoom+zs.panOffset;
+    zs.panOffset=dataFrac-mx/zs.zoomLevel;
     clampPan();
     drawBase2(crosshairX);
   },{passive:false});
 
   // ── Double-click reset ──
   newCanvas.addEventListener('dblclick',()=>{
-    zoomLevel=1;panOffset=0;drawBase2(null);
+    zs.zoomLevel=1;zs.panOffset=0;drawBase2(null);
   });
 
   // ── Button wiring ──
@@ -1282,19 +1281,19 @@ function drawSpeedChart(u){
   const btnRst=document.getElementById('zoom-rst-'+u.username);
   if(btnIn)  btnIn.addEventListener('click',()=>{
     const cx=0.5;
-    const old=zoomLevel;
-    zoomLevel=Math.min(MAX_ZOOM,Math.round(zoomLevel*ZOOM_STEP*100)/100);
-    panOffset+=(cx/old-cx/zoomLevel);
+    const old=zs.zoomLevel;
+    zs.zoomLevel=Math.min(MAX_ZOOM,Math.round(zs.zoomLevel*ZOOM_STEP*100)/100);
+    zs.panOffset+=(cx/old-cx/zs.zoomLevel);
     clampPan();drawBase2(null);
   });
   if(btnOut) btnOut.addEventListener('click',()=>{
     const cx=0.5;
-    const old=zoomLevel;
-    zoomLevel=Math.max(1,Math.round(zoomLevel/ZOOM_STEP*100)/100);
-    panOffset+=(cx/old-cx/zoomLevel);
+    const old=zs.zoomLevel;
+    zs.zoomLevel=Math.max(1,Math.round(zs.zoomLevel/ZOOM_STEP*100)/100);
+    zs.panOffset+=(cx/old-cx/zs.zoomLevel);
     clampPan();drawBase2(null);
   });
-  if(btnRst) btnRst.addEventListener('click',()=>{zoomLevel=1;panOffset=0;drawBase2(null);});
+  if(btnRst) btnRst.addEventListener('click',()=>{zs.zoomLevel=1;zs.panOffset=0;drawBase2(null);});
 }
 
 function drawSparkline(idx, history){
