@@ -139,6 +139,10 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .live-chart-speed{font-family:var(--font-md);font-size:20px;font-weight:500;color:var(--accent);line-height:1;letter-spacing:-.5px}
 .live-chart-speed-unit{font-size:9px;font-weight:400;color:var(--dimgrey);margin-left:2px;font-family:var(--font)}
 .live-chart-canvas{width:100%;height:100px;display:block}
+.chart-zoom-btns{display:flex;gap:3px;align-items:center}
+.chart-zoom-btn{background:var(--panel);border:1px solid var(--border);color:var(--grey);font-family:var(--font-md);font-size:11px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:2px;line-height:1;padding:0;transition:all .12s;user-select:none;flex-shrink:0}
+.chart-zoom-btn:hover{background:var(--card);border-color:var(--accent);color:var(--accent)}
+.chart-zoom-label{font-family:var(--mono);font-size:9px;color:var(--dimgrey);min-width:28px;text-align:center}
 .live-stops-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden}
 .live-stops-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border)}
 .live-stops-table{width:100%;border-collapse:collapse}
@@ -1007,7 +1011,15 @@ function renderPanel(u,el){
       <div class="live-chart-wrap">
         <div class="live-chart-hdr">
           <div class="live-chart-title">Velocità</div>
-          <div><span class="live-chart-speed" id="speed-val-${u.username}">—</span><span class="live-chart-speed-unit">km/h</span></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="chart-zoom-btns">
+              <button class="chart-zoom-btn" id="zoom-out-${u.username}" title="Zoom out (−)">−</button>
+              <span class="chart-zoom-label" id="zoom-lbl-${u.username}">1×</span>
+              <button class="chart-zoom-btn" id="zoom-in-${u.username}" title="Zoom in (+)">+</button>
+              <button class="chart-zoom-btn" id="zoom-rst-${u.username}" title="Reset zoom">⟳</button>
+            </div>
+            <div><span class="live-chart-speed" id="speed-val-${u.username}">—</span><span class="live-chart-speed-unit">km/h</span></div>
+          </div>
         </div>
         <canvas class="live-chart-canvas" id="speed-chart-${u.username}"></canvas>
       </div>
@@ -1071,7 +1083,6 @@ function drawSpeedChart(u){
   const newCanvas=canvas.cloneNode(false);
   newCanvas.width=W*dpr; newCanvas.height=H*dpr;
   canvas.parentNode.replaceChild(newCanvas,canvas);
-  newCanvas.style.cursor='crosshair';
   newCanvas.style.width=W+'px'; newCanvas.style.height=H+'px';
 
   const ctx2=newCanvas.getContext('2d');
@@ -1079,6 +1090,23 @@ function drawSpeedChart(u){
 
   const pad={t:8,r:8,b:20,l:32};
   const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
+
+  // ── Zoom/pan state ──
+  const MAX_ZOOM=8, ZOOM_STEP=1.5;
+  let zoomLevel=1;       // current zoom multiplier
+  let panOffset=0;       // fraction [0..1-1/zoomLevel] of visible window start
+  let isDragging=false;
+  let dragStartX=0, dragStartPan=0;
+  let crosshairX=null;
+
+  function clampPan(){
+    const maxPan=1-1/zoomLevel;
+    panOffset=Math.max(0,Math.min(maxPan,panOffset));
+  }
+  function updateZoomLabel(){
+    const lbl=document.getElementById('zoom-lbl-'+u.username);
+    if(lbl) lbl.textContent=(zoomLevel===1?'1':zoomLevel%1===0?zoomLevel+'':'×')+( zoomLevel===1?'×':'');
+  }
 
   function catmull(p0,p1,p2,p3,t){
     const t2=t*t,t3=t2*t;
@@ -1088,31 +1116,61 @@ function drawSpeedChart(u){
     };
   }
 
-  function drawBase2(crosshairX){
+  function drawBase2(cxhair){
     ctx2.clearRect(0,0,W,H);
     if(!history.length){
       ctx2.fillStyle='#AAAAAA';ctx2.font='10px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='center';
       ctx2.fillText('Dati non ancora disponibili',W/2,50);return;
     }
-    const speeds=history.map(h=>h.speed_kmh);
+    const n=history.length;
+    // visible window in data-index space
+    const winSize=n/zoomLevel;
+    const iStart=panOffset*(n-1);
+    const iEnd=iStart+winSize;
+    const visStart=Math.max(0,Math.floor(iStart));
+    const visEnd=Math.min(n-1,Math.ceil(iEnd));
+
+    const visHistory=history.slice(visStart,visEnd+1);
+    if(!visHistory.length) return;
+
+    const speeds=visHistory.map(h=>h.speed_kmh);
     const maxSpd=Math.max(...speeds,10);
     const minSpd=Math.max(0,Math.min(...speeds)-5);
     const range=maxSpd-minSpd||1;
-    const toX=i=>pad.l+(i/(history.length-1||1))*cw;
+
+    // Map data-index (within visible slice) to canvas X
+    const toX=i=>pad.l+(i/(visHistory.length-1||1))*cw;
     const toY=v=>pad.t+ch*(1-(v-minSpd)/range);
 
-    // 3 grid lines at 18% opacity
+    // Clip to chart area
+    ctx2.save();
+    ctx2.beginPath();
+    ctx2.rect(pad.l,pad.t,cw,ch+1);
+    ctx2.clip();
+
+    // 3 grid lines
     ctx2.strokeStyle='rgba(170,170,170,0.18)';ctx2.lineWidth=1;
     [0,.5,1].forEach(f=>{
       const v=minSpd+f*range;
       const y=toY(v);
       ctx2.beginPath();ctx2.moveTo(pad.l,y);ctx2.lineTo(pad.l+cw,y);ctx2.stroke();
-      ctx2.fillStyle='#AAAAAA';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='right';
-      ctx2.fillText(Math.round(v),pad.l-4,y+3);
+    });
+    ctx2.restore();
+
+    // Y labels (outside clip)
+    ctx2.fillStyle='#AAAAAA';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='right';
+    [0,.5,1].forEach(f=>{
+      const v=minSpd+f*range;
+      ctx2.fillText(Math.round(v),pad.l-4,toY(v)+3);
     });
 
+    ctx2.save();
+    ctx2.beginPath();
+    ctx2.rect(pad.l,0,cw,H);
+    ctx2.clip();
+
     // Catmull-Rom smooth curve
-    const pts=history.map((h,i)=>({x:toX(i),y:toY(h.speed_kmh)}));
+    const pts=visHistory.map((h,i)=>({x:toX(i),y:toY(h.speed_kmh)}));
     ctx2.beginPath();
     pts.forEach((p,i)=>{
       if(i===0){ctx2.moveTo(p.x,p.y);return;}
@@ -1122,54 +1180,121 @@ function drawSpeedChart(u){
     ctx2.strokeStyle='#CE1B26';ctx2.lineWidth=1.5;ctx2.setLineDash([]);ctx2.stroke();
 
     // gradient fill
-    ctx2.lineTo(toX(history.length-1),pad.t+ch);
+    ctx2.lineTo(toX(visHistory.length-1),pad.t+ch);
     ctx2.lineTo(pad.l,pad.t+ch);ctx2.closePath();
     const grad=ctx2.createLinearGradient(0,pad.t,0,pad.t+ch);
     grad.addColorStop(0,'rgba(206,27,38,0.12)');
     grad.addColorStop(1,'rgba(206,27,38,0.01)');
     ctx2.fillStyle=grad;ctx2.fill();
 
-    // dot on last point
+    // dot on last visible point
     const last=pts[pts.length-1];
     ctx2.beginPath();ctx2.arc(last.x,last.y,3,0,Math.PI*2);
     ctx2.fillStyle='#CE1B26';ctx2.fill();
 
     // x-axis time labels
     ctx2.fillStyle='#AAAAAA';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='center';
-    [0,Math.floor(history.length/2),history.length-1].forEach(i=>{
-      if(history[i]&&history[i].sim_time)
-        ctx2.fillText(history[i].sim_time,toX(i),H-4);
+    [0,Math.floor(visHistory.length/2),visHistory.length-1].forEach(i=>{
+      if(visHistory[i]&&visHistory[i].sim_time)
+        ctx2.fillText(visHistory[i].sim_time,toX(i),H-4);
     });
 
-    // hover: crosshair + dot only, update badge
+    // Pan hint when zoomed
+    if(zoomLevel>1){
+      const barH=3, barY=H-3;
+      ctx2.fillStyle='rgba(170,170,170,0.2)';
+      ctx2.fillRect(pad.l,barY,cw,barH);
+      const thumbW=cw/zoomLevel;
+      const thumbX=pad.l+panOffset*zoomLevel/(1)*cw/zoomLevel*Math.min(1,(zoomLevel-1)/zoomLevel*zoomLevel);
+      // simpler: thumb position = panOffset / maxPan * (cw - thumbW)
+      const maxPan=1-1/zoomLevel;
+      const tX=pad.l+(maxPan>0?panOffset/maxPan*(cw-thumbW):0);
+      ctx2.fillStyle='rgba(206,27,38,0.35)';
+      ctx2.fillRect(tX,barY,thumbW,barH);
+    }
+
+    // hover crosshair
     const speedEl=document.getElementById('speed-val-'+u.username);
-    if(crosshairX!==null&&crosshairX>=pad.l&&crosshairX<=pad.l+cw){
-      const ratio=(crosshairX-pad.l)/cw;
-      const idx=Math.max(0,Math.min(history.length-1,Math.round(ratio*(history.length-1))));
-      const ptX=toX(idx), ptY=toY(history[idx].speed_kmh);
-      if(speedEl) speedEl.textContent=Math.round(history[idx].speed_kmh);
-      ctx2.save();
+    if(cxhair!==null&&cxhair>=pad.l&&cxhair<=pad.l+cw){
+      const ratio=(cxhair-pad.l)/cw;
+      const idx=Math.max(0,Math.min(visHistory.length-1,Math.round(ratio*(visHistory.length-1))));
+      const ptX=toX(idx), ptY=toY(visHistory[idx].speed_kmh);
+      if(speedEl) speedEl.textContent=Math.round(visHistory[idx].speed_kmh);
       ctx2.strokeStyle='rgba(170,170,170,0.4)';ctx2.lineWidth=1;ctx2.setLineDash([3,4]);
       ctx2.beginPath();ctx2.moveTo(ptX,pad.t);ctx2.lineTo(ptX,pad.t+ch);ctx2.stroke();
       ctx2.setLineDash([]);
       ctx2.beginPath();ctx2.arc(ptX,ptY,4,0,Math.PI*2);
       ctx2.fillStyle='#CE1B26';ctx2.strokeStyle='#ffffff';ctx2.lineWidth=1.5;
       ctx2.fill();ctx2.stroke();
-      ctx2.restore();
     } else {
       if(speedEl) speedEl.textContent='—';
     }
+
+    ctx2.restore();
+    updateZoomLabel();
+    // cursor
+    newCanvas.style.cursor= zoomLevel>1 ? (isDragging?'grabbing':'grab') : 'crosshair';
   }
 
   drawBase2(null);
 
+  // ── Mouse events ──
   newCanvas.addEventListener('mousemove',e=>{
     const rect=newCanvas.getBoundingClientRect();
-    drawBase2(e.clientX-rect.left);
+    crosshairX=e.clientX-rect.left;
+    if(isDragging){
+      const dx=(crosshairX-dragStartX)/cw;
+      const maxPan=1-1/zoomLevel;
+      panOffset=Math.max(0,Math.min(maxPan, dragStartPan - dx));
+    }
+    drawBase2(isDragging?null:crosshairX);
   });
-  newCanvas.addEventListener('mouseleave',()=>{
-    drawBase2(null);
+  newCanvas.addEventListener('mouseleave',()=>{crosshairX=null;isDragging=false;drawBase2(null);});
+  newCanvas.addEventListener('mousedown',e=>{
+    if(zoomLevel>1){isDragging=true;dragStartX=e.clientX-newCanvas.getBoundingClientRect().left;dragStartPan=panOffset;}
   });
+  newCanvas.addEventListener('mouseup',()=>{isDragging=false;});
+
+  // ── Wheel zoom ──
+  newCanvas.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const rect=newCanvas.getBoundingClientRect();
+    const mx=(e.clientX-rect.left-pad.l)/cw; // 0..1 position under cursor
+    const oldZoom=zoomLevel;
+    if(e.deltaY<0) zoomLevel=Math.min(MAX_ZOOM,zoomLevel*ZOOM_STEP);
+    else            zoomLevel=Math.max(1,zoomLevel/ZOOM_STEP);
+    zoomLevel=Math.round(zoomLevel*100)/100;
+    // keep the data point under cursor fixed
+    const dataFrac=mx/oldZoom+panOffset;
+    panOffset=dataFrac-mx/zoomLevel;
+    clampPan();
+    drawBase2(crosshairX);
+  },{passive:false});
+
+  // ── Double-click reset ──
+  newCanvas.addEventListener('dblclick',()=>{
+    zoomLevel=1;panOffset=0;drawBase2(null);
+  });
+
+  // ── Button wiring ──
+  const btnIn =document.getElementById('zoom-in-' +u.username);
+  const btnOut=document.getElementById('zoom-out-'+u.username);
+  const btnRst=document.getElementById('zoom-rst-'+u.username);
+  if(btnIn)  btnIn.addEventListener('click',()=>{
+    const cx=0.5;
+    const old=zoomLevel;
+    zoomLevel=Math.min(MAX_ZOOM,Math.round(zoomLevel*ZOOM_STEP*100)/100);
+    panOffset+=(cx/old-cx/zoomLevel);
+    clampPan();drawBase2(null);
+  });
+  if(btnOut) btnOut.addEventListener('click',()=>{
+    const cx=0.5;
+    const old=zoomLevel;
+    zoomLevel=Math.max(1,Math.round(zoomLevel/ZOOM_STEP*100)/100);
+    panOffset+=(cx/old-cx/zoomLevel);
+    clampPan();drawBase2(null);
+  });
+  if(btnRst) btnRst.addEventListener('click',()=>{zoomLevel=1;panOffset=0;drawBase2(null);});
 }
 
 function drawSparkline(idx, history){
