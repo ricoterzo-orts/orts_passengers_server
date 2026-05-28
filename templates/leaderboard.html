@@ -1431,6 +1431,18 @@ function updateMap(users){
       }
     }
 
+    // Stazioni (aggiunte prima, così i marker treno stanno sopra)
+    stations.forEach(st => {
+      const coord = getStationCoord(st.station_name);
+      if(!coord) return;
+      const m = L.circleMarker([coord.lat, coord.lon], {
+        radius: 4,
+        color: '#888888', fillColor: '#ffffff', fillOpacity: 1, weight: 1.5,
+      }).bindTooltip(st.station_name, {permanent: false, direction: 'top'})
+        .addTo(leafletMap);
+      stationMarkers.push(m);
+    });
+
     const pos = interpolatePosition(stations, u.next_station)
              || (u.next_station ? (() => { const c = getStationCoord(u.next_station); return c ? [c.lat, c.lon] : null; })() : null)
              || (() => {
@@ -1471,6 +1483,7 @@ function updateMap(users){
         trainMarkers[u.username].setLatLng(pos);
         trainMarkers[u.username].setStyle({ fillColor: markerColor, color: '#ffffff' });
         trainMarkers[u.username].getPopup().setContent(popupHtml);
+        trainMarkers[u.username].bringToFront();
       } else {
         trainMarkers[u.username] = L.circleMarker(pos, {
           radius: 7,
@@ -1494,6 +1507,9 @@ function updateMap(users){
       }
     }
   });
+
+  // Garantisce che i pallini treno stiano sempre sopra le stazioni
+  Object.values(trainMarkers).forEach(m => m.bringToFront());
 }
 
 // ── Drawer storico utente ──
