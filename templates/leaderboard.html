@@ -956,18 +956,29 @@ function drawSpeedChart(u){
   const canvas=document.getElementById('speed-chart-'+u.username);
   if(!canvas)return;
   const history=u.speed_history||[];
-  const W=canvas.offsetWidth||300,H=100;
-  canvas.width=W;canvas.height=H;
-
-  const pad={t:8,r:8,b:20,l:32};
-  const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth||300, H=100;
+  canvas.width=W*dpr; canvas.height=H*dpr;
 
   const newCanvas=canvas.cloneNode(false);
-  newCanvas.width=W;newCanvas.height=H;
+  newCanvas.width=W*dpr; newCanvas.height=H*dpr;
   canvas.parentNode.replaceChild(newCanvas,canvas);
   newCanvas.style.cursor='crosshair';
+  newCanvas.style.width=W+'px'; newCanvas.style.height=H+'px';
 
   const ctx2=newCanvas.getContext('2d');
+  ctx2.scale(dpr,dpr);
+
+  const pad={t:8,r:8,b:20,l:32};
+  const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
+
+  function catmull(p0,p1,p2,p3,t){
+    const t2=t*t,t3=t2*t;
+    return{
+      x:.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
+      y:.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3)
+    };
+  }
 
   function drawBase2(crosshairX){
     ctx2.clearRect(0,0,W,H);
@@ -977,83 +988,63 @@ function drawSpeedChart(u){
     }
     const speeds=history.map(h=>h.speed_kmh);
     const maxSpd=Math.max(...speeds,10);
-    ctx2.strokeStyle='rgba(204,204,204,0.3)';ctx2.lineWidth=1;
-    [0,.25,.5,.75,1].forEach(f=>{
-      const y=pad.t+ch*(1-f);
+    const minSpd=Math.max(0,Math.min(...speeds)-5);
+    const range=maxSpd-minSpd||1;
+    const toX=i=>pad.l+(i/(history.length-1||1))*cw;
+    const toY=v=>pad.t+ch*(1-(v-minSpd)/range);
+
+    // 3 grid lines at 18% opacity
+    ctx2.strokeStyle='rgba(170,170,170,0.18)';ctx2.lineWidth=1;
+    [0,.5,1].forEach(f=>{
+      const v=minSpd+f*range;
+      const y=toY(v);
       ctx2.beginPath();ctx2.moveTo(pad.l,y);ctx2.lineTo(pad.l+cw,y);ctx2.stroke();
-      ctx2.fillStyle='#888';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='right';
-      ctx2.fillText(Math.round(maxSpd*f),pad.l-3,y+3);
+      ctx2.fillStyle='#AAAAAA';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='right';
+      ctx2.fillText(Math.round(v),pad.l-4,y+3);
     });
+
+    // Catmull-Rom smooth curve
+    const pts=history.map((h,i)=>({x:toX(i),y:toY(h.speed_kmh)}));
     ctx2.beginPath();
-    history.forEach((h,i)=>{
-      const x=pad.l+(i/(history.length-1||1))*cw;
-      const y=pad.t+ch*(1-h.speed_kmh/maxSpd);
-      i===0?ctx2.moveTo(x,y):ctx2.lineTo(x,y);
+    pts.forEach((p,i)=>{
+      if(i===0){ctx2.moveTo(p.x,p.y);return;}
+      const p0=pts[Math.max(0,i-2)],p1=pts[i-1],p2=pts[i],p3=pts[Math.min(pts.length-1,i+1)];
+      for(let t=0;t<=1;t+=.08){const pt=catmull(p0,p1,p2,p3,t);ctx2.lineTo(pt.x,pt.y);}
     });
-    ctx2.strokeStyle='#CE1B26';ctx2.lineWidth=2;ctx2.stroke();
-    ctx2.lineTo(pad.l+cw,pad.t+ch);ctx2.lineTo(pad.l,pad.t+ch);ctx2.closePath();
-    ctx2.fillStyle='rgba(206,27,38,0.1)';ctx2.fill();
-    const last=history[history.length-1];
-    const lx=pad.l+cw,ly=pad.t+ch*(1-last.speed_kmh/maxSpd);
-    ctx2.beginPath();ctx2.arc(lx,ly,4,0,Math.PI*2);ctx2.fillStyle='#CE1B26';ctx2.fill();
-    ctx2.fillStyle='#888';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='center';
+    ctx2.strokeStyle='#CE1B26';ctx2.lineWidth=1.5;ctx2.setLineDash([]);ctx2.stroke();
+
+    // gradient fill
+    ctx2.lineTo(toX(history.length-1),pad.t+ch);
+    ctx2.lineTo(pad.l,pad.t+ch);ctx2.closePath();
+    const grad=ctx2.createLinearGradient(0,pad.t,0,pad.t+ch);
+    grad.addColorStop(0,'rgba(206,27,38,0.12)');
+    grad.addColorStop(1,'rgba(206,27,38,0.01)');
+    ctx2.fillStyle=grad;ctx2.fill();
+
+    // dot on last point
+    const last=pts[pts.length-1];
+    ctx2.beginPath();ctx2.arc(last.x,last.y,3,0,Math.PI*2);
+    ctx2.fillStyle='#CE1B26';ctx2.fill();
+
+    // x-axis time labels
+    ctx2.fillStyle='#AAAAAA';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='center';
     [0,Math.floor(history.length/2),history.length-1].forEach(i=>{
-      if(history[i]&&history[i].sim_time){
-        const x=pad.l+(i/(history.length-1||1))*cw;
-        ctx2.fillText(history[i].sim_time,x,H-4);
-      }
+      if(history[i]&&history[i].sim_time)
+        ctx2.fillText(history[i].sim_time,toX(i),H-4);
     });
+
+    // hover: crosshair + dot only, no box
     if(crosshairX!==null&&crosshairX>=pad.l&&crosshairX<=pad.l+cw){
       const ratio=(crosshairX-pad.l)/cw;
-      const clampedIdx=Math.max(0,Math.min(history.length-1,Math.round(ratio*(history.length-1))));
-      const pt=history[clampedIdx];
-      const ptX=pad.l+(clampedIdx/(history.length-1||1))*cw;
-      const ptY=pad.t+ch*(1-pt.speed_kmh/maxSpd);
+      const idx=Math.max(0,Math.min(history.length-1,Math.round(ratio*(history.length-1))));
+      const ptX=toX(idx), ptY=toY(history[idx].speed_kmh);
       ctx2.save();
-      ctx2.strokeStyle='rgba(100,100,100,0.5)';ctx2.lineWidth=1;ctx2.setLineDash([3,3]);
+      ctx2.strokeStyle='rgba(170,170,170,0.4)';ctx2.lineWidth=1;ctx2.setLineDash([3,4]);
       ctx2.beginPath();ctx2.moveTo(ptX,pad.t);ctx2.lineTo(ptX,pad.t+ch);ctx2.stroke();
       ctx2.setLineDash([]);
       ctx2.beginPath();ctx2.arc(ptX,ptY,4,0,Math.PI*2);
-      ctx2.fillStyle='#CE1B26';ctx2.strokeStyle='#fff';ctx2.lineWidth=1.5;
+      ctx2.fillStyle='#CE1B26';ctx2.strokeStyle='#ffffff';ctx2.lineWidth=1.5;
       ctx2.fill();ctx2.stroke();
-      const speedVal=Math.round(pt.speed_kmh);
-      const timeLabel=pt.sim_time||'';
-      // measure text
-      ctx2.font='bold 15px Futura,\'Trebuchet MS\',sans-serif';
-      const sw=ctx2.measureText(speedVal).width;
-      const unitFont='8px Futura,\'Trebuchet MS\',sans-serif';
-      ctx2.font=unitFont;
-      const uw=ctx2.measureText('km/h').width;
-      ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';
-      const tw2=timeLabel?ctx2.measureText(timeLabel).width:0;
-      const innerW=sw+4+uw;
-      const bw=Math.max(innerW,tw2)+18, bh=timeLabel?38:22;
-      let bx=ptX+10;
-      if(bx+bw>W-4) bx=ptX-bw-10;
-      const by=Math.max(pad.t, ptY-bh/2-2);
-      // box
-      ctx2.fillStyle='#ffffff';
-      ctx2.strokeStyle='rgba(204,204,204,0.7)';ctx2.lineWidth=.8;
-      ctx2.beginPath();
-      ctx2.roundRect?ctx2.roundRect(bx,by,bw,bh,2):ctx2.rect(bx,by,bw,bh);
-      ctx2.fill();ctx2.stroke();
-      // speed number in red
-      const cx=bx+bw/2;
-      const numY=by+(timeLabel?16:bh/2+5);
-      ctx2.textAlign='center';
-      ctx2.fillStyle='#CE1B26';
-      ctx2.font='bold 15px Futura,\'Trebuchet MS\',sans-serif';
-      ctx2.fillText(speedVal, cx-(uw/2+2), numY);
-      // unit
-      ctx2.fillStyle='#CE1B26';
-      ctx2.font='7px Futura,\'Trebuchet MS\',sans-serif';
-      ctx2.fillText('km/h', cx+(sw/2-1), numY);
-      // time below
-      if(timeLabel){
-        ctx2.fillStyle='#BBBBBB';
-        ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';
-        ctx2.fillText(timeLabel, cx, by+bh-7);
-      }
       ctx2.restore();
     }
   }
@@ -1062,9 +1053,7 @@ function drawSpeedChart(u){
 
   newCanvas.addEventListener('mousemove',e=>{
     const rect=newCanvas.getBoundingClientRect();
-    const scaleX=newCanvas.width/rect.width;
-    const mx=(e.clientX-rect.left)*scaleX;
-    drawBase2(mx);
+    drawBase2(e.clientX-rect.left);
   });
   newCanvas.addEventListener('mouseleave',()=>{
     drawBase2(null);
