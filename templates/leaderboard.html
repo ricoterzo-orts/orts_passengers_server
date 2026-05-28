@@ -893,7 +893,7 @@ function renderPanel(u,el){
       <div class="live-chart-wrap">
         <div class="live-chart-hdr">
           <div class="live-chart-title">Velocità</div>
-          <div><span class="live-chart-speed" id="speed-val-${u.username}">${u.speed_kmh!=null?Math.round(u.speed_kmh):'—'}</span><span class="live-chart-speed-unit">km/h</span></div>
+          <div><span class="live-chart-speed" id="speed-val-${u.username}">—</span><span class="live-chart-speed-unit">km/h</span></div>
         </div>
         <canvas class="live-chart-canvas" id="speed-chart-${u.username}"></canvas>
       </div>
@@ -1043,8 +1043,7 @@ function drawSpeedChart(u){
       ctx2.fill();ctx2.stroke();
       ctx2.restore();
     } else {
-      const lastSpeed=history.length?history[history.length-1].speed_kmh:null;
-      if(speedEl) speedEl.textContent=lastSpeed!=null?Math.round(lastSpeed):'—';
+      if(speedEl) speedEl.textContent='—';
     }
   }
 
