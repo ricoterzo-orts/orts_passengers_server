@@ -1380,11 +1380,11 @@ function updateMapSidebar(users){
     const dotColor = delay > 5 ? '#CE1B26' : delay > 0 ? '#E07B00' : '#007A3D';
     const spd = u.speed_kmh ? Math.round(u.speed_kmh) + ' km/h' : '— km/h';
     const serv = u.current_service || u.username;
-    return \`<div class="map-train-row" onclick="if(trainMarkers['${u.username}']){leafletMap.panTo(trainMarkers['${u.username}'].getLatLng());trainMarkers['${u.username}'].openPopup();}">
-      <div class="map-train-dot" style="background:\${dotColor}"></div>
-      <div class="map-train-name" title="\${serv}">\${u.username}</div>
-      <div class="map-train-spd">\${spd}</div>
-    </div>\`;
+    return `<div class="map-train-row" onclick="if(trainMarkers['${u.username}']){leafletMap.panTo(trainMarkers['${u.username}'].getLatLng());trainMarkers['${u.username}'].openPopup();}">
+      <div class="map-train-dot" style="background:${dotColor}"></div>
+      <div class="map-train-name" title="${serv}">${u.username}</div>
+      <div class="map-train-spd">${spd}</div>
+    </div>`;
   }).join('');
 }
 
