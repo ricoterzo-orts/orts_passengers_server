@@ -893,7 +893,7 @@ function renderPanel(u,el){
       <div class="live-chart-wrap">
         <div class="live-chart-hdr">
           <div class="live-chart-title">Velocità</div>
-          <div><span class="live-chart-speed">${u.speed_kmh!=null?Math.round(u.speed_kmh):'—'}</span><span class="live-chart-speed-unit">km/h</span></div>
+          <div><span class="live-chart-speed" id="speed-val-${u.username}">${u.speed_kmh!=null?Math.round(u.speed_kmh):'—'}</span><span class="live-chart-speed-unit">km/h</span></div>
         </div>
         <canvas class="live-chart-canvas" id="speed-chart-${u.username}"></canvas>
       </div>
@@ -1027,11 +1027,13 @@ function drawSpeedChart(u){
         ctx2.fillText(history[i].sim_time,toX(i),H-4);
     });
 
-    // hover: crosshair + dot only, no box
+    // hover: crosshair + dot only, update badge
+    const speedEl=document.getElementById('speed-val-'+u.username);
     if(crosshairX!==null&&crosshairX>=pad.l&&crosshairX<=pad.l+cw){
       const ratio=(crosshairX-pad.l)/cw;
       const idx=Math.max(0,Math.min(history.length-1,Math.round(ratio*(history.length-1))));
       const ptX=toX(idx), ptY=toY(history[idx].speed_kmh);
+      if(speedEl) speedEl.textContent=Math.round(history[idx].speed_kmh);
       ctx2.save();
       ctx2.strokeStyle='rgba(170,170,170,0.4)';ctx2.lineWidth=1;ctx2.setLineDash([3,4]);
       ctx2.beginPath();ctx2.moveTo(ptX,pad.t);ctx2.lineTo(ptX,pad.t+ch);ctx2.stroke();
@@ -1040,6 +1042,9 @@ function drawSpeedChart(u){
       ctx2.fillStyle='#CE1B26';ctx2.strokeStyle='#ffffff';ctx2.lineWidth=1.5;
       ctx2.fill();ctx2.stroke();
       ctx2.restore();
+    } else {
+      const lastSpeed=history.length?history[history.length-1].speed_kmh:null;
+      if(speedEl) speedEl.textContent=lastSpeed!=null?Math.round(lastSpeed):'—';
     }
   }
 
