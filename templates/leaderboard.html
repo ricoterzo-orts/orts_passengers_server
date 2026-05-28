@@ -577,22 +577,12 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
             <div class="map-stat-lbl">treni in corsa</div>
           </div>
         </div>
-        <div class="map-stat-card" id="map-stat-speed-card" style="display:none">
-          <div class="map-stat-title">Velocit&#224; media</div>
-          <div class="map-stat-row">
-            <div class="map-stat-num" id="map-stat-speed">&#8212;</div>
-            <div class="map-stat-lbl">km/h</div>
-          </div>
-        </div>
       </div>
 
       <!-- Controlli layer in alto a destra -->
       <div class="map-layer-ctrl">
         <button class="map-layer-btn" id="btn-railway-layer" onclick="toggleRailwayLayer()" title="Mostra/nascondi binari ferroviari">
           &#x1F6E4; Binari
-        </button>
-        <button class="map-layer-btn" id="btn-stations-layer" onclick="toggleStationLabels()" title="Mostra/nascondi stazioni">
-          &#x1F4CD; Stazioni
         </button>
       </div>
 
@@ -604,15 +594,6 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- ══ SEZIONE 1: ONLINE ══ -->
-  <div class="online-section" id="online-section" style="display:none">
-    <div class="sec-hdr">
-      <div class="sec-title">Giocatori Online</div>
-      <div class="sec-badge"><span class="pulse"></span><span id="online-count">0 online</span></div>
-    </div>
-    <div class="online-grid" id="online-grid"></div>
   </div>
 
   <!-- ══ SEZIONE 2: TRENI IN CORSA ══ -->
@@ -1244,7 +1225,6 @@ async function loadLive(){
 
     liveData=liveOrder.map(name=>fresh.find(u=>u.username===name)).filter(Boolean);
 
-    renderOnlineCards(liveData);
     renderLiveSection();
     updateMap(liveData);
     updateMapSidebar(liveData);
@@ -1357,17 +1337,6 @@ function updateMapSidebar(users){
   const statEl = document.getElementById('map-stat-treni');
   if(statEl) statEl.textContent = n;
 
-  // Velocita media
-  const speeds = users.filter(u => u.speed_kmh > 0).map(u => u.speed_kmh);
-  const speedCard = document.getElementById('map-stat-speed-card');
-  const speedEl = document.getElementById('map-stat-speed');
-  if(speeds.length && speedCard && speedEl){
-    speedCard.style.display = '';
-    speedEl.textContent = Math.round(speeds.reduce((a,b)=>a+b,0)/speeds.length);
-  } else if(speedCard){
-    speedCard.style.display = 'none';
-  }
-
   // Lista treni nel pannello inferiore
   const body = document.getElementById('map-trains-body');
   if(!body) return;
@@ -1461,17 +1430,6 @@ function updateMap(users){
         }).addTo(leafletMap);
       }
     }
-
-    (stations || []).forEach(st => {
-      const coord = getStationCoord(st.station_name);
-      if(!coord) return;
-      const m = L.circleMarker([coord.lat, coord.lon], {
-        radius: 5,
-        color: '#AAAAAA', fillColor: '#ffffff', fillOpacity: 1, weight: 2,
-      }).bindTooltip(st.station_name, {permanent: false, direction: 'top'})
-        .addTo(leafletMap);
-      stationMarkers.push(m);
-    });
 
     const pos = interpolatePosition(stations, u.next_station)
              || (u.next_station ? (() => { const c = getStationCoord(u.next_station); return c ? [c.lat, c.lon] : null; })() : null)
