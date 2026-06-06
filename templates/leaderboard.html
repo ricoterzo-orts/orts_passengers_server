@@ -323,6 +323,48 @@ td.servizio{text-align:center}
 .map-layer-btn:hover{border-color:var(--accent);color:var(--accent)}
 .map-layer-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(206,27,38,.06)}
 
+/* Selettore stile ORM in basso a destra */
+.map-style-panel{
+  position:absolute;bottom:12px;right:12px;z-index:10;
+  background:rgba(255,255,255,0.96);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border:1px solid rgba(204,204,204,.5);
+  border-radius:6px;
+  box-shadow:0 2px 12px rgba(0,0,0,.12);
+  overflow:hidden;
+  min-width:200px;
+}
+.map-style-hdr{
+  padding:7px 12px;
+  background:var(--panel);
+  border-bottom:1px solid var(--border);
+  font-family:var(--font-md);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--grey);font-weight:500;
+}
+.map-style-options{padding:6px 0}
+.map-style-opt{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 12px;
+  font-family:var(--font);font-size:10px;color:var(--white);
+  cursor:pointer;transition:background .1s;
+  user-select:none;
+}
+.map-style-opt:hover{background:rgba(206,27,38,.05)}
+.map-style-opt.active{background:rgba(206,27,38,.07);font-family:var(--font-md);font-weight:500;color:var(--accent)}
+.map-style-radio{
+  width:11px;height:11px;border-radius:50%;
+  border:2px solid var(--border);
+  background:#fff;flex-shrink:0;
+  transition:all .12s;position:relative;
+}
+.map-style-opt.active .map-style-radio{
+  border-color:var(--accent);
+}
+.map-style-opt.active .map-style-radio::after{
+  content:'';position:absolute;inset:2px;border-radius:50%;background:var(--accent);
+}
+
 /* Media queries mappa */
 @media(max-width:768px){
   .map-hero{height:400px}
@@ -582,7 +624,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
     <div class="menu-wrap" id="menu-wrap" style="display:none;position:relative">
       <button class="nav-btn menu-toggle-btn" id="btn-menu" onclick="toggleMenu(event)" aria-expanded="false" aria-haspopup="true">Menù ▾</button>
       <div class="menu-dropdown" id="menu-dropdown" role="menu">
-        <a class="menu-item" href="https://download1472.mediafire.com/cuusr639wvlg4vo3g7WEI7GfWqSfwacc0_kUjh03WEIornFGYE8EldRojFQ5okpJnD9aMiVg3xRgkNO1usHXS86DfOThgVto1Bma7JHJ6MfRcahphi2IVtI3kYjNbwb8SQwn4EPfIZ9vf3ospiflLrN5S8oGsoZAV7WBhRKZuQ/ifsib5znvc2rpk8/ORTS+Passengers.zip" download onclick="closeMenu()">
+        <a class="menu-item" href="https://download1472.mediafire.com/fa4cbg1pu7xgo0PTi853l079v6Eqfy2gvxDp6QX1tMmqpgOXqV6UARYakStLGQTQ-i2ySj6MlFbSDfWEl09GiOpdwDIiO10STW6sgWfEhwvisVMM_kSHBtxQiR7zzWK7m23z9P4cFo_dETMiDd43lMNnQLMj6lDKoma0dv9VXw/ifsib5znvc2rpk8/ORTS+Passengers.zip" download onclick="closeMenu()">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><path d="M2 1a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8l4-4V2a1 1 0 0 0-1-1H2zm7 12v-3h3l-3 3zm-1-4V2h5v6H8zM2 2h4v11H2V2z"/></svg>
           ORTS Passengers
         </a>
@@ -652,6 +694,12 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
         <div class="map-trains-body" id="map-trains-body">
           <div style="padding:10px 12px;color:#aaa;font-size:10px;font-family:var(--font)">Nessun treno in corsa</div>
         </div>
+      </div>
+
+      <!-- Selettore stile ORM in basso a destra -->
+      <div class="map-style-panel" id="map-style-panel">
+        <div class="map-style-hdr">Stile mappa ferroviaria</div>
+        <div class="map-style-options" id="map-style-options"></div>
       </div>
     </div>
   </div>
@@ -1508,6 +1556,43 @@ function initMap(){
   railwayVisible = true;
   const btn = document.getElementById('btn-railway-layer');
   if(btn) btn.classList.add('active');
+
+  // ── Selettore stile ORM ──
+  const ORM_STYLES = [
+    { id: 'standard',    label: 'Infrastructure',                  url: 'https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png' },
+    { id: 'maxspeed',    label: 'Max speeds',                      url: 'https://{s}.tiles.openrailwaymap.org/maxspeed/{z}/{x}/{y}.png' },
+    { id: 'signals',     label: 'Signalling and train protection',  url: 'https://{s}.tiles.openrailwaymap.org/signals/{z}/{x}/{y}.png' },
+    { id: 'electrified', label: 'Electrification',                 url: 'https://{s}.tiles.openrailwaymap.org/electrified/{z}/{x}/{y}.png' },
+    { id: 'gauge',       label: 'Track gauge',                     url: 'https://{s}.tiles.openrailwaymap.org/gauge/{z}/{x}/{y}.png' },
+  ];
+  let activeOrmStyle = 'standard';
+
+  function renderOrmStylePanel() {
+    const container = document.getElementById('map-style-options');
+    if (!container) return;
+    container.innerHTML = ORM_STYLES.map(s => `
+      <div class="map-style-opt${s.id === activeOrmStyle ? ' active' : ''}" onclick="setOrmStyle('${s.id}')">
+        <div class="map-style-radio"></div>
+        <span>${s.label}</span>
+      </div>`).join('');
+  }
+
+  window.setOrmStyle = function(id) {
+    const style = ORM_STYLES.find(s => s.id === id);
+    if (!style || !leafletMap) return;
+    activeOrmStyle = id;
+    leafletMap.removeLayer(railwayLayer);
+    railwayLayer = L.tileLayer(style.url, {
+      attribution: '© <a href="https://openrailwaymap.org">OpenRailwayMap</a>',
+      maxZoom: 18,
+      opacity: 0.7,
+      subdomains: ['a','b','c'],
+    });
+    if (railwayVisible) railwayLayer.addTo(leafletMap);
+    renderOrmStylePanel();
+  };
+
+  renderOrmStylePanel();
 }
 
 function toggleRailwayLayer(){
