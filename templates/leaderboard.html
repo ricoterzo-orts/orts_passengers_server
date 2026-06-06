@@ -253,18 +253,19 @@ td.servizio{text-align:center}
 }
 .map-style-toggle{
   pointer-events:all;
-  background:rgba(255,255,255,0.96);
+  background:#fff;
   backdrop-filter:blur(10px);
   -webkit-backdrop-filter:blur(10px);
   border:1px solid rgba(204,204,204,.5);
+  border-left:3px solid var(--accent);
   border-radius:4px;
-  padding:6px 10px;
-  font-family:var(--font-md);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--grey);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.1);
-  transition:all .15s;display:flex;align-items:center;gap:5px;
+  padding:8px 13px;
+  font-family:var(--font-md);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--white);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.1);
+  transition:all .15s;display:flex;align-items:center;justify-content:flex-start;gap:5px;
   user-select:none;
 }
-.map-style-toggle:hover,.map-style-toggle.active{border-color:var(--accent);color:var(--accent);background:rgba(206,27,38,.06)}
+.map-style-toggle:hover,.map-style-toggle.active{border-color:rgba(204,204,204,.5);border-left-color:var(--accent2);color:var(--accent);background:#fff;box-shadow:0 3px 12px rgba(0,0,0,.15)}
 .map-style-dropdown{
   pointer-events:all;
   background:rgba(255,255,255,0.97);
