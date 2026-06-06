@@ -1547,7 +1547,7 @@ function animateMarkers(){
     if(!target) continue;
     let cur = markerCurrent[username];
     if(!cur){ markerCurrent[username] = [...target]; cur = markerCurrent[username]; }
-    const ALPHA = 0.08; // smoothing: più basso = più morbido
+    const ALPHA = 0.25; // smoothing: più basso = più morbido
     const dlat = target[0] - cur[0];
     const dlon = target[1] - cur[1];
     if(Math.abs(dlat) > 1e-9 || Math.abs(dlon) > 1e-9){
