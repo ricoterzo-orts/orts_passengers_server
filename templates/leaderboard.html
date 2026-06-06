@@ -247,7 +247,7 @@ td.servizio{text-align:center}
 /* Selettore stile ORM in basso a destra — a scomparsa */
 .map-style-panel{
   position:absolute;bottom:12px;left:12px;z-index:10;
-  display:flex;flex-direction:column;align-items:flex-end;
+  display:flex;flex-direction:column;align-items:flex-start;
   gap:6px;
   pointer-events:none;
 }
@@ -623,7 +623,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
           <div class="map-style-options" id="map-style-options"></div>
         </div>
         <button class="map-style-toggle" id="map-style-toggle" onclick="toggleStylePanel()" title="Stile mappa ferroviaria">
-          Stile binari
+          Stile mappa
         </button>
       </div>
     </div>
