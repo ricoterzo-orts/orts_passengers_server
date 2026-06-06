@@ -582,7 +582,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
     <div class="menu-wrap" id="menu-wrap" style="display:none;position:relative">
       <button class="nav-btn menu-toggle-btn" id="btn-menu" onclick="toggleMenu(event)" aria-expanded="false" aria-haspopup="true">Menù ▾</button>
       <div class="menu-dropdown" id="menu-dropdown" role="menu">
-        <a class="menu-item" href="https://download1472.mediafire.com/fa4cbg1pu7xgo0PTi853l079v6Eqfy2gvxDp6QX1tMmqpgOXqV6UARYakStLGQTQ-i2ySj6MlFbSDfWEl09GiOpdwDIiO10STW6sgWfEhwvisVMM_kSHBtxQiR7zzWK7m23z9P4cFo_dETMiDd43lMNnQLMj6lDKoma0dv9VXw/ifsib5znvc2rpk8/ORTS+Passengers.zip" download onclick="closeMenu()">
+        <a class="menu-item" href="https://download1472.mediafire.com/cuusr639wvlg4vo3g7WEI7GfWqSfwacc0_kUjh03WEIornFGYE8EldRojFQ5okpJnD9aMiVg3xRgkNO1usHXS86DfOThgVto1Bma7JHJ6MfRcahphi2IVtI3kYjNbwb8SQwn4EPfIZ9vf3ospiflLrN5S8oGsoZAV7WBhRKZuQ/ifsib5znvc2rpk8/ORTS+Passengers.zip" download onclick="closeMenu()">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><path d="M2 1a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8l4-4V2a1 1 0 0 0-1-1H2zm7 12v-3h3l-3 3zm-1-4V2h5v6H8zM2 2h4v11H2V2z"/></svg>
           ORTS Passengers
         </a>
@@ -1618,25 +1618,6 @@ function updateMap(users){
     const stations = u.stations || [];
     const userColor = getUserColor(u.username);
 
-    // Stazioni: pallino bianco con bordo del colore utente
-    // passate: bordo opaco | corrente: bordo pieno + più grande | future: bordo leggero
-    stations.forEach(st => {
-      const coord = getStationCoord(st.station_name);
-      if(!coord) return;
-      const isCurrent = st.is_current;
-      const isPassed  = st.passed;
-      const m = L.circleMarker([coord.lat, coord.lon], {
-        radius:      isCurrent ? 7 : 5,
-        color:       userColor,
-        weight:      isCurrent ? 3 : 2,
-        opacity:     isPassed ? 0.45 : 1,
-        fillColor:   '#ffffff',
-        fillOpacity: 1,
-      }).bindTooltip(st.station_name, {permanent: false, direction: 'top'})
-        .addTo(leafletMap);
-      stationMarkers.push(m);
-    });
-
     const pos = (u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1 && Math.abs(u.train_lon) > 0.1)
              ? [u.train_lat, u.train_lon]
              : interpolatePosition(stations, u.next_station)
@@ -1682,21 +1663,17 @@ function updateMap(users){
         </table>
       </div>`;
 
-      // Icona treno SVG: colore utente per riconoscimento, dot ritardo in basso a destra
+      // Icona treno: cerchio pieno colore utente, dot ritardo in basso a destra
       const trainDir = (u.train_dir != null && hasGPS) ? parseFloat(u.train_dir) : 0;
       const trainIcon = L.divIcon({
         className: '',
-        html: `<div style="position:relative;width:30px;height:30px">
-          <div style="transform:rotate(${trainDir}deg);transform-origin:center center;width:30px;height:30px;display:flex;align-items:center;justify-content:center">
-            <svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="15" cy="15" r="13" fill="${userColor}" stroke="#fff" stroke-width="2.5"/>
-              <text x="15" y="20" text-anchor="middle" font-size="14" fill="#fff" font-family="sans-serif">🚆</text>
-            </svg>
-          </div>
-          <div style="position:absolute;bottom:0;right:0;width:9px;height:9px;border-radius:50%;background:${markerColor};border:1.5px solid #fff"></div>
+        html: `<div style="position:relative;width:20px;height:20px">
+          <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="10" cy="10" r="9" fill="${markerColor}" stroke="#fff" stroke-width="2"/>
+          </svg>
         </div>`,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
         popupAnchor: [0, -16],
       });
 
