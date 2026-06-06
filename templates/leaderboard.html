@@ -246,7 +246,7 @@ td.servizio{text-align:center}
 
 /* Selettore stile ORM in basso a destra — a scomparsa */
 .map-style-panel{
-  position:absolute;bottom:12px;right:12px;z-index:10;
+  position:absolute;bottom:12px;left:12px;z-index:10;
   display:flex;flex-direction:column;align-items:flex-end;
   gap:6px;
   pointer-events:none;
@@ -319,11 +319,11 @@ td.servizio{text-align:center}
 /* Media queries mappa */
 @media(max-width:768px){
   .map-hero{height:400px}
-  .map-style-panel{bottom:8px;right:8px}
+  .map-style-panel{bottom:8px;left:8px}
 }
 @media(max-width:480px){
   .map-hero{height:300px;border-radius:4px}
-  .map-style-panel{bottom:6px;right:6px}
+  .map-style-panel{bottom:6px;left:6px}
 }
 
 /* ── FOOTER ── */
@@ -619,11 +619,10 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
       <!-- Selettore stile ORM in basso a destra (a scomparsa) -->
       <div class="map-style-panel" id="map-style-panel">
         <div class="map-style-dropdown" id="map-style-dropdown">
-          <div class="map-style-hdr">Stile mappa ferroviaria</div>
           <div class="map-style-options" id="map-style-options"></div>
         </div>
         <button class="map-style-toggle" id="map-style-toggle" onclick="toggleStylePanel()" title="Stile mappa ferroviaria">
-          &#x1F5FA; Stile binari
+          Stile binari
         </button>
       </div>
     </div>
