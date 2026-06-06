@@ -38,7 +38,7 @@
   --font-md: 'Futura','Trebuchet MS',sans-serif;
   --mono:    'Courier New',monospace;
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+.leaflet-marker-icon,.leaflet-marker-shadow{transition:transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94)!important}
 body{background:var(--bg);color:var(--white);font-family:var(--font);font-size:13px;min-height:100vh}
 
 /* ── HEADER ── */
@@ -1535,31 +1535,6 @@ document.addEventListener('click', e => {
   }
 });
 
-// ── Smooth marker animation ──
-const markerTargets = {};   // { username: [lat, lon] }
-const markerCurrent = {};   // { username: [lat, lon] }
-let animFrameId = null;
-
-function animateMarkers(){
-  let anyMoving = false;
-  for(const username of Object.keys(trainMarkers)){
-    const target = markerTargets[username];
-    if(!target) continue;
-    let cur = markerCurrent[username];
-    if(!cur){ markerCurrent[username] = [...target]; cur = markerCurrent[username]; }
-    const ALPHA = 0.25; // smoothing: più basso = più morbido
-    const dlat = target[0] - cur[0];
-    const dlon = target[1] - cur[1];
-    if(Math.abs(dlat) > 1e-9 || Math.abs(dlon) > 1e-9){
-      cur[0] += dlat * ALPHA;
-      cur[1] += dlon * ALPHA;
-      trainMarkers[username].setLatLng(cur);
-      anyMoving = true;
-    }
-  }
-  animFrameId = requestAnimationFrame(animateMarkers);
-}
-
 function updateMap(users){
   if(!leafletMap) initMap();
   document.getElementById('map-count').textContent = users.length + ' treni';
@@ -1626,21 +1601,12 @@ function updateMap(users){
         popupAnchor: [0, -16],
       });
 
-      // Imposta target per l'animazione lerp
-      markerTargets[u.username] = pos;
-
       if(trainMarkers[u.username]){
-        // Aggiorna icona e popup senza spostare il marker (ci pensa l'animazione)
+        trainMarkers[u.username].setLatLng(pos);
         trainMarkers[u.username].setIcon(trainIcon);
         trainMarkers[u.username].getPopup().setContent(popupHtml);
         trainMarkers[u.username].bringToFront();
-        // Prima volta: inizializza posizione corrente sul target
-        if(!markerCurrent[u.username]){
-          markerCurrent[u.username] = [...pos];
-          trainMarkers[u.username].setLatLng(pos);
-        }
       } else {
-        markerCurrent[u.username] = [...pos];
         trainMarkers[u.username] = L.marker(pos, { icon: trainIcon })
           .bindPopup(popupHtml).addTo(leafletMap);
       }
@@ -1652,15 +1618,10 @@ function updateMap(users){
     if(!users.find(u => u.username === username)){
       leafletMap.removeLayer(trainMarkers[username]);
       delete trainMarkers[username];
-      delete markerTargets[username];
-      delete markerCurrent[username];
     }
   });
 
   Object.values(trainMarkers).forEach(m => m.bringToFront());
-
-  // Avvia loop animazione se non già in corso
-  if(!animFrameId) animateMarkers();
 }
 
 async function loadStationCoords(){
