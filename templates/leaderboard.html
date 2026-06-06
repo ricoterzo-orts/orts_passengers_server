@@ -244,72 +244,15 @@ td.servizio{text-align:center}
 .map-empty{height:620px;background:var(--card);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--dimgrey);font-family:var(--font);font-size:11px}
 .map-empty .icon{font-size:32px;opacity:.3}
 
-/* Overlay panel sinistro stile Treniamo */
-.map-overlay-panel{
-  position:absolute;top:12px;left:12px;z-index:10;
-  display:flex;flex-direction:column;gap:8px;
+/* Selettore stile ORM in basso a destra — a scomparsa */
+.map-style-panel{
+  position:absolute;bottom:12px;right:12px;z-index:10;
+  display:flex;flex-direction:column;align-items:flex-end;
+  gap:6px;
   pointer-events:none;
 }
-.map-stat-card{
-  background:rgba(255,255,255,0.96);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  border:1px solid rgba(204,204,204,.5);
-  border-radius:6px;
-  padding:10px 14px;
-  box-shadow:0 2px 12px rgba(0,0,0,.12);
+.map-style-toggle{
   pointer-events:all;
-  min-width:160px;
-}
-.map-stat-card.accent-left{border-left:3px solid var(--accent)}
-.map-stat-title{font-family:var(--font-md);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--grey);margin-bottom:6px}
-.map-stat-row{display:flex;align-items:baseline;gap:6px}
-.map-stat-num{font-family:var(--font-md);font-size:22px;font-weight:500;line-height:1;color:var(--white)}
-.map-stat-lbl{font-family:var(--font);font-size:10px;color:var(--dimgrey)}
-.map-live-badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-md);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--green);font-weight:500}
-
-/* Pannello treni attivi in basso a sinistra */
-.map-trains-panel{
-  position:absolute;bottom:12px;left:12px;z-index:10;
-  max-width:260px;
-  background:rgba(255,255,255,0.96);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  border:1px solid rgba(204,204,204,.5);
-  border-radius:6px;
-  box-shadow:0 2px 12px rgba(0,0,0,.12);
-  overflow:hidden;
-  max-height:220px;
-  display:flex;
-  flex-direction:column;
-}
-.map-trains-hdr{
-  padding:8px 12px;
-  background:var(--accent);
-  font-family:var(--font-md);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#fff;font-weight:500;
-  display:flex;align-items:center;gap:5px;
-  flex-shrink:0;
-}
-.map-trains-body{overflow-y:auto;flex:1}
-.map-train-row{
-  display:flex;align-items:center;gap:8px;
-  padding:6px 12px;
-  border-bottom:1px solid rgba(204,204,204,.3);
-  font-family:var(--font);font-size:10px;color:var(--white);
-  cursor:pointer;transition:background .12s;
-}
-.map-train-row:last-child{border-bottom:none}
-.map-train-row:hover{background:rgba(206,27,38,.06)}
-.map-train-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.map-train-name{font-family:var(--font-md);font-weight:500;font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.map-train-spd{font-family:var(--font-md);font-size:10px;color:var(--accent);min-width:36px;text-align:right}
-
-/* Controllo layer ferrovie in alto a destra */
-.map-layer-ctrl{
-  position:absolute;top:12px;right:12px;z-index:10;
-  display:flex;flex-direction:column;gap:6px;align-items:flex-end;
-}
-.map-layer-btn{
   background:rgba(255,255,255,0.96);
   backdrop-filter:blur(10px);
   -webkit-backdrop-filter:blur(10px);
@@ -319,21 +262,29 @@ td.servizio{text-align:center}
   font-family:var(--font-md);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
   color:var(--grey);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.1);
   transition:all .15s;display:flex;align-items:center;gap:5px;
+  user-select:none;
 }
-.map-layer-btn:hover{border-color:var(--accent);color:var(--accent)}
-.map-layer-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(206,27,38,.06)}
-
-/* Selettore stile ORM in basso a destra */
-.map-style-panel{
-  position:absolute;bottom:12px;right:12px;z-index:10;
-  background:rgba(255,255,255,0.96);
+.map-style-toggle:hover,.map-style-toggle.active{border-color:var(--accent);color:var(--accent);background:rgba(206,27,38,.06)}
+.map-style-dropdown{
+  pointer-events:all;
+  background:rgba(255,255,255,0.97);
   backdrop-filter:blur(10px);
   -webkit-backdrop-filter:blur(10px);
   border:1px solid rgba(204,204,204,.5);
   border-radius:6px;
-  box-shadow:0 2px 12px rgba(0,0,0,.12);
+  box-shadow:0 2px 16px rgba(0,0,0,.15);
   overflow:hidden;
-  min-width:200px;
+  min-width:210px;
+  /* Fade-in dal basso */
+  opacity:0;
+  transform:translateY(10px);
+  pointer-events:none;
+  transition:opacity .2s ease, transform .2s ease;
+}
+.map-style-dropdown.open{
+  opacity:1;
+  transform:translateY(0);
+  pointer-events:all;
 }
 .map-style-hdr{
   padding:7px 12px;
@@ -368,16 +319,11 @@ td.servizio{text-align:center}
 /* Media queries mappa */
 @media(max-width:768px){
   .map-hero{height:400px}
-  .map-trains-panel{max-width:200px;max-height:160px}
-  .map-stat-num{font-size:18px}
-  .map-stat-card{min-width:130px;padding:8px 10px}
+  .map-style-panel{bottom:8px;right:8px}
 }
 @media(max-width:480px){
   .map-hero{height:300px;border-radius:4px}
-  .map-overlay-panel{top:8px;left:8px;gap:6px}
-  .map-stat-card{min-width:110px;padding:6px 8px}
-  .map-trains-panel{max-width:180px;bottom:8px;left:8px}
-  .map-layer-ctrl{top:8px;right:8px}
+  .map-style-panel{bottom:6px;right:6px}
 }
 
 /* ── FOOTER ── */
@@ -670,36 +616,15 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
       <!-- Mappa Leaflet -->
       <div id="live-map"></div>
 
-      <!-- Overlay in alto a sinistra: statistiche -->
-      <div class="map-overlay-panel">
-        <div class="map-stat-card accent-left">
-          <div class="map-stat-title"><span class="map-live-badge"><span class="pulse"></span>Live</span></div>
-          <div class="map-stat-row">
-            <div class="map-stat-num" id="map-stat-treni">0</div>
-            <div class="map-stat-lbl">treni in corsa</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Controlli layer in alto a destra -->
-      <div class="map-layer-ctrl">
-        <button class="map-layer-btn" id="btn-railway-layer" onclick="toggleRailwayLayer()" title="Mostra/nascondi binari ferroviari">
-          &#x1F6E4; Binari
-        </button>
-      </div>
-
-      <!-- Pannello treni in basso a sinistra -->
-      <div class="map-trains-panel" id="map-trains-panel">
-        <div class="map-trains-hdr"><span class="pulse"></span>&nbsp;Treni Attivi</div>
-        <div class="map-trains-body" id="map-trains-body">
-          <div style="padding:10px 12px;color:#aaa;font-size:10px;font-family:var(--font)">Nessun treno in corsa</div>
-        </div>
-      </div>
-
-      <!-- Selettore stile ORM in basso a destra -->
+      <!-- Selettore stile ORM in basso a destra (a scomparsa) -->
       <div class="map-style-panel" id="map-style-panel">
-        <div class="map-style-hdr">Stile mappa ferroviaria</div>
-        <div class="map-style-options" id="map-style-options"></div>
+        <div class="map-style-dropdown" id="map-style-dropdown">
+          <div class="map-style-hdr">Stile mappa ferroviaria</div>
+          <div class="map-style-options" id="map-style-options"></div>
+        </div>
+        <button class="map-style-toggle" id="map-style-toggle" onclick="toggleStylePanel()" title="Stile mappa ferroviaria">
+          &#x1F5FA; Stile binari
+        </button>
       </div>
     </div>
   </div>
@@ -1474,7 +1399,6 @@ async function loadLive(){
 
     renderLiveSection();
     updateMap(liveData);
-    updateMapSidebar(liveData);
   }catch(e){}
 }
 
@@ -1533,7 +1457,7 @@ function initMap(){
     maxZoom: 18,
     maxBounds: italyBounds,
     maxBoundsViscosity: 1.0,
-    zoomControl: true,
+    zoomControl: false,
     dragging: true,
     scrollWheelZoom: true,
     doubleClickZoom: true,
@@ -1546,7 +1470,7 @@ function initMap(){
     maxZoom: 18,
   }).addTo(leafletMap);
 
-  // Layer ferroviario OpenRailwayMap (attivo di default, come OR Map)
+  // Layer ferroviario OpenRailwayMap (sempre attivo)
   railwayLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
     attribution: '\u00a9 <a href="https://openrailwaymap.org">OpenRailwayMap</a>',
     maxZoom: 18,
@@ -1554,16 +1478,14 @@ function initMap(){
     subdomains: ['a','b','c'],
   }).addTo(leafletMap);
   railwayVisible = true;
-  const btn = document.getElementById('btn-railway-layer');
-  if(btn) btn.classList.add('active');
 
   // ── Selettore stile ORM ──
   const ORM_STYLES = [
-    { id: 'standard',    label: 'Infrastructure',                  url: 'https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png' },
-    { id: 'maxspeed',    label: 'Max speeds',                      url: 'https://{s}.tiles.openrailwaymap.org/maxspeed/{z}/{x}/{y}.png' },
-    { id: 'signals',     label: 'Signalling and train protection',  url: 'https://{s}.tiles.openrailwaymap.org/signals/{z}/{x}/{y}.png' },
-    { id: 'electrified', label: 'Electrification',                 url: 'https://{s}.tiles.openrailwaymap.org/electrified/{z}/{x}/{y}.png' },
-    { id: 'gauge',       label: 'Track gauge',                     url: 'https://{s}.tiles.openrailwaymap.org/gauge/{z}/{x}/{y}.png' },
+    { id: 'standard',    label: 'Infrastruttura',                  url: 'https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png' },
+    { id: 'maxspeed',    label: 'Velocità massima',                url: 'https://{s}.tiles.openrailwaymap.org/maxspeed/{z}/{x}/{y}.png' },
+    { id: 'signals',     label: 'Segnalamento',                    url: 'https://{s}.tiles.openrailwaymap.org/signals/{z}/{x}/{y}.png' },
+    { id: 'electrified', label: 'Elettrificazione',                url: 'https://{s}.tiles.openrailwaymap.org/electrified/{z}/{x}/{y}.png' },
+    { id: 'gauge',       label: 'Scartamento',                     url: 'https://{s}.tiles.openrailwaymap.org/gauge/{z}/{x}/{y}.png' },
   ];
   let activeOrmStyle = 'standard';
 
@@ -1595,53 +1517,150 @@ function initMap(){
   renderOrmStylePanel();
 }
 
-function toggleRailwayLayer(){
-  if(!leafletMap) return;
-  railwayVisible = !railwayVisible;
-  const btn = document.getElementById('btn-railway-layer');
-  if(railwayVisible){
-    railwayLayer.addTo(leafletMap);
-    btn.classList.add('active');
-  } else {
-    leafletMap.removeLayer(railwayLayer);
-    btn.classList.remove('active');
-  }
+function toggleStylePanel(){
+  const dd = document.getElementById('map-style-dropdown');
+  const btn = document.getElementById('map-style-toggle');
+  const open = dd.classList.toggle('open');
+  btn.classList.toggle('active', open);
 }
 
-function toggleStationLabels(){
-  stationLabelsVisible = !stationLabelsVisible;
-  const btn = document.getElementById('btn-stations-layer');
-  stationLabelMarkers.forEach(m => {
-    if(stationLabelsVisible) m.addTo(leafletMap);
-    else leafletMap.removeLayer(m);
+// Chiudi pannello stile se click fuori
+document.addEventListener('click', e => {
+  const panel = document.getElementById('map-style-panel');
+  if(panel && !panel.contains(e.target)){
+    const dd = document.getElementById('map-style-dropdown');
+    const btn = document.getElementById('map-style-toggle');
+    if(dd) dd.classList.remove('open');
+    if(btn) btn.classList.remove('active');
+  }
+});
+
+// ── Smooth marker animation ──
+const markerTargets = {};   // { username: [lat, lon] }
+const markerCurrent = {};   // { username: [lat, lon] }
+let animFrameId = null;
+
+function animateMarkers(){
+  let anyMoving = false;
+  for(const username of Object.keys(trainMarkers)){
+    const target = markerTargets[username];
+    if(!target) continue;
+    let cur = markerCurrent[username];
+    if(!cur){ markerCurrent[username] = [...target]; cur = markerCurrent[username]; }
+    const ALPHA = 0.08; // smoothing: più basso = più morbido
+    const dlat = target[0] - cur[0];
+    const dlon = target[1] - cur[1];
+    if(Math.abs(dlat) > 1e-9 || Math.abs(dlon) > 1e-9){
+      cur[0] += dlat * ALPHA;
+      cur[1] += dlon * ALPHA;
+      trainMarkers[username].setLatLng(cur);
+      anyMoving = true;
+    }
+  }
+  animFrameId = requestAnimationFrame(animateMarkers);
+}
+
+function updateMap(users){
+  if(!leafletMap) initMap();
+  document.getElementById('map-count').textContent = users.length + ' treni';
+
+  stationMarkers.forEach(m => leafletMap.removeLayer(m));
+  stationMarkers = [];
+
+  users.forEach(u => {
+    const stations = u.stations || [];
+    const userColor = getUserColor(u.username);
+
+    const pos = (u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1 && Math.abs(u.train_lon) > 0.1)
+             ? [u.train_lat, u.train_lon]
+             : interpolatePosition(stations, u.next_station)
+             || (u.next_station ? (() => { const c = getStationCoord(u.next_station); return c ? [c.lat, c.lon] : null; })() : null)
+             || (() => {
+                  const p = (stations||[]).filter(s=>s.passed);
+                  if(p.length){ const c=getStationCoord(p[p.length-1].station_name); if(c) return [c.lat,c.lon]; }
+                  return null;
+                })();
+
+    if(pos){
+      const delayMin = getDelayFromStations(u);
+      const markerColor = delayMin <= 5 ? '#007A3D' : delayMin <= 30 ? '#E07B00' : '#CE1B26';
+      const delayLabel = delayMin <= 0 ? 'in orario' : `+${Math.round(delayMin)} min`;
+      const trainNum = u.activity_name || u.username;
+      const hasGPS = u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1;
+      const gpsLabel = hasGPS
+        ? `<tr style="background:#f8f8f8"><td colspan="2" style="padding:4px 8px;font-size:9px;color:#888;font-family:var(--font);letter-spacing:.06em">📡 GPS live da OpenRails</td></tr>`
+        : `<tr style="background:#f8f8f8"><td colspan="2" style="padding:4px 8px;font-size:9px;color:#aaa;font-family:var(--font);letter-spacing:.06em">⚠ Posizione stimata</td></tr>`;
+      const popupHtml = `<div style="font-family:'Futura','Trebuchet MS',sans-serif;font-size:11px;min-width:220px;background:#fff;border-radius:2px;overflow:hidden">
+        <div style="background:${userColor};height:6px"></div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#E4E4E4">
+              <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Treno</th>
+              <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Ritardo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background:#fff">
+              <td style="padding:7px 8px;color:#2B2B2B;font-weight:500;white-space:nowrap">${trainNum}</td>
+              <td style="padding:7px 8px;white-space:nowrap">
+                <span style="display:inline-flex;align-items:center;gap:5px">
+                  <span style="width:8px;height:8px;border-radius:50%;background:${markerColor};flex-shrink:0;display:inline-block"></span>
+                  <span style="color:#2B2B2B">${delayLabel}</span>
+                </span>
+              </td>
+            </tr>
+            ${gpsLabel}
+          </tbody>
+        </table>
+      </div>`;
+
+      const trainIcon = L.divIcon({
+        className: '',
+        html: `<div style="position:relative;width:20px;height:20px">
+          <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="10" cy="10" r="9" fill="${markerColor}" stroke="#fff" stroke-width="2"/>
+          </svg>
+        </div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+        popupAnchor: [0, -16],
+      });
+
+      // Imposta target per l'animazione lerp
+      markerTargets[u.username] = pos;
+
+      if(trainMarkers[u.username]){
+        // Aggiorna icona e popup senza spostare il marker (ci pensa l'animazione)
+        trainMarkers[u.username].setIcon(trainIcon);
+        trainMarkers[u.username].getPopup().setContent(popupHtml);
+        trainMarkers[u.username].bringToFront();
+        // Prima volta: inizializza posizione corrente sul target
+        if(!markerCurrent[u.username]){
+          markerCurrent[u.username] = [...pos];
+          trainMarkers[u.username].setLatLng(pos);
+        }
+      } else {
+        markerCurrent[u.username] = [...pos];
+        trainMarkers[u.username] = L.marker(pos, { icon: trainIcon })
+          .bindPopup(popupHtml).addTo(leafletMap);
+      }
+    }
   });
-  btn.classList.toggle('active', stationLabelsVisible);
-}
 
-function updateMapSidebar(users){
-  // Aggiorna numero treni
-  const n = users.length;
-  const statEl = document.getElementById('map-stat-treni');
-  if(statEl) statEl.textContent = n;
+  // Rimuovi marker utenti offline
+  Object.keys(trainMarkers).forEach(username => {
+    if(!users.find(u => u.username === username)){
+      leafletMap.removeLayer(trainMarkers[username]);
+      delete trainMarkers[username];
+      delete markerTargets[username];
+      delete markerCurrent[username];
+    }
+  });
 
-  // Lista treni nel pannello inferiore
-  const body = document.getElementById('map-trains-body');
-  if(!body) return;
-  if(!users.length){
-    body.innerHTML = '<div style="padding:10px 12px;color:#aaa;font-size:10px;font-family:var(--font)">Nessun treno in corsa</div>';
-    return;
-  }
-  body.innerHTML = users.map(u => {
-    const delay = getDelayFromStations(u);
-    const dotColor = delay > 5 ? '#CE1B26' : delay > 0 ? '#E07B00' : '#007A3D';
-    const spd = u.speed_kmh ? Math.round(u.speed_kmh) + ' km/h' : '— km/h';
-    const serv = u.current_service || u.username;
-    return `<div class="map-train-row" onclick="if(trainMarkers['${u.username}']){leafletMap.panTo(trainMarkers['${u.username}'].getLatLng());trainMarkers['${u.username}'].openPopup();}">
-      <div class="map-train-dot" style="background:${dotColor}"></div>
-      <div class="map-train-name" title="${serv}">${u.username}</div>
-      <div class="map-train-spd">${spd}</div>
-    </div>`;
-  }).join('');
+  Object.values(trainMarkers).forEach(m => m.bringToFront());
+
+  // Avvia loop animazione se non già in corso
+  if(!animFrameId) animateMarkers();
 }
 
 async function loadStationCoords(){
@@ -1681,8 +1700,6 @@ function interpolatePosition(stations, nextStation){
 }
 
 // ── Helper: ricava il ritardo aggiornato dalla timetable delle fermate ──
-// Prende il delay_min dell'ultima fermata passata che ha un valore valido.
-// Fallback: u.delay_min generico dal client.
 function getDelayFromStations(u){
   const stations = u.stations || [];
   const passedWithDelay = stations.filter(s => s.passed && s.delay_min != null);
@@ -1690,100 +1707,6 @@ function getDelayFromStations(u){
     return passedWithDelay[passedWithDelay.length - 1].delay_min;
   }
   return u.delay_min || 0;
-}
-
-function updateMap(users){
-  if(!leafletMap) initMap();
-  document.getElementById('map-count').textContent = users.length + ' treni';
-
-  stationMarkers.forEach(m => leafletMap.removeLayer(m));
-  stationMarkers = [];
-
-  users.forEach(u => {
-    const stations = u.stations || [];
-    const userColor = getUserColor(u.username);
-
-    const pos = (u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1 && Math.abs(u.train_lon) > 0.1)
-             ? [u.train_lat, u.train_lon]
-             : interpolatePosition(stations, u.next_station)
-             || (u.next_station ? (() => { const c = getStationCoord(u.next_station); return c ? [c.lat, c.lon] : null; })() : null)
-             || (() => {
-                  const p = (stations||[]).filter(s=>s.passed);
-                  if(p.length){ const c=getStationCoord(p[p.length-1].station_name); if(c) return [c.lat,c.lon]; }
-                  return null;
-                })();
-
-    if(pos){
-      // ── RITARDO: legge dall'ultima fermata passata nella timetable ──
-      const delayMin = getDelayFromStations(u);
-      const markerColor = delayMin <= 5 ? '#007A3D' : delayMin <= 30 ? '#E07B00' : '#CE1B26';
-      const delayLabel = delayMin <= 0 ? 'in orario' : `+${Math.round(delayMin)} min`;
-      const trainNum = u.activity_name || u.username;
-      const hasGPS = u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1;
-      const userColor = getUserColor(u.username);
-      const gpsLabel = hasGPS
-        ? `<tr style="background:#f8f8f8"><td colspan="2" style="padding:4px 8px;font-size:9px;color:#888;font-family:var(--font);letter-spacing:.06em">📡 GPS live da OpenRails</td></tr>`
-        : `<tr style="background:#f8f8f8"><td colspan="2" style="padding:4px 8px;font-size:9px;color:#aaa;font-family:var(--font);letter-spacing:.06em">⚠ Posizione stimata</td></tr>`;
-      const popupHtml = `<div style="font-family:'Futura','Trebuchet MS',sans-serif;font-size:11px;min-width:220px;background:#fff;border-radius:2px;overflow:hidden">
-        <div style="background:${userColor};height:6px"></div>
-        <table style="width:100%;border-collapse:collapse">
-          <thead>
-            <tr style="background:#E4E4E4">
-              <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Treno</th>
-              <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Ritardo</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style="background:#fff">
-              <td style="padding:7px 8px;color:#2B2B2B;font-weight:500;white-space:nowrap">${trainNum}</td>
-              <td style="padding:7px 8px;white-space:nowrap">
-                <span style="display:inline-flex;align-items:center;gap:5px">
-                  <span style="width:8px;height:8px;border-radius:50%;background:${markerColor};flex-shrink:0;display:inline-block"></span>
-                  <span style="color:#2B2B2B">${delayLabel}</span>
-                </span>
-              </td>
-            </tr>
-            ${gpsLabel}
-          </tbody>
-        </table>
-      </div>`;
-
-      // Icona treno: cerchio pieno colore utente, dot ritardo in basso a destra
-      const trainDir = (u.train_dir != null && hasGPS) ? parseFloat(u.train_dir) : 0;
-      const trainIcon = L.divIcon({
-        className: '',
-        html: `<div style="position:relative;width:20px;height:20px">
-          <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="10" cy="10" r="9" fill="${markerColor}" stroke="#fff" stroke-width="2"/>
-          </svg>
-        </div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
-        popupAnchor: [0, -16],
-      });
-
-      if(trainMarkers[u.username]){
-        trainMarkers[u.username].setLatLng(pos);
-        trainMarkers[u.username].setIcon(trainIcon);
-        trainMarkers[u.username].getPopup().setContent(popupHtml);
-        trainMarkers[u.username].bringToFront();
-      } else {
-        trainMarkers[u.username] = L.marker(pos, { icon: trainIcon })
-          .bindPopup(popupHtml).addTo(leafletMap);
-      }
-    }
-  });
-
-  // Rimuovi marker utenti offline
-  Object.keys(trainMarkers).forEach(username => {
-    if(!users.find(u => u.username === username)){
-      leafletMap.removeLayer(trainMarkers[username]);
-      delete trainMarkers[username];
-    }
-  });
-
-  // Garantisce che i pallini treno stiano sempre sopra le stazioni
-  Object.values(trainMarkers).forEach(m => m.bringToFront());
 }
 
 // ── Drawer storico utente ──
