@@ -10,8 +10,8 @@
 <style>
 @font-face {
   font-family: 'Futura';
-  src: url('/static/FuturaCyrillicLight.woff2') format('woff2'),
-       url('/static/FuturaCyrillicLight.woff') format('woff');
+  src: url('/static/futur.woff2') format('woff2'),
+       url('/static/futur.ttf') format('truetype');
   font-weight: normal;
 }
 @font-face {
@@ -34,8 +34,8 @@
   --green:   #007A3D;
   --amber:   #E07B00;
   --red:     #CE1B26;
-  --font:    'Futura',sans-serif;
-  --font-md: 'Futura',sans-serif;
+  --font:    'Futura','Trebuchet MS',sans-serif;
+  --font-md: 'Futura','Trebuchet MS',sans-serif;
   --mono:    'Courier New',monospace;
 }
 .leaflet-marker-icon,.leaflet-marker-shadow{transition:transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94)!important}
@@ -1169,7 +1169,7 @@ function drawSpeedChart(u){
   function drawBase2(cxhair){
     ctx2.clearRect(0,0,W,H);
     if(!history.length){
-      ctx2.fillStyle='#AAAAAA';ctx2.font='10px Futura,sans-serif';ctx2.textAlign='center';
+      ctx2.fillStyle='#AAAAAA';ctx2.font='10px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='center';
       ctx2.fillText('Dati non ancora disponibili',W/2,50);return;
     }
     const n=history.length;
@@ -1208,7 +1208,7 @@ function drawSpeedChart(u){
     ctx2.restore();
 
     // Y labels (outside clip)
-    ctx2.fillStyle='#AAAAAA';ctx2.font='8px Futura,sans-serif';ctx2.textAlign='right';
+    ctx2.fillStyle='#AAAAAA';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='right';
     [0,.5,1].forEach(f=>{
       const v=minSpd+f*range;
       ctx2.fillText(Math.round(v),pad.l-4,toY(v)+3);
@@ -1243,7 +1243,7 @@ function drawSpeedChart(u){
     ctx2.fillStyle='#CE1B26';ctx2.fill();
 
     // x-axis time labels
-    ctx2.fillStyle='#AAAAAA';ctx2.font='8px Futura,sans-serif';ctx2.textAlign='center';
+    ctx2.fillStyle='#AAAAAA';ctx2.font='8px Futura,\'Trebuchet MS\',sans-serif';ctx2.textAlign='center';
     [0,Math.floor(visHistory.length/2),visHistory.length-1].forEach(i=>{
       if(visHistory[i]&&visHistory[i].sim_time)
         ctx2.fillText(visHistory[i].sim_time,toX(i),H-4);
@@ -1565,7 +1565,7 @@ function updateMap(users){
       const gpsLabel = hasGPS
         ? `<tr style="background:#f8f8f8"><td colspan="2" style="padding:4px 8px;font-size:9px;color:#888;font-family:var(--font);letter-spacing:.06em">📡 GPS live da OpenRails</td></tr>`
         : `<tr style="background:#f8f8f8"><td colspan="2" style="padding:4px 8px;font-size:9px;color:#aaa;font-family:var(--font);letter-spacing:.06em">⚠ Posizione stimata</td></tr>`;
-      const popupHtml = `<div style="font-family:'Futura',sans-serif;font-size:11px;min-width:220px;background:#fff;border-radius:2px;overflow:hidden">
+      const popupHtml = `<div style="font-family:'Futura','Trebuchet MS',sans-serif;font-size:11px;min-width:220px;background:#fff;border-radius:2px;overflow:hidden">
         <div style="background:${userColor};height:6px"></div>
         <table style="width:100%;border-collapse:collapse">
           <thead>
