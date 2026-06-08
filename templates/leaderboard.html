@@ -1995,5 +1995,120 @@ setInterval(loadStationCoords,300000);
     </div>
   </div>
 </div>
+
+<!-- ── POPUP LANCIO ── -->
+<style>
+#launch-popup {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 320px;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.12);
+  overflow: hidden;
+  z-index: 9999;
+  transform: translateX(110%);
+  opacity: 0;
+  transition: transform 0.55s cubic-bezier(0.22,1,0.36,1), opacity 0.45s ease;
+  border-top: 3px solid var(--accent);
+}
+#launch-popup.popup-visible {
+  transform: translateX(0);
+  opacity: 1;
+}
+#launch-popup.popup-hidden {
+  transform: translateX(110%);
+  opacity: 0;
+}
+#launch-popup img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+}
+.popup-body {
+  padding: 14px 16px 16px;
+}
+.popup-date-badge {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-md);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 2px;
+  margin-bottom: 9px;
+}
+.popup-body p {
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--white);
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+.popup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.popup-close {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--dimgrey);
+  cursor: pointer;
+  font-family: var(--font);
+  padding: 0;
+  text-decoration: underline;
+}
+.popup-close:hover { color: var(--grey); }
+
+</style>
+
+<div id="launch-popup" role="dialog" aria-label="Annuncio lancio ViaggiaTreno Virtual">
+  <img src="https://i.postimg.cc/1X4rDtgJ/Gemini-Generated-Image-ruolbkruolbkruol.jpg" alt="ViaggiaTreno Virtual Launch">
+  <div class="popup-body">
+    <div class="popup-date-badge">14 Giugno · 18:00 – 22:00</div>
+    <p>Partecipa al lancio di <strong>ViaggiaTreno Virtual!</strong> Scopri la nuova piattaforma per Open Rails con simulazione in tempo reale e adrenalina pura. Prendi i comandi, la tua prossima avventura comincia ora!</p>
+    <div class="popup-footer">
+      <button class="popup-close" onclick="dismissLaunchPopup()">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var STORAGE_KEY = 'vtv_launch_popup_dismissed';
+  var popup = document.getElementById('launch-popup');
+
+  function showPopup() {
+    // Small delay so the slide feels intentional
+    setTimeout(function() {
+      popup.classList.add('popup-visible');
+    }, 1800);
+  }
+
+  function dismissLaunchPopup() {
+    popup.classList.remove('popup-visible');
+    popup.classList.add('popup-hidden');
+    try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch(e) {}
+  }
+
+  window.dismissLaunchPopup = dismissLaunchPopup;
+
+  // Show unless already dismissed this session
+  try {
+    if (!sessionStorage.getItem(STORAGE_KEY)) showPopup();
+  } catch(e) {
+    showPopup();
+  }
+})();
+</script>
+
 </body>
 </html>
