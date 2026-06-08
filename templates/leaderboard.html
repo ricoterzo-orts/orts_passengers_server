@@ -254,6 +254,11 @@ td.servizio{text-align:center}
 .users-sort-btn:hover{border-color:var(--accent);color:var(--accent)}
 .users-sort-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .users-sort-arrow{font-size:9px;opacity:.8}
+.users-filter-online{padding:3px 9px;background:var(--panel);border:1px solid var(--border);color:var(--grey);font-family:var(--font-md);font-size:10px;font-weight:500;letter-spacing:.05em;cursor:pointer;border-radius:2px;transition:all .12s;display:none;align-items:center;gap:5px;white-space:nowrap;margin-left:auto}
+.users-filter-online.visible{display:flex}
+.users-filter-online.active{background:var(--green);border-color:var(--green);color:#fff}
+.users-filter-online:hover:not(.active){border-color:var(--green);color:var(--green)}
+.users-filter-online .filter-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 1.5s infinite}
 .users-modal-body{overflow-y:auto;flex:1;padding:4px 0}
 .users-modal-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid rgba(204,204,204,.3);transition:background .1s;cursor:default}
 .users-modal-row:last-child{border-bottom:none}
@@ -1757,6 +1762,7 @@ function closeDrawer(){
 let allUsersCache = [];
 let usersSortKey = 'nome';
 let usersSortAsc = true;
+let usersFilterOnline = false;
 
 async function openUsersPopup(){
   document.getElementById('overlay-users').classList.add('open');
@@ -1764,11 +1770,17 @@ async function openUsersPopup(){
   const body=document.getElementById('users-popup-body');
   body.innerHTML='<div class="users-modal-loading">Caricamento...</div>';
   document.getElementById('users-search-input').value='';
+  usersFilterOnline=false;
+  document.getElementById('filter-btn-online').classList.remove('active');
 
   try{
     const r=await fetch('/api/users');
     const users=await r.json();
     allUsersCache=users;
+    // Mostra bottone online solo se almeno un utente è online
+    const anyOnline=users.some(u=>u.online);
+    const btn=document.getElementById('filter-btn-online');
+    btn.classList.toggle('visible', anyOnline);
     renderUsersPopup(getSortedFiltered(''));
   }catch(e){
     body.innerHTML='<div class="users-modal-empty" style="color:var(--red)">Errore caricamento utenti.</div>';
@@ -1793,19 +1805,28 @@ function setUsersSort(key){
   renderUsersPopup(getSortedFiltered(q), q);
 }
 
+function toggleOnlineFilter(){
+  usersFilterOnline=!usersFilterOnline;
+  const btn=document.getElementById('filter-btn-online');
+  btn.classList.toggle('active', usersFilterOnline);
+  const q=document.getElementById('users-search-input').value;
+  renderUsersPopup(getSortedFiltered(q), q);
+}
+
 function getSortedFiltered(query){
   const q=query.toLowerCase().trim();
-  let list=q?allUsersCache.filter(u=>u.username.toLowerCase().includes(q)):allUsersCache.slice();
+  let list=allUsersCache.slice();
+  if(q) list=list.filter(u=>u.username.toLowerCase().includes(q));
+  if(usersFilterOnline) list=list.filter(u=>u.online);
   list.sort((a,b)=>{
-    let va,vb;
     if(usersSortKey==='nome'){
-      va=a.username.toLowerCase(); vb=b.username.toLowerCase();
+      const va=a.username.toLowerCase(), vb=b.username.toLowerCase();
       return usersSortAsc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);
     } else if(usersSortKey==='data'){
-      va=a.created_at||''; vb=b.created_at||'';
+      const va=a.created_at||'', vb=b.created_at||'';
       return usersSortAsc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);
     } else {
-      va=parseFloat(a.punteggio||0); vb=parseFloat(b.punteggio||0);
+      const va=parseFloat(a.punteggio||0), vb=parseFloat(b.punteggio||0);
       return usersSortAsc?(va-vb):(vb-va);
     }
   });
@@ -1814,24 +1835,24 @@ function getSortedFiltered(query){
 
 function followOnMap(username){
   closeUsersPopup();
-  // Scrolla alla mappa
-  const mapEl = document.getElementById('map-section');
-  if(mapEl) mapEl.scrollIntoView({behavior:'smooth', block:'start'});
-  // Trova il treno in liveData
-  const user = liveData.find(u => u.username === username);
-  if(!user || !leafletMap) return;
-  const stations = user.stations || [];
-  const pos = (user.train_lat && user.train_lon && Math.abs(user.train_lat) > 0.1 && Math.abs(user.train_lon) > 0.1)
-    ? [user.train_lat, user.train_lon]
-    : interpolatePosition(stations, user.next_station)
-      || (stations.length ? null : null);
-  if(!pos || (!pos[0] && !pos[1])) return;
-  // FlyTo e apri popup marker
-  leafletMap.flyTo(pos, 12, {animate:true, duration:1.2});
+  // Aspetta che il popup si chiuda e overflow venga ripristinato prima di scrollare
   setTimeout(()=>{
-    const marker = trainMarkers[username];
-    if(marker) marker.openPopup();
-  }, 1400);
+    const mapEl = document.getElementById('map-section');
+    if(mapEl) mapEl.scrollIntoView({behavior:'smooth', block:'start'});
+    // Trova il treno in liveData
+    const user = liveData.find(u => u.username === username);
+    if(!user || !leafletMap) return;
+    const stations = user.stations || [];
+    const pos = (user.train_lat && user.train_lon && Math.abs(user.train_lat) > 0.1 && Math.abs(user.train_lon) > 0.1)
+      ? [user.train_lat, user.train_lon]
+      : interpolatePosition(stations, user.next_station);
+    if(!pos || (!pos[0] && !pos[1])) return;
+    leafletMap.flyTo(pos, 12, {animate:true, duration:1.2});
+    setTimeout(()=>{
+      const marker = trainMarkers[username];
+      if(marker) marker.openPopup();
+    }, 1400);
+  }, 120);
 }
 
 function closeUsersPopup(){
@@ -1967,6 +1988,7 @@ setInterval(loadStationCoords,300000);
       <button class="users-sort-btn active" id="sort-btn-nome" onclick="setUsersSort('nome')">Nome <span class="users-sort-arrow" id="sort-arrow-nome">↑</span></button>
       <button class="users-sort-btn" id="sort-btn-data" onclick="setUsersSort('data')">Data <span class="users-sort-arrow" id="sort-arrow-data"></span></button>
       <button class="users-sort-btn" id="sort-btn-punteggio" onclick="setUsersSort('punteggio')">Punteggio <span class="users-sort-arrow" id="sort-arrow-punteggio"></span></button>
+      <button class="users-filter-online" id="filter-btn-online" onclick="toggleOnlineFilter()"><span class="filter-dot"></span>Online</button>
     </div>
     <div class="users-modal-body" id="users-popup-body">
       <div class="users-modal-loading">Caricamento...</div>
