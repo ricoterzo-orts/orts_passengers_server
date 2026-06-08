@@ -1819,6 +1819,13 @@ function filterUsers(query){
   renderUsersPopup(getSortedFiltered(query), query);
 }
 
+function fmtDate(iso){
+  if(!iso) return '—';
+  const p=iso.slice(0,10).split('-');
+  if(p.length<3) return iso.slice(0,10);
+  return p[2]+'/'+p[1]+'/'+p[0].slice(2);
+}
+
 function renderUsersPopup(users, query=''){
   const body=document.getElementById('users-popup-body');
   document.getElementById('users-popup-count').textContent=users.length;
@@ -1843,7 +1850,7 @@ function renderUsersPopup(users, query=''){
     const subInfo=hasCorse
       ?(gradeText?`<div class="users-modal-grade">${gradeText} · ${u.corse} cors${u.corse===1?'a':'e'}</div>`
                  :`<div class="users-modal-grade">${u.corse} cors${u.corse===1?'a':'e'}</div>`)
-      :(u.created_at?`<div class="users-modal-grade">Iscritto il ${u.created_at.slice(0,10)}</div>`:'');
+      :(u.created_at?`<div class="users-modal-grade">Iscritto il ${fmtDate(u.created_at)}</div>`:'');
     return`<div class="users-modal-row">
       <div class="users-modal-row-left">
         <div class="users-modal-avatar" style="background:${avatarColor}22;border-color:${avatarColor}44;color:${avatarColor}">${initials}</div>
