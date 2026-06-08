@@ -1834,25 +1834,33 @@ function getSortedFiltered(query){
 }
 
 function followOnMap(username){
-  closeUsersPopup();
-  // Aspetta che il popup si chiuda e overflow venga ripristinato prima di scrollare
-  setTimeout(()=>{
+  // 1. Chiudi popup e ripristina overflow immediatamente
+  document.getElementById('overlay-users').classList.remove('open');
+  document.body.style.overflow = '';
+
+  // 2. Trova posizione treno subito (prima del timeout)
+  const user = liveData.find(u => u.username === username);
+  const stations = user ? (user.stations || []) : [];
+  const pos = user && user.train_lat && user.train_lon && Math.abs(user.train_lat) > 0.1 && Math.abs(user.train_lon) > 0.1
+    ? [user.train_lat, user.train_lon]
+    : (user ? interpolatePosition(stations, user.next_station) : null);
+
+  // 3. Scrolla alla mappa nel prossimo frame, poi flyTo
+  requestAnimationFrame(()=>{
     const mapEl = document.getElementById('map-section');
-    if(mapEl) mapEl.scrollIntoView({behavior:'smooth', block:'start'});
-    // Trova il treno in liveData
-    const user = liveData.find(u => u.username === username);
-    if(!user || !leafletMap) return;
-    const stations = user.stations || [];
-    const pos = (user.train_lat && user.train_lon && Math.abs(user.train_lat) > 0.1 && Math.abs(user.train_lon) > 0.1)
-      ? [user.train_lat, user.train_lon]
-      : interpolatePosition(stations, user.next_station);
-    if(!pos || (!pos[0] && !pos[1])) return;
-    leafletMap.flyTo(pos, 12, {animate:true, duration:1.2});
+    if(mapEl){
+      const top = mapEl.getBoundingClientRect().top + window.pageYOffset - 10;
+      window.scrollTo({top, behavior:'smooth'});
+    }
+    if(!pos || !leafletMap) return;
     setTimeout(()=>{
-      const marker = trainMarkers[username];
-      if(marker) marker.openPopup();
-    }, 1400);
-  }, 120);
+      leafletMap.flyTo(pos, 12, {animate:true, duration:1.2});
+      setTimeout(()=>{
+        const marker = trainMarkers[username];
+        if(marker) marker.openPopup();
+      }, 1400);
+    }, 400);
+  });
 }
 
 function closeUsersPopup(){
