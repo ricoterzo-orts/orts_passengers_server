@@ -507,6 +507,33 @@ def api_users_count():
             row = fetchone(cur)
     return jsonify({"count": row["count"] if row else 0})
 
+@app.route("/api/users")
+def api_users():
+    """Lista tutti gli utenti registrati con statistiche aggregate (pubblica, senza dati sensibili)."""
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    u.username,
+                    u.created_at::text                   AS created_at,
+                    COALESCE(us.affidabilita, 0)         AS punteggio,
+                    COALESCE(us.grade, '')               AS grade,
+                    COUNT(s.id)                          AS corse,
+                    CASE
+                        WHEN h.last_seen >= NOW() - INTERVAL '2 minutes'
+                        THEN 1 ELSE 0
+                    END                                  AS online
+                FROM users u
+                LEFT JOIN user_stats us ON us.user_id = u.id
+                LEFT JOIN sessions   s  ON s.user_id  = u.id
+                LEFT JOIN heartbeats h  ON h.user_id  = u.id
+                GROUP BY u.id, u.username, u.created_at,
+                         us.affidabilita, us.grade, h.last_seen
+                ORDER BY u.username ASC
+            """)
+            rows = fetchall(cur)
+    return jsonify(rows)
+
 @app.route("/api/my_sessions")
 def api_my_sessions():
     if "user_id" not in session:
