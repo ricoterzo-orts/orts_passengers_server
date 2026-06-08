@@ -271,8 +271,6 @@ td.servizio{text-align:center}
 .users-modal-score{font-family:var(--font-md);font-size:13px;font-weight:500;line-height:1}
 .users-modal-corse{font-family:var(--font);font-size:9px;color:var(--dimgrey);text-align:right;margin-top:1px}
 .users-online-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite;flex-shrink:0}
-.users-follow-btn{display:inline-flex;align-items:center;gap:3px;font-family:var(--font-md);font-size:9px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--green);background:rgba(0,122,61,.08);border:1px solid rgba(0,122,61,.25);border-radius:2px;padding:2px 7px;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
-.users-follow-btn:hover{background:rgba(0,122,61,.18);border-color:var(--green)}
 .users-modal-empty{text-align:center;padding:30px;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
 .users-modal-loading{display:flex;align-items:center;justify-content:center;padding:30px;gap:8px;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
 
@@ -1833,36 +1831,6 @@ function getSortedFiltered(query){
   return list;
 }
 
-function followOnMap(username){
-  // 1. Chiudi popup e ripristina overflow immediatamente
-  document.getElementById('overlay-users').classList.remove('open');
-  document.body.style.overflow = '';
-
-  // 2. Trova posizione treno subito (prima del timeout)
-  const user = liveData.find(u => u.username === username);
-  const stations = user ? (user.stations || []) : [];
-  const pos = user && user.train_lat && user.train_lon && Math.abs(user.train_lat) > 0.1 && Math.abs(user.train_lon) > 0.1
-    ? [user.train_lat, user.train_lon]
-    : (user ? interpolatePosition(stations, user.next_station) : null);
-
-  // 3. Scrolla alla mappa nel prossimo frame, poi flyTo
-  requestAnimationFrame(()=>{
-    const mapEl = document.getElementById('map-section');
-    if(mapEl){
-      const top = mapEl.getBoundingClientRect().top + window.pageYOffset - 10;
-      window.scrollTo({top, behavior:'smooth'});
-    }
-    if(!pos || !leafletMap) return;
-    setTimeout(()=>{
-      leafletMap.flyTo(pos, 12, {animate:true, duration:1.2});
-      setTimeout(()=>{
-        const marker = trainMarkers[username];
-        if(marker) marker.openPopup();
-      }, 1400);
-    }, 400);
-  });
-}
-
 function closeUsersPopup(){
   document.getElementById('overlay-users').classList.remove('open');
   document.body.style.overflow='';
@@ -1896,10 +1864,7 @@ function renderUsersPopup(users, query=''){
     const hasCorse=u.corse>0;
     const hasScore=!isNaN(sc)&&sc>0&&hasCorse;
     const gradeText=u.grade||'';
-    const onlineDot=u.online
-      ?`<span class="users-online-dot" title="Online ora"></span>
-        <button class="users-follow-btn" onclick="followOnMap(${JSON.stringify(u.username)})">segui sulla mappa</button>`
-      :'';
+    const onlineDot=u.online?`<span class="users-online-dot" title="Online ora"></span>`:'';
     const scoreHtml=hasScore
       ?`<div class="users-modal-score" style="color:${scoreColor(sc)}">${sc.toFixed(1)}<span style="font-size:9px;opacity:.5">/100</span></div>`
       :`<div class="users-modal-score" style="color:var(--dimgrey);font-size:11px">Nessuna corsa</div>`;
