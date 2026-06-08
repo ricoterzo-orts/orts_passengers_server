@@ -237,8 +237,8 @@ td.servizio{text-align:center}
 .delete-no{flex:1;padding:5px;background:var(--panel);color:var(--grey);border:1px solid var(--border);font-family:var(--font-md);font-size:11px;cursor:pointer;border-radius:1px}
 
 /* ── POPUP UTENTI REGISTRATI ── */
-#lb-registered{cursor:pointer;transition:color .15s;text-decoration:none;color:inherit;border-bottom:1px dashed var(--dimgrey)}
-#lb-registered:hover{color:var(--accent);border-bottom-color:var(--accent)}
+#lb-registered{cursor:pointer;transition:color .15s;text-decoration:none;color:inherit}
+#lb-registered:hover{color:var(--accent)}
 .users-modal{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--accent);border-radius:2px;width:100%;max-width:460px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.2);animation:fi .15s ease}
 .users-modal-hdr{padding:8px 14px;background:var(--accent2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .users-modal-title{font-size:12px;font-weight:500;font-family:var(--font-md);letter-spacing:.06em;text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:8px}
@@ -248,6 +248,12 @@ td.servizio{text-align:center}
 .users-modal-search{padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
 .users-modal-search input{width:100%;box-sizing:border-box;padding:5px 9px;background:var(--bg);border:1px solid var(--border);color:var(--white);font-family:var(--font);font-size:12px;border-radius:1px;outline:none;transition:border-color .15s}
 .users-modal-search input:focus{border-color:var(--accent)}
+.users-modal-toolbar{display:flex;align-items:center;gap:6px;padding:7px 14px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0}
+.users-sort-lbl{font-family:var(--font);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dimgrey);flex-shrink:0}
+.users-sort-btn{padding:3px 9px;background:var(--panel);border:1px solid var(--border);color:var(--grey);font-family:var(--font-md);font-size:10px;font-weight:500;letter-spacing:.05em;cursor:pointer;border-radius:2px;transition:all .12s;display:flex;align-items:center;gap:3px;white-space:nowrap}
+.users-sort-btn:hover{border-color:var(--accent);color:var(--accent)}
+.users-sort-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.users-sort-arrow{font-size:9px;opacity:.8}
 .users-modal-body{overflow-y:auto;flex:1;padding:4px 0}
 .users-modal-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid rgba(204,204,204,.3);transition:background .1s;cursor:default}
 .users-modal-row:last-child{border-bottom:none}
@@ -1747,6 +1753,8 @@ function closeDrawer(){
 }
 // ── Popup utenti registrati ──
 let allUsersCache = [];
+let usersSortKey = 'nome';
+let usersSortAsc = true;
 
 async function openUsersPopup(){
   document.getElementById('overlay-users').classList.add('open');
@@ -1759,10 +1767,47 @@ async function openUsersPopup(){
     const r=await fetch('/api/users');
     const users=await r.json();
     allUsersCache=users;
-    renderUsersPopup(users);
+    renderUsersPopup(getSortedFiltered(''));
   }catch(e){
     body.innerHTML='<div class="users-modal-empty" style="color:var(--red)">Errore caricamento utenti.</div>';
   }
+}
+
+function setUsersSort(key){
+  if(usersSortKey===key){ usersSortAsc=!usersSortAsc; }
+  else{ usersSortKey=key; usersSortAsc=(key!=='punteggio'); }
+  ['nome','data','punteggio'].forEach(k=>{
+    const btn=document.getElementById('sort-btn-'+k);
+    const arrow=document.getElementById('sort-arrow-'+k);
+    if(k===usersSortKey){
+      btn.classList.add('active');
+      arrow.textContent=usersSortAsc?'↑':'↓';
+    } else {
+      btn.classList.remove('active');
+      arrow.textContent='';
+    }
+  });
+  const q=document.getElementById('users-search-input').value;
+  renderUsersPopup(getSortedFiltered(q), q);
+}
+
+function getSortedFiltered(query){
+  const q=query.toLowerCase().trim();
+  let list=q?allUsersCache.filter(u=>u.username.toLowerCase().includes(q)):allUsersCache.slice();
+  list.sort((a,b)=>{
+    let va,vb;
+    if(usersSortKey==='nome'){
+      va=a.username.toLowerCase(); vb=b.username.toLowerCase();
+      return usersSortAsc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);
+    } else if(usersSortKey==='data'){
+      va=a.created_at||''; vb=b.created_at||'';
+      return usersSortAsc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);
+    } else {
+      va=parseFloat(a.punteggio||0); vb=parseFloat(b.punteggio||0);
+      return usersSortAsc?(va-vb):(vb-va);
+    }
+  });
+  return list;
 }
 
 function closeUsersPopup(){
@@ -1771,9 +1816,7 @@ function closeUsersPopup(){
 }
 
 function filterUsers(query){
-  const q=query.toLowerCase().trim();
-  const filtered=q?allUsersCache.filter(u=>u.username.toLowerCase().includes(q)):allUsersCache;
-  renderUsersPopup(filtered, q);
+  renderUsersPopup(getSortedFiltered(query), query);
 }
 
 function renderUsersPopup(users, query=''){
@@ -1884,6 +1927,12 @@ setInterval(loadStationCoords,300000);
     </div>
     <div class="users-modal-search">
       <input type="text" id="users-search-input" placeholder="Cerca username..." oninput="filterUsers(this.value)" autocomplete="off">
+    </div>
+    <div class="users-modal-toolbar">
+      <span class="users-sort-lbl">Ordina:</span>
+      <button class="users-sort-btn active" id="sort-btn-nome" onclick="setUsersSort('nome')">Nome <span class="users-sort-arrow" id="sort-arrow-nome">↑</span></button>
+      <button class="users-sort-btn" id="sort-btn-data" onclick="setUsersSort('data')">Data <span class="users-sort-arrow" id="sort-arrow-data"></span></button>
+      <button class="users-sort-btn" id="sort-btn-punteggio" onclick="setUsersSort('punteggio')">Punteggio <span class="users-sort-arrow" id="sort-arrow-punteggio"></span></button>
     </div>
     <div class="users-modal-body" id="users-popup-body">
       <div class="users-modal-loading">Caricamento...</div>
