@@ -886,7 +886,7 @@ async function loadProfile(){
       <div class="sess-row">
         <span class="sess-score">${parseFloat(s.punteggio||0).toFixed(1)}/100</span>
         <span class="sess-serv">${s.ultimo_servizio||'—'}</span>
-        <span class="sess-date">${(s.registrata_at||'').slice(0,10)}</span>
+        <span class="sess-date">${fmtDate(s.registrata_at)}</span>
       </div>`).join('');
   }catch{sl.innerHTML='<div style="color:var(--red)">Errore.</div>';}
 }
@@ -1732,7 +1732,7 @@ function openDrawer(idx){
       document.getElementById('drawer-body').innerHTML = sessions.map((s,idx)=>{
         const sc = parseFloat(s.punteggio||0);
         const col = scoreColor(sc);
-        const data = (s.registrata_at||'').slice(0,10);
+        const data = fmtDate(s.registrata_at||'');
         const serv = s.ultimo_servizio||'—';
         const age = idx===0 ? '<span style="font-size:8px;color:var(--green);font-family:var(--font-md);margin-left:4px">ULTIMA</span>' : '';
         return `<div class="drawer-row">
