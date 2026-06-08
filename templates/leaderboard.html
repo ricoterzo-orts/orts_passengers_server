@@ -236,6 +236,33 @@ td.servizio{text-align:center}
 .delete-yes{flex:1;padding:5px;background:var(--red);color:#fff;border:none;font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:1px}
 .delete-no{flex:1;padding:5px;background:var(--panel);color:var(--grey);border:1px solid var(--border);font-family:var(--font-md);font-size:11px;cursor:pointer;border-radius:1px}
 
+/* ── POPUP UTENTI REGISTRATI ── */
+#lb-registered{cursor:pointer;transition:color .15s;text-decoration:none;color:inherit;border-bottom:1px dashed var(--dimgrey)}
+#lb-registered:hover{color:var(--accent);border-bottom-color:var(--accent)}
+.users-modal{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--accent);border-radius:2px;width:100%;max-width:460px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.2);animation:fi .15s ease}
+.users-modal-hdr{padding:8px 14px;background:var(--accent2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.users-modal-title{font-size:12px;font-weight:500;font-family:var(--font-md);letter-spacing:.06em;text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:8px}
+.users-modal-count{background:rgba(255,255,255,.2);border-radius:2px;padding:1px 7px;font-size:10px}
+.users-modal-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;line-height:1}
+.users-modal-close:hover{color:#fff}
+.users-modal-search{padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.users-modal-search input{width:100%;box-sizing:border-box;padding:5px 9px;background:var(--bg);border:1px solid var(--border);color:var(--white);font-family:var(--font);font-size:12px;border-radius:1px;outline:none;transition:border-color .15s}
+.users-modal-search input:focus{border-color:var(--accent)}
+.users-modal-body{overflow-y:auto;flex:1;padding:4px 0}
+.users-modal-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid rgba(204,204,204,.3);transition:background .1s;cursor:default}
+.users-modal-row:last-child{border-bottom:none}
+.users-modal-row:hover{background:rgba(206,27,38,.04)}
+.users-modal-row-left{display:flex;align-items:center;gap:8px}
+.users-modal-avatar{width:26px;height:26px;border-radius:50%;background:var(--panel);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--grey);flex-shrink:0;text-transform:uppercase}
+.users-modal-name{font-family:var(--font-md);font-size:12px;font-weight:500;color:var(--white)}
+.users-modal-grade{font-size:9px;font-family:var(--font);color:var(--dimgrey);margin-top:1px}
+.users-modal-right{display:flex;align-items:center;gap:8px}
+.users-modal-score{font-family:var(--font-md);font-size:13px;font-weight:500;line-height:1}
+.users-modal-corse{font-family:var(--font);font-size:9px;color:var(--dimgrey);text-align:right;margin-top:1px}
+.users-online-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite;flex-shrink:0}
+.users-modal-empty{text-align:center;padding:30px;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
+.users-modal-loading{display:flex;align-items:center;justify-content:center;padding:30px;gap:8px;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
+
 /* ── MAPPA HERO (ispirata a Treniamo) ── */
 .map-section{margin-bottom:24px;position:relative}
 .map-hero{position:relative;width:100%;height:620px;border-radius:6px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.18);border:1px solid var(--border)}
@@ -600,7 +627,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
     <div class="statusbar-left">
       <span><span class="dot"></span>SISTEMA ONLINE</span>
       <span id="lb-count">—</span>
-      <span id="lb-registered" style="opacity:.6">—</span>
+      <span id="lb-registered" style="opacity:.6" onclick="openUsersPopup()" title="Clicca per vedere tutti gli utenti">—</span>
     </div>
     <div class="statusbar-right" id="lb-updated">aggiornamento ogni 15s</div>
   </div>
@@ -1718,7 +1745,108 @@ function closeDrawer(){
   document.getElementById('drawer-overlay').classList.remove('open');
   document.body.style.overflow='';
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
+// ── Popup utenti registrati ──
+let allUsersCache = [];
+
+async function openUsersPopup(){
+  document.getElementById('overlay-users').classList.add('open');
+  document.body.style.overflow='hidden';
+  const body=document.getElementById('users-popup-body');
+  body.innerHTML='<div class="users-modal-loading">Caricamento...</div>';
+  document.getElementById('users-search-input').value='';
+
+  try{
+    // Prova /api/users, fallback su /api/leaderboard
+    let users=[];
+    try{
+      const r=await fetch('/api/users');
+      if(r.ok){
+        const d=await r.json();
+        if(Array.isArray(d)) users=d;
+      }
+    }catch{}
+    // fallback: usa lbRows (già caricati)
+    if(!users.length && lbRows.length){
+      users=lbRows.map(row=>({
+        username:row.username,
+        grade:row.grade||'',
+        punteggio:row.punteggio,
+        corse:row.corse,
+        online:row.online||false
+      }));
+    }
+    // Se ancora vuoto, ricarica leaderboard
+    if(!users.length){
+      const r2=await fetch('/api/leaderboard');
+      const rows2=await r2.json();
+      users=rows2.map(row=>({
+        username:row.username,
+        grade:row.grade||'',
+        punteggio:row.punteggio,
+        corse:row.corse,
+        online:row.online||false
+      }));
+    }
+    allUsersCache=users;
+    renderUsersPopup(users);
+  }catch(e){
+    body.innerHTML='<div class="users-modal-empty" style="color:var(--red)">Errore caricamento utenti.</div>';
+  }
+}
+
+function closeUsersPopup(){
+  document.getElementById('overlay-users').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+function filterUsers(query){
+  const q=query.toLowerCase().trim();
+  const filtered=q?allUsersCache.filter(u=>u.username.toLowerCase().includes(q)):allUsersCache;
+  renderUsersPopup(filtered, q);
+}
+
+function renderUsersPopup(users, query=''){
+  const body=document.getElementById('users-popup-body');
+  document.getElementById('users-popup-count').textContent=users.length;
+  if(!users.length){
+    body.innerHTML=query
+      ?'<div class="users-modal-empty">Nessun utente trovato per "<strong>'+query+'</strong>"</div>'
+      :'<div class="users-modal-empty">Nessun utente registrato.</div>';
+    return;
+  }
+  body.innerHTML=users.map((u,i)=>{
+    const initials=(u.username||'?').slice(0,2).toUpperCase();
+    const colorIdx=Object.keys(_userColorMap).indexOf(u.username);
+    const avatarColor=USER_COLORS[((colorIdx>=0?colorIdx:i)%USER_COLORS.length)];
+    const sc=parseFloat(u.punteggio||0);
+    const hasScore=!isNaN(sc)&&sc>0;
+    const gradeText=u.grade||'—';
+    const onlineDot=u.online?'<span class="users-online-dot" title="Online ora"></span>':'';
+    const scoreHtml=hasScore
+      ?`<div class="users-modal-score" style="color:${scoreColor(sc)}">${sc.toFixed(1)}<span style="font-size:9px;opacity:.5">/100</span></div>`
+      :`<div class="users-modal-score" style="color:var(--dimgrey)">—</div>`;
+    const corseHtml=u.corse!=null?`<div class="users-modal-corse">${u.corse} cors${u.corse===1?'a':'e'}</div>`:'';
+    return`<div class="users-modal-row">
+      <div class="users-modal-row-left">
+        <div class="users-modal-avatar" style="background:${avatarColor}22;border-color:${avatarColor}44;color:${avatarColor}">${initials}</div>
+        <div>
+          <div class="users-modal-name">${u.username}</div>
+          <div class="users-modal-grade">${gradeText}</div>
+        </div>
+        ${onlineDot}
+      </div>
+      <div class="users-modal-right">
+        <div style="text-align:right">${scoreHtml}${corseHtml}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeDrawer();closeUsersPopup();}
+});
+
+
 
 // ── Hamburger nav ──
 function toggleNav(){
@@ -1768,7 +1896,27 @@ setInterval(loadLive,5000);
 setInterval(loadStationCoords,300000);
 </script>
 
-<!-- DRAWER STORICO UTENTE -->
+<!-- POPUP UTENTI REGISTRATI -->
+<div class="overlay" id="overlay-users" onclick="if(event.target===this)closeUsersPopup()">
+  <div class="users-modal">
+    <div class="users-modal-hdr">
+      <div class="users-modal-title">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.456.76 1.72l-.008.002-.014.002H7.022zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816zM4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275zM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0zm3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
+        Utenti Registrati
+        <span class="users-modal-count" id="users-popup-count">—</span>
+      </div>
+      <button class="users-modal-close" onclick="closeUsersPopup()">✕</button>
+    </div>
+    <div class="users-modal-search">
+      <input type="text" id="users-search-input" placeholder="Cerca username..." oninput="filterUsers(this.value)" autocomplete="off">
+    </div>
+    <div class="users-modal-body" id="users-popup-body">
+      <div class="users-modal-loading">Caricamento...</div>
+    </div>
+  </div>
+</div>
+
+
 <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()">
   <div class="drawer" onclick="event.stopPropagation()">
     <div class="drawer-hdr">
