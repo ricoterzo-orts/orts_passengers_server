@@ -1756,37 +1756,8 @@ async function openUsersPopup(){
   document.getElementById('users-search-input').value='';
 
   try{
-    // Prova /api/users, fallback su /api/leaderboard
-    let users=[];
-    try{
-      const r=await fetch('/api/users');
-      if(r.ok){
-        const d=await r.json();
-        if(Array.isArray(d)) users=d;
-      }
-    }catch{}
-    // fallback: usa lbRows (già caricati)
-    if(!users.length && lbRows.length){
-      users=lbRows.map(row=>({
-        username:row.username,
-        grade:row.grade||'',
-        punteggio:row.punteggio,
-        corse:row.corse,
-        online:row.online||false
-      }));
-    }
-    // Se ancora vuoto, ricarica leaderboard
-    if(!users.length){
-      const r2=await fetch('/api/leaderboard');
-      const rows2=await r2.json();
-      users=rows2.map(row=>({
-        username:row.username,
-        grade:row.grade||'',
-        punteggio:row.punteggio,
-        corse:row.corse,
-        online:row.online||false
-      }));
-    }
+    const r=await fetch('/api/users');
+    const users=await r.json();
     allUsersCache=users;
     renderUsersPopup(users);
   }catch(e){
@@ -1819,24 +1790,28 @@ function renderUsersPopup(users, query=''){
     const colorIdx=Object.keys(_userColorMap).indexOf(u.username);
     const avatarColor=USER_COLORS[((colorIdx>=0?colorIdx:i)%USER_COLORS.length)];
     const sc=parseFloat(u.punteggio||0);
-    const hasScore=!isNaN(sc)&&sc>0;
-    const gradeText=u.grade||'—';
+    const hasCorse=u.corse>0;
+    const hasScore=!isNaN(sc)&&sc>0&&hasCorse;
+    const gradeText=u.grade||'';
     const onlineDot=u.online?'<span class="users-online-dot" title="Online ora"></span>':'';
     const scoreHtml=hasScore
       ?`<div class="users-modal-score" style="color:${scoreColor(sc)}">${sc.toFixed(1)}<span style="font-size:9px;opacity:.5">/100</span></div>`
-      :`<div class="users-modal-score" style="color:var(--dimgrey)">—</div>`;
-    const corseHtml=u.corse!=null?`<div class="users-modal-corse">${u.corse} cors${u.corse===1?'a':'e'}</div>`:'';
+      :`<div class="users-modal-score" style="color:var(--dimgrey);font-size:11px">Nessuna corsa</div>`;
+    const subInfo=hasCorse
+      ?(gradeText?`<div class="users-modal-grade">${gradeText} · ${u.corse} cors${u.corse===1?'a':'e'}</div>`
+                 :`<div class="users-modal-grade">${u.corse} cors${u.corse===1?'a':'e'}</div>`)
+      :(u.created_at?`<div class="users-modal-grade">Iscritto il ${u.created_at.slice(0,10)}</div>`:'');
     return`<div class="users-modal-row">
       <div class="users-modal-row-left">
         <div class="users-modal-avatar" style="background:${avatarColor}22;border-color:${avatarColor}44;color:${avatarColor}">${initials}</div>
         <div>
           <div class="users-modal-name">${u.username}</div>
-          <div class="users-modal-grade">${gradeText}</div>
+          ${subInfo}
         </div>
         ${onlineDot}
       </div>
       <div class="users-modal-right">
-        <div style="text-align:right">${scoreHtml}${corseHtml}</div>
+        ${scoreHtml}
       </div>
     </div>`;
   }).join('');
