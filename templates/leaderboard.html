@@ -666,6 +666,15 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
     </div>
   </div>
 
+  <!-- ══ SEZIONE 1: GIOCATORI ONLINE ══ -->
+  <div class="online-section" id="online-section" style="display:none">
+    <div class="sec-hdr">
+      <div class="sec-title">Giocatori Online</div>
+      <div class="sec-badge"><span class="pulse"></span><span id="online-count">0 online</span></div>
+    </div>
+    <div class="online-grid" id="online-grid"></div>
+  </div>
+
   <!-- ══ SEZIONE 2: TRENI IN CORSA ══ -->
   <div class="live-section" id="live-section" style="display:none">
     <div class="sec-hdr">
@@ -1434,6 +1443,7 @@ async function loadLive(){
 
     liveData=liveOrder.map(name=>fresh.find(u=>u.username===name)).filter(Boolean);
 
+    renderOnlineCards(liveData);
     renderLiveSection();
     updateMap(liveData);
   }catch(e){}
@@ -1665,6 +1675,8 @@ async function loadStationCoords(){
   try{
     const r = await fetch('/api/station_coords');
     stationCoords = await r.json();
+    // Se ci sono già dati live in memoria, aggiorna la mappa con le coordinate appena caricate
+    if(liveData.length) updateMap(liveData);
   }catch(e){}
 }
 
