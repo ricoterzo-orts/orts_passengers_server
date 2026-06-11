@@ -323,6 +323,8 @@ def api_register():
     username = (data.get("username", "") or "").strip()
     email    = (data.get("email",    "") or "").strip().lower()
     password = data.get("password", "") or ""
+    azienda       = (data.get("azienda",       "") or "").strip()
+    compartimento = (data.get("compartimento", "") or "").strip()
 
     captcha_token = data.get("captcha", "")
     if not captcha_token:
@@ -359,9 +361,9 @@ def api_register():
         with get_db() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "INSERT INTO users (nome, cognome, username, email, password_hash, api_token) "
-                    "VALUES (%s,%s,%s,%s,%s,%s)",
-                    (nome, cognome, username, email, hash_password(password), token)
+                    "INSERT INTO users (nome, cognome, username, email, password_hash, api_token, azienda, compartimento) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (nome, cognome, username, email, hash_password(password), token, azienda, compartimento)
                 )
             conn.commit()
         logger.info("Nuovo utente registrato: %s", username)
