@@ -1006,7 +1006,7 @@ async function saveProfileExtra(){
   try {
     const r = await fetch('/api/profile/extra', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': (me && me.csrf_token) || ''},
       body: JSON.stringify({azienda, compartimento})
     });
     const d = await r.json();
