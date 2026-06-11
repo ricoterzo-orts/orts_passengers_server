@@ -189,6 +189,8 @@ def migrate_db():
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS train_lat REAL DEFAULT 0""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS train_lon REAL DEFAULT 0""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS train_dir REAL DEFAULT 0""",
+        """ALTER TABLE users ADD COLUMN IF NOT EXISTS azienda TEXT DEFAULT ''""",
+        """ALTER TABLE users ADD COLUMN IF NOT EXISTS compartimento TEXT DEFAULT ''""",
     ]
     with get_db() as conn:
         with conn.cursor() as cur:
@@ -438,8 +440,39 @@ def api_me():
         "runs":       stats["runs"] or 0,
         "best_score": round(float(stats["best"] or 0), 1),
         "avg_score":  round(float(stats["avg"]  or 0), 1),
+        "azienda":       user.get("azienda") or "",
+        "compartimento": user.get("compartimento") or "",
         "csrf_token": generate_csrf_token(),
     })
+
+@app.route("/api/profile/extra", methods=["POST"])
+@require_login
+@verify_csrf
+def api_profile_extra():
+    data = request.get_json(silent=True) or {}
+    azienda = (data.get("azienda") or "").strip()
+    compartimento = (data.get("compartimento") or "").strip()
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            try:
+                cur.execute(
+                    "UPDATE users SET azienda=%s, compartimento=%s WHERE id=%s",
+                    (azienda, compartimento, session["user_id"])
+                )
+            except Exception:
+                conn.rollback()
+                # Colonne mancanti: applica la migrazione e riprova
+                with conn.cursor() as cur2:
+                    cur2.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS azienda TEXT DEFAULT ''")
+                    cur2.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS compartimento TEXT DEFAULT ''")
+                conn.commit()
+                with conn.cursor() as cur3:
+                    cur3.execute(
+                        "UPDATE users SET azienda=%s, compartimento=%s WHERE id=%s",
+                        (azienda, compartimento, session["user_id"])
+                    )
+        conn.commit()
+    return jsonify({"ok": True, "azienda": azienda, "compartimento": compartimento})
 
 @app.route("/api/regenerate_token", methods=["POST"])
 @require_login
