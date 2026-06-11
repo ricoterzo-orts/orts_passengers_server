@@ -27,6 +27,7 @@
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body, html { height: 100%; font-family: var(--font); }
+body { display: flex; flex-direction: column; min-height: 100vh; }
 
 .bg {
   background-image: url('/static/train-bg.jpg');
@@ -37,7 +38,7 @@ body, html { height: 100%; font-family: var(--font); }
 }
 
 .container {
-  min-height: 100vh;
+  flex: 1;
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
 }
@@ -126,6 +127,11 @@ h2 {
 /* Panel visibility */
 .panel { display: none; }
 .panel.active { display: block; }
+
+/* Footer */
+footer{position:relative;z-index:1;text-align:center;padding:18px 20px;font-family:var(--font);font-size:10px;color:#ddd;letter-spacing:.06em;border-top:2px solid var(--accent)}
+footer span{color:#fff;font-weight:500}
+.footer-disclaimer{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.15);font-size:8.5px;color:#bbb;line-height:1.6;letter-spacing:.02em;max-width:860px;margin-left:auto;margin-right:auto;opacity:.85}
 </style>
 </head>
 <body>
@@ -221,6 +227,17 @@ h2 {
 
   </div>
 </div>
+
+<footer>
+  <span>ViaggiaTreno Virtual</span> &mdash; by TSH Studio Repaint &copy; <span id="footer-year"></span>
+  <div class="footer-disclaimer">
+    <strong>Nota informativa importante:</strong> Il presente sito web è una piattaforma indipendente e non è in alcun modo affiliato, associato, autorizzato, patrocinato o ufficialmente collegato a Trenitalia S.p.A. o a qualsiasi sua controllata o filiale.
+    Tutti i contenuti, i marchi registrati, i loghi e i nomi di servizi citati appartengono ai legittimi proprietari e sono utilizzati esclusivamente a scopo illustrativo, informativo o descrittivo.
+    Si declina ogni responsabilità per eventuali inesattezze, omissioni o per l'uso improprio delle informazioni qui riportate.
+    Per consultare i canali ufficiali e acquistare titoli di viaggio, si invita a fare riferimento esclusivamente al sito istituzionale di Trenitalia.
+  </div>
+</footer>
+<script>document.getElementById('footer-year').textContent=new Date().getFullYear();</script>
 
 <script>
 function showTab(name) {
