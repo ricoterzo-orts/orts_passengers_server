@@ -989,9 +989,9 @@ function renderProfileExtraChips(azienda, compartimento){
   if(!azienda && !compartimento){ wrap.style.display='none'; return; }
   wrap.style.display='flex';
   text.innerHTML =
-    (azienda ? `Azienda: <strong>${azienda}</strong>` : '') +
+    (azienda ? `🏢 Azienda: <strong>${azienda}</strong>` : '') +
     (azienda && compartimento ? '&nbsp;&nbsp;' : '') +
-    (compartimento ? `Compartimento: <strong>${compartimento}</strong>` : '');
+    (compartimento ? `📍 Compartimento: <strong>${compartimento}</strong>` : '');
 }
 
 function toggleProfileExtraEdit(){
