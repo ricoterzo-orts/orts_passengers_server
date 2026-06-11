@@ -501,6 +501,8 @@ def api_leaderboard():
             cur.execute("""
                 SELECT
                     u.username,
+                    COALESCE(u.azienda, '')          AS azienda,
+                    COALESCE(u.compartimento, '')    AS compartimento,
                     COALESCE(us.affidabilita, 0)    AS punteggio,
                     COALESCE(us.ultima_tratta, '')  AS ultimo_servizio,
                     COALESCE(us.grade, '')           AS grade,
@@ -522,7 +524,7 @@ def api_leaderboard():
                 LEFT JOIN heartbeats h ON h.user_id = u.id
                 LEFT JOIN live_sessions ls ON ls.user_id = u.id
                 WHERE us.affidabilita IS NOT NULL
-                GROUP BY u.id, u.username, us.affidabilita, us.ultima_tratta,
+                GROUP BY u.id, u.username, u.azienda, u.compartimento, us.affidabilita, us.ultima_tratta,
                          us.grade, h.last_seen, ls.speed_kmh, ls.delay_min,
                          ls.next_station, ls.consist, ls.sim_time,
                          ls.activity_name, ls.comfort_live
