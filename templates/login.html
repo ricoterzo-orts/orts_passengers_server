@@ -80,13 +80,14 @@ h2 {
   color: #888; margin-bottom: 4px;
   letter-spacing: .12em; text-transform: uppercase;
 }
-.field input {
+.field input, .field select {
   width: 100%; padding: 10px 12px;
   border: 1px solid #ddd; border-radius: 2px;
   font-family: var(--font); font-size: 13px;
   outline: none; transition: border-color .15s;
+  background: #fff; color: inherit;
 }
-.field input:focus { border-color: var(--accent); }
+.field input:focus, .field select:focus { border-color: var(--accent); }
 
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
@@ -179,6 +180,38 @@ h2 {
         <label>Password (min. 6 caratteri)</label>
         <input type="password" id="r-pass" placeholder="••••••••">
       </div>
+      <div class="field">
+        <label>Azienda ferroviaria</label>
+        <select id="r-azienda">
+          <option value="">— Non specificata —</option>
+          <option value="Trenitalia">Trenitalia</option>
+          <option value="Trenitalia DPR">Trenitalia DPR</option>
+          <option value="Trenitalia TPER">Trenitalia TPER</option>
+          <option value="TrenoNord">TrenoNord</option>
+          <option value="ITALO - Nuovo Trasporto Viaggiatori">ITALO – Nuovo Trasporto Viaggiatori</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Compartimento</label>
+        <select id="r-compartimento">
+          <option value="">— Non specificato —</option>
+          <option value="Torino">Torino</option>
+          <option value="Milano">Milano</option>
+          <option value="Verona">Verona</option>
+          <option value="Venezia">Venezia</option>
+          <option value="Trieste">Trieste</option>
+          <option value="Genova">Genova</option>
+          <option value="Bologna">Bologna</option>
+          <option value="Firenze">Firenze</option>
+          <option value="Ancona">Ancona</option>
+          <option value="Roma">Roma</option>
+          <option value="Napoli">Napoli</option>
+          <option value="Bari">Bari</option>
+          <option value="Reggio Calabria">Reggio Calabria</option>
+          <option value="Palermo">Palermo</option>
+          <option value="Cagliari">Cagliari</option>
+        </select>
+      </div>
       <div class="captcha-wrap">
         <div class="g-recaptcha" data-sitekey="6Ldq4f0sAAAAALqcps2lVYgOqMtRifq7uI6J96Zf"></div>
       </div>
@@ -232,6 +265,8 @@ async function doRegister() {
   const user    = document.getElementById('r-user').value.trim();
   const email   = document.getElementById('r-email').value.trim();
   const pass    = document.getElementById('r-pass').value;
+  const azienda = document.getElementById('r-azienda').value;
+  const compartimento = document.getElementById('r-compartimento').value;
   const captcha = grecaptcha.getResponse();
 
   if(!nome||!cognome||!user||!email||!pass) {
@@ -246,7 +281,7 @@ async function doRegister() {
     const r = await fetch('/api/register', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({nome, cognome, username: user, email, password: pass, captcha})
+      body: JSON.stringify({nome, cognome, username: user, email, password: pass, azienda, compartimento, captcha})
     });
     const d = await r.json();
     if(d.ok) {
