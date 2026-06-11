@@ -7,6 +7,7 @@
 <link rel="icon" href="/static/favicon.png" type="image/png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <style>
 @font-face {
   font-family: 'Futura';
@@ -419,8 +420,8 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 .drawer-loading{padding:32px 14px;text-align:center;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
 .username-btn{background:none;border:none;padding:0;font:inherit;color:inherit;cursor:pointer;font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white);text-align:left;text-decoration:none;transition:color .15s}
 .username-btn:hover{color:var(--accent)}
-.username-profile-hint{font-family:var(--font);font-size:9px;font-weight:normal;color:var(--dimgrey);letter-spacing:.04em;text-transform:none;text-decoration:none;opacity:.7}
-.username-extra{font-family:var(--font);font-size:9px;color:var(--dimgrey);letter-spacing:.03em;margin-top:2px}
+.username-profile-hint{font-family:var(--font);font-size:11px;font-weight:normal;color:var(--dimgrey);letter-spacing:.04em;text-transform:none;text-decoration:none;opacity:.7;margin-left:6px}
+.username-extra{font-family:var(--font);font-size:9px;color:var(--dimgrey);letter-spacing:.03em}
 .username-btn:hover .username-profile-hint{color:var(--accent);opacity:1}
 .treno-reale-link{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--dimgrey);text-decoration:none;transition:color .15s}
 .treno-reale-link:hover{color:var(--accent)}
@@ -1066,9 +1067,8 @@ async function loadLeaderboard(){
     body.innerHTML=rows.map((row,i)=>`
       <tr>
         <td class="rank">${rankStr(i)}</td>
-        <td class="username"><button class="username-btn" onclick="openDrawer(${i})">${row.username}<span class="username-profile-hint"> — profilo</span></button>
+        <td class="username"><span class="username-text">${row.username}${(row.azienda||row.compartimento)?` <span class="username-extra">(${[row.azienda,row.compartimento].filter(Boolean).join(' – ')})</span>`:''}</span><button class="username-btn" onclick="openDrawer(${i})" title="Profilo"><span class="username-profile-hint"><i class="fa-solid fa-user"></i></span></button>
           ${row.online?'<span style="margin-left:6px;font-size:9px;color:var(--green);font-family:var(--font-md)">● ONLINE</span>':''}
-          ${(row.azienda||row.compartimento)?`<div class="username-extra">${[row.azienda,row.compartimento].filter(Boolean).join(' – ')}</div>`:''}
         </td>
         <td class="score">
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
