@@ -235,8 +235,10 @@ td.servizio{text-align:center}
 .field select{width:100%;padding:5px 8px;background:var(--bg);border:1px solid var(--border);color:var(--white);font-family:var(--font);font-size:12px;border-radius:1px;outline:none;transition:border-color .15s;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23AAAAAA'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px}
 .field select:focus{border-color:var(--accent)}
 .field select option{background:#fff;color:var(--white)}
-.profile-extra{background:var(--bg);border:1px solid var(--border);border-radius:1px;padding:8px 10px;margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap}
-.profile-extra-chip{display:flex;align-items:center;gap:5px;font-family:var(--font);font-size:10px;color:var(--grey)}
+.profile-extra{background:var(--bg);border:1px solid var(--border);border-radius:1px;padding:8px 10px;margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.profile-extra-chip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--font);font-size:10px;color:var(--grey)}
+.profile-extra-edit-btn{background:transparent;border:1px solid var(--border);color:var(--accent);font-family:var(--font-md);font-size:9px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;cursor:pointer;border-radius:1px;transition:background .15s,color .15s;flex-shrink:0}
+.profile-extra-edit-btn:hover{background:var(--accent);color:#fff}
 .profile-extra-chip strong{font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--white)}
 .profile-save-row{display:flex;gap:6px;align-items:center;margin-top:6px;margin-bottom:10px}
 .profile-save-btn{flex:1;padding:6px;background:var(--accent);color:#fff;border:none;font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:1px;transition:background .15s}
@@ -774,8 +776,12 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
       <div class="token-display" id="profile-token">—</div>
       <!-- Azienda & Compartimento -->
       <div id="profile-extra-display" style="display:none">
-        <div class="profile-extra" id="profile-extra-chips"></div>
+        <div class="profile-extra" id="profile-extra-chips">
+          <span class="profile-extra-chip" id="profile-extra-chips-text"></span>
+          <button class="profile-extra-edit-btn" id="profile-extra-edit-btn" onclick="toggleProfileExtraEdit()">Modifica</button>
+        </div>
       </div>
+      <div id="profile-extra-fields">
       <div class="slbl">Azienda ferroviaria</div>
       <div class="field">
         <select id="profile-azienda">
@@ -811,6 +817,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
       <div class="profile-save-row">
         <button class="profile-save-btn" id="profile-save-btn" onclick="saveProfileExtra()">Salva modifiche</button>
         <span class="profile-save-msg" id="profile-save-msg"></span>
+      </div>
       </div>
       <div class="slbl">Ultime sessioni</div>
       <div class="sessions-list" id="profile-sessions"><div style="color:var(--dimgrey);padding:8px 0">Caricamento...</div></div>
@@ -953,8 +960,9 @@ async function loadProfile(){
   const saveMsg = document.getElementById('profile-save-msg');
   saveMsg.textContent = '';
   saveMsg.className = 'profile-save-msg';
-  // Show chips if values are set
+  // Show chips if values are set; collapse the select fields if already configured
   renderProfileExtraChips(azienda, compartimento);
+  document.getElementById('profile-extra-fields').style.display = (azienda || compartimento) ? 'none' : '';
 
   const sl=document.getElementById('profile-sessions');
   sl.innerHTML='<div style="color:var(--dimgrey)">Caricamento...</div>';
@@ -977,12 +985,18 @@ async function loadProfile(){
 
 function renderProfileExtraChips(azienda, compartimento){
   const wrap = document.getElementById('profile-extra-display');
-  const chips = document.getElementById('profile-extra-chips');
+  const text = document.getElementById('profile-extra-chips-text');
   if(!azienda && !compartimento){ wrap.style.display='none'; return; }
-  wrap.style.display='block';
-  chips.innerHTML =
-    (azienda ? `<span class="profile-extra-chip">🏢 Azienda: <strong>${azienda}</strong></span>` : '') +
-    (compartimento ? `<span class="profile-extra-chip">📍 Compartimento: <strong>${compartimento}</strong></span>` : '');
+  wrap.style.display='flex';
+  text.innerHTML =
+    (azienda ? `Azienda: <strong>${azienda}</strong>` : '') +
+    (azienda && compartimento ? '&nbsp;&nbsp;' : '') +
+    (compartimento ? `Compartimento: <strong>${compartimento}</strong>` : '');
+}
+
+function toggleProfileExtraEdit(){
+  const fields = document.getElementById('profile-extra-fields');
+  fields.style.display = (fields.style.display === 'none') ? '' : 'none';
 }
 
 async function saveProfileExtra(){
@@ -1002,6 +1016,7 @@ async function saveProfileExtra(){
       msg.className = 'profile-save-msg ok';
       renderProfileExtraChips(azienda, compartimento);
       updateNav();
+      document.getElementById('profile-extra-fields').style.display = 'none';
     } else {
       msg.textContent = '\u2717 ' + (d.error || 'Errore salvataggio');
       msg.className = 'profile-save-msg err';
