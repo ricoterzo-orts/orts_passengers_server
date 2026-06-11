@@ -914,7 +914,11 @@ function updateNav(){
   document.getElementById('btn-login').style.display=li?'none':'';
   document.getElementById('btn-register').style.display=li?'none':'';
   document.getElementById('menu-wrap').style.display=li?'':'none';
-  document.getElementById('nav-username').textContent=li?('● '+me.username+'  '):'';
+  let _navExtra='';
+  if(li && (me.azienda || me.compartimento)){
+    _navExtra=' (' + [me.azienda, me.compartimento].filter(Boolean).join(' – ') + ')';
+  }
+  document.getElementById('nav-username').textContent=li?('● '+me.username+_navExtra+'  '):'';
   const b=document.getElementById('user-banner');
   if(li){b.style.display='flex';document.getElementById('banner-token').textContent=me.api_token;}
   else{b.style.display='none';}
@@ -977,8 +981,8 @@ function renderProfileExtraChips(azienda, compartimento){
   if(!azienda && !compartimento){ wrap.style.display='none'; return; }
   wrap.style.display='block';
   chips.innerHTML =
-    (azienda ? `<span class="profile-extra-chip">Azienda: <strong>${azienda}</strong></span>` : '') +
-    (compartimento ? `<span class="profile-extra-chip">Compartimento: <strong>${compartimento}</strong></span>` : '');
+    (azienda ? `<span class="profile-extra-chip">🏢 Azienda: <strong>${azienda}</strong></span>` : '') +
+    (compartimento ? `<span class="profile-extra-chip">📍 Compartimento: <strong>${compartimento}</strong></span>` : '');
 }
 
 async function saveProfileExtra(){
@@ -997,6 +1001,7 @@ async function saveProfileExtra(){
       msg.textContent = '\u2713 Salvato';
       msg.className = 'profile-save-msg ok';
       renderProfileExtraChips(azienda, compartimento);
+      updateNav();
     } else {
       msg.textContent = '\u2717 ' + (d.error || 'Errore salvataggio');
       msg.className = 'profile-save-msg err';
