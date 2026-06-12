@@ -22,7 +22,7 @@ import bcrypt
 import requests
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from datetime import timedelta
+from datetime import timedelta, date
 
 # ─────────────────────────────────────────────────────────
 #  App setup
@@ -672,6 +672,84 @@ def api_user_sessions(username):
             """, (user["id"],))
             rows = fetchall(cur)
     return jsonify(rows)
+
+@app.route("/api/badges/<username>")
+def api_badges(username):
+    """Badge calcolati al volo dai dati esistenti in 'sessions':
+    streak di giorni consecutivi di guida e primati per linea."""
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE username=%s", (username,))
+            user = fetchone(cur)
+    if not user:
+        return jsonify({"ok": False, "error": "Utente non trovato"}), 404
+
+    badges = []
+
+    # ── Streak giorni consecutivi ──
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT DISTINCT registrata_at::date AS giorno
+                FROM sessions WHERE user_id=%s
+                ORDER BY giorno DESC
+            """, (user["id"],))
+            giorni = [r["giorno"] for r in fetchall(cur)]
+
+    streak = 0
+    if giorni:
+        oggi = date.today()
+        if giorni[0] >= oggi - timedelta(days=1):
+            streak = 1
+            cursore = giorni[0]
+            for g in giorni[1:]:
+                if cursore - g == timedelta(days=1):
+                    streak += 1
+                    cursore = g
+                else:
+                    break
+
+    if streak >= 30:
+        badges.append({"id": "streak_oro", "label": "Macchinista inarrestabile", "tier": "oro",
+                        "desc": f"{streak} giorni consecutivi di guida"})
+    elif streak >= 7:
+        badges.append({"id": "streak_argento", "label": "Settimana in pista", "tier": "argento",
+                        "desc": f"{streak} giorni consecutivi di guida"})
+    elif streak >= 3:
+        badges.append({"id": "streak_bronzo", "label": "Si comincia a scaldare", "tier": "bronzo",
+                        "desc": f"{streak} giorni consecutivi di guida"})
+
+    # ── Primato per linea (miglior punteggio assoluto su una tratta) ──
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                WITH best_per_user AS (
+                    SELECT ultimo_servizio, user_id, MAX(punteggio) AS best
+                    FROM sessions
+                    WHERE ultimo_servizio <> ''
+                    GROUP BY ultimo_servizio, user_id
+                ),
+                ranked AS (
+                    SELECT ultimo_servizio, user_id, best,
+                           RANK() OVER (PARTITION BY ultimo_servizio ORDER BY best DESC) AS rnk
+                    FROM best_per_user
+                )
+                SELECT ultimo_servizio, best
+                FROM ranked
+                WHERE user_id=%s AND rnk=1
+                ORDER BY ultimo_servizio
+            """, (user["id"],))
+            primati = fetchall(cur)
+
+    for p in primati:
+        badges.append({
+            "id": f"primato_{p['ultimo_servizio']}",
+            "label": f"Record: {p['ultimo_servizio']}",
+            "tier": "primato",
+            "desc": f"Punteggio più alto su questa linea ({float(p['best']):.1f} pt)"
+        })
+
+    return jsonify({"ok": True, "username": username, "streak": streak, "badges": badges})
 
 # ─────────────────────────────────────────────────────────
 #  API ricezione dati dall'EXE
