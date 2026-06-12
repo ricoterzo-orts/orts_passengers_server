@@ -319,7 +319,7 @@ async function doRegister() {
     });
     const d = await r.json();
     if(d.ok) {
-      msg.textContent = '✓ ' + (d.message || 'Account creato! Controlla la tua email per attivare l\\'account.'); msg.className = 'msg ok';
+      msg.textContent = '✓ ' + (d.message || "Account creato! Controlla la tua email per attivare l'account."); msg.className = 'msg ok';
       grecaptcha.reset();
       setTimeout(() => showTab('login'), 2500);
     } else {
