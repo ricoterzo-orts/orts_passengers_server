@@ -897,7 +897,7 @@ def api_heartbeat():
         conn.commit()
 
     if new_session:
-        msg = f"🚆 **{user['username']}** è entrato in linea"
+        msg = f"🚆 **{user['username']}** è online per il servizio: "
         if activity_name:
             msg += f" su *{activity_name}*"
         notify_discord(embed={
