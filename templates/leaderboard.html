@@ -165,11 +165,10 @@ tbody tr{border-bottom:1px solid rgba(204,204,204,.4);transition:background .1s}
 tbody tr:hover{background:rgba(206,27,38,.04)}
 tbody tr:last-child{border-bottom:none}
 tbody td{padding:9px 12px;vertical-align:middle}
-td.rank{font-family:var(--font-md);font-size:11px;color:var(--grey);width:40px;font-weight:500}
+td.rank{font-family:var(--font-md);font-size:11px;color:var(--grey);width:40px;font-weight:500;text-align:center}
+td.rank .username-btn{font-size:15px;color:var(--grey)}
+td.rank .username-btn:hover{color:var(--accent)}
 @media(max-width:600px){.lb-col-corse{display:none}}
-tr:nth-child(1) td.rank{color:#B8860B}
-tr:nth-child(2) td.rank{color:#888}
-tr:nth-child(3) td.rank{color:#A0522D}
 td.username{font-weight:500;font-size:13px;color:var(--white);font-family:var(--font-md)}
 .sub{font-family:var(--font);font-size:10px;color:var(--dimgrey);margin-top:1px}
 td.score{text-align:center}
@@ -710,7 +709,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
       <table>
         <thead>
           <tr>
-            <th>#</th><th>Username</th>
+            <th style="text-align:center"><i class="fa-solid fa-user"></i></th><th>Username</th>
             <th class="c">Affidabilità</th>
             <th class="c">Ultima Tratta</th>
             <th class="c lb-col-corse">Corse</th>
@@ -1033,8 +1032,6 @@ async function saveProfileExtra(){
 // ── Leaderboard ──
 function scoreColor(sc){return sc>=85?'var(--green)':sc>=65?'#1565C0':sc>=45?'var(--amber)':'var(--red)';}
 function gradeClass(g){if(!g)return'';const l=g.toLowerCase();if(l.includes('ott')||l.includes('ecc'))return'g-ecc';if(l.includes('buo'))return'g-buo';if(l.includes('suf')||l.includes('med'))return'g-suf';return'g-ins';}
-function rankStr(i){return i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);}
-
 // ── ViaggiaTreno link helper ──
 function vtTrainNumber(servizio){
   if(!servizio||servizio==='—') return null;
@@ -1066,8 +1063,8 @@ async function loadLeaderboard(){
     lbRows = rows;
     body.innerHTML=rows.map((row,i)=>`
       <tr>
-        <td class="rank">${rankStr(i)}</td>
-        <td class="username"><span class="username-text">${row.username}${(row.azienda||row.compartimento)?` <span class="username-extra">(${[row.azienda,row.compartimento].filter(Boolean).join(' – ')})</span>`:''}</span><button class="username-btn" onclick="openDrawer(${i})" title="Profilo"><span class="username-profile-hint"><i class="fa-solid fa-user"></i></span></button>
+        <td class="rank"><button class="username-btn" onclick="openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button></td>
+        <td class="username"><span class="username-text">${row.username}${(row.azienda||row.compartimento)?` <span class="username-extra">(${[row.azienda,row.compartimento].filter(Boolean).join(' – ')})</span>`:''}</span>
           ${row.online?'<span style="margin-left:6px;font-size:9px;color:var(--green);font-family:var(--font-md)">● ONLINE</span>':''}
         </td>
         <td class="score">
