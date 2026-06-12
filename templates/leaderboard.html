@@ -1591,7 +1591,7 @@ async function doDeleteProfile(){
   try{
     const r=await fetch('/api/delete_account',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','X-CSRF-Token':(me && me.csrf_token) || ''},
       body:JSON.stringify({password:pwd})
     });
     const d=await r.json();
