@@ -339,6 +339,10 @@ def send_verification_email(to_email: str, username: str, token: str) -> bool:
         headers={
             "Authorization": f"Bearer {RESEND_API_KEY}",
             "Content-Type": "application/json",
+            # Senza uno User-Agent "normale", Cloudflare (davanti a api.resend.com)
+            # blocca le richieste con lo user agent di default di urllib
+            # ("Python-urllib/x.y") restituendo 403 "error code: 1010".
+            "User-Agent": "ViaggiaTreno-Virtual/1.0 (+https://orts-passengers-server.onrender.com)",
         },
         method="POST",
     )
