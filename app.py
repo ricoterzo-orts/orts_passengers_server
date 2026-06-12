@@ -40,14 +40,6 @@ RECAPTCHA_SECRET = os.environ.get("RECAPTCHA_SECRET", "")
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
-# Configurazione SMTP per email di verifica registrazione
-SMTP_HOST = os.environ.get("SMTP_HOST", "")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER = os.environ.get("SMTP_USER", "")
-SMTP_PASS = os.environ.get("SMTP_PASS", "")
-SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER)
-BASE_URL  = os.environ.get("BASE_URL", "https://orts-passengers-server.onrender.com")
-
 # ─────────────────────────────────────────────────────────
 #  Logging
 # ─────────────────────────────────────────────────────────
@@ -199,14 +191,6 @@ def migrate_db():
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS train_dir REAL DEFAULT 0""",
         """ALTER TABLE users ADD COLUMN IF NOT EXISTS azienda TEXT DEFAULT ''""",
         """ALTER TABLE users ADD COLUMN IF NOT EXISTS compartimento TEXT DEFAULT ''""",
-        """ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE""",
-        """ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token TEXT""",
-        """ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_sent_at TIMESTAMPTZ""",
-        # Gli utenti già esistenti prima dell'introduzione della verifica email
-        # (prima del deploy di questa funzionalità) vengono considerati già verificati.
-        """UPDATE users SET email_verified = TRUE
-           WHERE email_verify_token IS NULL AND email_verified = FALSE
-           AND created_at < '2026-06-11 00:00:00+00'""",
     ]
     with get_db() as conn:
         with conn.cursor() as cur:
@@ -293,61 +277,6 @@ def is_disposable_email(email: str) -> bool:
     except IndexError:
         return False
     return domain in DISPOSABLE_EMAIL_DOMAINS
-
-# ─────────────────────────────────────────────────────────
-#  Utility — Email di verifica registrazione
-# ─────────────────────────────────────────────────────────
-
-def send_verification_email(to_email: str, username: str, token: str) -> bool:
-    """Invia l'email di conferma con link di attivazione account.
-    Restituisce True se l'invio è andato a buon fine."""
-    if not (SMTP_HOST and SMTP_USER and SMTP_PASS):
-        logger.error("SMTP non configurato: impossibile inviare email di verifica a %s", to_email)
-        return False
-
-    import smtplib
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-
-    verify_url = f"{BASE_URL}/api/verify-email?token={token}"
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "Conferma il tuo account — ViaggiaTreno Virtual"
-    msg["From"] = SMTP_FROM
-    msg["To"] = to_email
-
-    text_body = (
-        f"Ciao {username},\n\n"
-        f"Grazie per esserti registrato su ViaggiaTreno Virtual.\n"
-        f"Per attivare il tuo account, apri questo link:\n\n{verify_url}\n\n"
-        f"Se non hai richiesto questa registrazione, ignora questa email.\n\n"
-        f"— ViaggiaTreno Virtual"
-    )
-    html_body = f"""
-    <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-      <h2 style="color:#CE1B26">ViaggiaTreno Virtual</h2>
-      <p>Ciao <strong>{username}</strong>,</p>
-      <p>Grazie per esserti registrato. Per attivare il tuo account clicca sul pulsante qui sotto:</p>
-      <p style="text-align:center;margin:24px 0">
-        <a href="{verify_url}" style="background:#CE1B26;color:#fff;padding:12px 24px;text-decoration:none;border-radius:2px;font-weight:bold">Conferma account</a>
-      </p>
-      <p style="font-size:12px;color:#888">Se il pulsante non funziona, copia e incolla questo link nel browser:<br>{verify_url}</p>
-      <p style="font-size:12px;color:#888">Se non hai richiesto questa registrazione, ignora questa email.</p>
-    </div>
-    """
-
-    msg.attach(MIMEText(text_body, "plain"))
-    msg.attach(MIMEText(html_body, "html"))
-
-    try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_FROM, [to_email], msg.as_string())
-        return True
-    except Exception as e:
-        logger.error("Errore invio email di verifica a %s: %s", to_email, e)
-        return False
 
 # ─────────────────────────────────────────────────────────
 #  Utility — CSRF
@@ -466,84 +395,22 @@ def api_register():
         return jsonify({"ok": False, "error": "Username non valido (solo lettere, numeri, _, ., - ; 3-30 caratteri)"}), 400
 
     token = secrets.token_hex(32)
-    verify_token = secrets.token_urlsafe(32)
     try:
         with get_db() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "INSERT INTO users (nome, cognome, username, email, password_hash, api_token, azienda, compartimento, "
-                    "email_verified, email_verify_token, email_verify_sent_at) "
-                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())",
-                    (nome, cognome, username, email, hash_password(password), token, azienda, compartimento,
-                     False, verify_token)
+                    "INSERT INTO users (nome, cognome, username, email, password_hash, api_token, azienda, compartimento) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (nome, cognome, username, email, hash_password(password), token, azienda, compartimento)
                 )
             conn.commit()
-        logger.info("Nuovo utente registrato (in attesa di verifica email): %s", username)
-
-        sent = send_verification_email(email, username, verify_token)
-        if not sent:
-            return jsonify({
-                "ok": True,
-                "message": "Account creato, ma non è stato possibile inviare l'email di conferma. Contatta l'assistenza."
-            })
-
-        return jsonify({"ok": True, "message": "Registrazione completata! Controlla la tua email per attivare l'account."})
+        logger.info("Nuovo utente registrato: %s", username)
+        return jsonify({"ok": True, "message": "Registrazione completata! Ora puoi accedere."})
     except psycopg2.errors.UniqueViolation as e:
         msg = str(e)
         if "username" in msg:
             return jsonify({"ok": False, "error": "Username già in uso"}), 409
         return jsonify({"ok": False, "error": "Email già registrata"}), 409
-
-@app.route("/api/verify-email")
-def api_verify_email():
-    token = request.args.get("token", "")
-    if not token:
-        return "Link di verifica non valido.", 400
-
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id, username, email_verified FROM users WHERE email_verify_token=%s", (token,))
-            user = fetchone(cur)
-            if not user:
-                return "Link di verifica non valido o già utilizzato.", 400
-            if user["email_verified"]:
-                return redirect(url_for("login_page") if "login_page" in app.view_functions else "/")
-            cur.execute(
-                "UPDATE users SET email_verified=TRUE, email_verify_token=NULL WHERE id=%s",
-                (user["id"],)
-            )
-        conn.commit()
-
-    logger.info("Email verificata per utente: %s", user["username"])
-    return redirect("/?verified=1")
-
-@app.route("/api/resend-verification", methods=["POST"])
-@limiter.limit("3 per minute; 10 per hour")
-def api_resend_verification():
-    data  = request.get_json(force=True) or {}
-    email = (data.get("email", "") or "").strip().lower()
-    if not email or not validate_email(email):
-        return jsonify({"ok": False, "error": "Email non valida"}), 400
-
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id, username, email_verified, email_verify_token FROM users WHERE email=%s", (email,))
-            user = fetchone(cur)
-            if not user:
-                # Non rivelare se l'email esiste o meno
-                return jsonify({"ok": True, "message": "Se l'indirizzo è registrato, riceverai una nuova email di conferma."})
-            if user["email_verified"]:
-                return jsonify({"ok": True, "message": "Account già verificato. Puoi accedere."})
-
-            verify_token = user["email_verify_token"] or secrets.token_urlsafe(32)
-            cur.execute(
-                "UPDATE users SET email_verify_token=%s, email_verify_sent_at=NOW() WHERE id=%s",
-                (verify_token, user["id"])
-            )
-        conn.commit()
-
-    send_verification_email(email, user["username"], verify_token)
-    return jsonify({"ok": True, "message": "Se l'indirizzo è registrato, riceverai una nuova email di conferma."})
 
 @app.route("/api/login", methods=["POST"])
 @limiter.limit("10 per minute; 50 per hour")   # anti brute-force
@@ -567,9 +434,6 @@ def api_login():
     if not user or not check_password(password, user["password_hash"]):
         logger.warning("Login fallito per '%s' da IP %s", username, request.remote_addr)
         return jsonify({"ok": False, "error": "Credenziali non valide"}), 401
-
-    if not user["email_verified"]:
-        return jsonify({"ok": False, "error": "Devi confermare l'indirizzo email prima di accedere. Controlla la tua casella di posta.", "unverified": True}), 403
 
     # Migra hash SHA-256 legacy → bcrypt se necessario
     migrate_password_if_needed(user["id"], password, user["password_hash"])
