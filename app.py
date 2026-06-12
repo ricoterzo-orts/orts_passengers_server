@@ -19,6 +19,7 @@ import psycopg2, psycopg2.extras, psycopg2.errorcodes
 import os, secrets, re, logging
 
 import bcrypt
+import requests
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from datetime import timedelta
@@ -50,6 +51,30 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# ─────────────────────────────────────────────────────────
+#  Notifiche Discord (webhook)
+# ─────────────────────────────────────────────────────────
+
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
+DISCORD_CRON_SECRET = os.environ.get("DISCORD_CRON_SECRET", "")
+
+def notify_discord(content=None, embed=None):
+    """Invia una notifica al webhook Discord. Non blocca/solleva mai
+    eccezioni: un fallimento qui non deve mai rompere la request principale."""
+    if not DISCORD_WEBHOOK_URL:
+        return
+    payload = {}
+    if content:
+        payload["content"] = content
+    if embed:
+        payload["embeds"] = [embed]
+    if not payload:
+        return
+    try:
+        requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=5)
+    except Exception:
+        logger.warning("Invio notifica Discord fallito", exc_info=True)
 
 # ─────────────────────────────────────────────────────────
 #  Rate Limiting
@@ -723,7 +748,7 @@ def api_heartbeat():
         return jsonify({"ok": False, "error": "Token mancante"}), 401
     with get_db() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM users WHERE api_token=%s", (token,))
+            cur.execute("SELECT id, username FROM users WHERE api_token=%s", (token,))
             user = fetchone(cur)
     if not user:
         return jsonify({"ok": False, "error": "Token non valido"}), 401
@@ -792,6 +817,18 @@ def api_heartbeat():
                     )
                 """, (user["id"], user["id"]))
         conn.commit()
+
+    if new_session:
+        msg = f"🚆 **{user['username']}** è entrato in linea"
+        if activity_name:
+            msg += f" su *{activity_name}*"
+        notify_discord(embed={
+            "title": "Nuova sessione live",
+            "description": msg,
+            "color": 0x007A3D,
+            "url": "https://" + request.host + "/leaderboard"
+        })
+
     return jsonify({"ok": True})
 
 # ─────────────────────────────────────────────────────────
@@ -978,6 +1015,51 @@ def api_station_coords():
                     pass
         conn.commit()
     return jsonify({"ok": True, "count": len(stations)})
+
+# ─────────────────────────────────────────────────────────
+#  API riepilogo Discord (chiamata da cron esterno)
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/discord/daily_summary", methods=["POST"])
+def api_discord_daily_summary():
+    """Posta su Discord la top 10 classifica corrente.
+    Protetto da header X-Cron-Token, da chiamare con un cron esterno
+    (es. cron-job.org, GitHub Actions scheduled workflow)."""
+    token = request.headers.get("X-Cron-Token", "")
+    if not DISCORD_CRON_SECRET or not secrets.compare_digest(token, DISCORD_CRON_SECRET):
+        return jsonify({"ok": False, "error": "Non autorizzato"}), 401
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT u.username,
+                       COALESCE(us.affidabilita, 0) AS punteggio,
+                       COALESCE(us.grade, '')        AS grade
+                FROM users u
+                JOIN user_stats us ON us.user_id = u.id
+                WHERE us.affidabilita IS NOT NULL
+                ORDER BY us.affidabilita DESC
+                LIMIT 10
+            """)
+            top = fetchall(cur)
+
+    if not top:
+        notify_discord(content="📊 Nessun dato per il riepilogo di oggi.")
+        return jsonify({"ok": True})
+
+    medals = ["🥇", "🥈", "🥉"]
+    lines = []
+    for i, row in enumerate(top):
+        prefix = medals[i] if i < 3 else f"{i + 1}."
+        lines.append(f"{prefix} **{row['username']}** — {row['punteggio']:.1f} pt ({row['grade'] or '—'})")
+
+    notify_discord(embed={
+        "title": "📊 Classifica — Riepilogo",
+        "description": "\n".join(lines),
+        "color": 0xCE1B26,
+        "url": "https://" + request.host + "/leaderboard"
+    })
+    return jsonify({"ok": True, "count": len(top)})
 
 # ─────────────────────────────────────────────────────────
 
