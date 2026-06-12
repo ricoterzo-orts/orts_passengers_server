@@ -81,6 +81,8 @@ h2 {
   color: #888; margin-bottom: 4px;
   letter-spacing: .12em; text-transform: uppercase;
 }
+.required-mark { color: var(--accent); }
+.required-legend { font-size: 9px; color: #999; letter-spacing: .04em; margin-bottom: 10px; text-align: right; }
 .field input, .field select {
   width: 100%; padding: 10px 12px;
   border: 1px solid #ddd; border-radius: 2px;
@@ -159,11 +161,11 @@ footer span{color:var(--accent);font-weight:500}
     <!-- LOGIN -->
     <div class="panel active" id="panel-login">
       <div class="field">
-        <label>Username o Email</label>
+        <label>Username o Email <span class="required-mark">*</span></label>
         <input type="text" id="l-user" placeholder="macchinista42" autocomplete="username">
       </div>
       <div class="field">
-        <label>Password</label>
+        <label>Password <span class="required-mark">*</span></label>
         <input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password">
       </div>
       <button class="btn" id="l-btn" onclick="doLogin()">Entra</button>
@@ -172,32 +174,33 @@ footer span{color:var(--accent);font-weight:500}
 
     <!-- REGISTER -->
     <div class="panel" id="panel-register">
+      <p class="required-legend"><span class="required-mark">*</span> campi obbligatori</p>
       <div class="field-row">
         <div class="field">
-          <label>Nome</label>
+          <label>Nome <span class="required-mark">*</span></label>
           <input type="text" id="r-nome" placeholder="Mario">
         </div>
         <div class="field">
-          <label>Cognome</label>
+          <label>Cognome <span class="required-mark">*</span></label>
           <input type="text" id="r-cognome" placeholder="Rossi">
         </div>
       </div>
       <div class="field">
-        <label>Username</label>
+        <label>Username <span class="required-mark">*</span></label>
         <input type="text" id="r-user" placeholder="macchinista42">
       </div>
       <div class="field">
-        <label>Email</label>
+        <label>Email <span class="required-mark">*</span></label>
         <input type="email" id="r-email" placeholder="mario@ferrovie.it">
       </div>
       <div class="field">
-        <label>Password (min. 6 caratteri)</label>
+        <label>Password (min. 6 caratteri) <span class="required-mark">*</span></label>
         <input type="password" id="r-pass" placeholder="••••••••">
       </div>
       <div class="field">
-        <label>Azienda ferroviaria</label>
+        <label>Azienda ferroviaria <span class="required-mark">*</span></label>
         <select id="r-azienda">
-          <option value="">— Non specificata —</option>
+          <option value="">— Seleziona —</option>
           <option value="Trenitalia">Trenitalia</option>
           <option value="Trenitalia DPR">Trenitalia DPR</option>
           <option value="Trenitalia TPER">Trenitalia TPER</option>
@@ -206,9 +209,9 @@ footer span{color:var(--accent);font-weight:500}
         </select>
       </div>
       <div class="field">
-        <label>Compartimento</label>
+        <label>Compartimento <span class="required-mark">*</span></label>
         <select id="r-compartimento">
-          <option value="">— Non specificato —</option>
+          <option value="">— Seleziona —</option>
           <option value="Torino">Torino</option>
           <option value="Milano">Milano</option>
           <option value="Verona">Verona</option>
@@ -300,7 +303,7 @@ async function doRegister() {
   const website = document.getElementById('r-website').value;
   const captcha = grecaptcha.getResponse();
 
-  if(!nome||!cognome||!user||!email||!pass) {
+  if(!nome||!cognome||!user||!email||!pass||!azienda||!compartimento) {
     msg.textContent = '✗ Compila tutti i campi'; msg.className = 'msg err'; return;
   }
   if(!captcha) {
