@@ -393,6 +393,8 @@ def api_register():
         return jsonify({"ok": False, "error": "Indirizzi email temporanei/usa-e-getta non sono ammessi"}), 400
     if not validate_username(username):
         return jsonify({"ok": False, "error": "Username non valido (solo lettere, numeri, _, ., - ; 3-30 caratteri)"}), 400
+    if not azienda or not compartimento:
+        return jsonify({"ok": False, "error": "Azienda e Compartimento sono obbligatori"}), 400
 
     token = secrets.token_hex(32)
     try:
