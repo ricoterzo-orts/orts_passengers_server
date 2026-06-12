@@ -281,9 +281,6 @@ async function doLogin() {
     if(d.ok) {
       msg.textContent = '✓ Benvenuto!'; msg.className = 'msg ok';
       setTimeout(() => window.location.href = '/leaderboard', 600);
-    } else if(d.unverified) {
-      msg.innerHTML = '✗ ' + d.error + ' <a href="#" onclick="resendVerification();return false;" style="color:var(--accent);text-decoration:underline">Invia nuova email</a>';
-      msg.className = 'msg err';
     } else {
       msg.textContent = '✗ ' + d.error; msg.className = 'msg err';
     }
@@ -322,7 +319,7 @@ async function doRegister() {
     });
     const d = await r.json();
     if(d.ok) {
-      msg.textContent = '✓ ' + (d.message || "Account creato! Controlla la tua email per attivare l'account."); msg.className = 'msg ok';
+      msg.textContent = '✓ ' + (d.message || 'Registrazione completata! Ora puoi accedere.'); msg.className = 'msg ok';
       grecaptcha.reset();
       setTimeout(() => showTab('login'), 2500);
     } else {
@@ -335,33 +332,8 @@ async function doRegister() {
   btn.disabled = false;
 }
 
-async function resendVerification() {
-  const u = document.getElementById('l-user').value.trim();
-  const msg = document.getElementById('l-msg');
-  if(!u) { msg.textContent = 'Inserisci la tua email per ricevere il link.'; msg.className = 'msg err'; return; }
-  msg.textContent = 'Invio in corso...'; msg.className = 'msg';
-  try {
-    const r = await fetch('/api/resend-verification', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({email: u})
-    });
-    const d = await r.json();
-    msg.textContent = (d.ok ? '✓ ' : '✗ ') + (d.message || d.error);
-    msg.className = d.ok ? 'msg ok' : 'msg err';
-  } catch(e) {
-    msg.textContent = 'Errore di connessione'; msg.className = 'msg err';
-  }
-}
-
 document.addEventListener('keypress', e => { if(e.key==='Enter') doLogin(); });
 
-// Messaggio dopo conferma email tramite link (?verified=1)
-if(new URLSearchParams(window.location.search).get('verified') === '1') {
-  const msg = document.getElementById('l-msg');
-  msg.textContent = '✓ Email confermata! Ora puoi accedere.';
-  msg.className = 'msg ok';
-}
 </script>
 </body>
 </html>
