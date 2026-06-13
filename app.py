@@ -15,8 +15,9 @@ Modifiche sicurezza rispetto a v1.1:
 
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from functools import wraps
-import psycopg2, psycopg2.extras, psycopg2.errorcodes
+import psycopg2, psycopg2.extras, psycopg2.errorcodes, psycopg2.pool
 import os, secrets, re, logging
+from contextlib import contextmanager
 
 import bcrypt
 import requests
@@ -91,9 +92,36 @@ limiter = Limiter(
 #  Database
 # ─────────────────────────────────────────────────────────
 
+db_pool = psycopg2.pool.ThreadedConnectionPool(
+    minconn=1,
+    maxconn=int(os.environ.get("DB_POOL_MAX", "5")),
+    dsn=DATABASE_URL,
+)
+
+@contextmanager
 def get_db():
-    conn = psycopg2.connect(DATABASE_URL)
-    return conn
+    """
+    Ritorna una connessione presa dal pool (NON ne apre una nuova ogni volta).
+    Al termine del blocco 'with' la connessione viene fatta commit/rollback
+    e restituita al pool — mai chiusa, mai 'persa'.
+
+    NB: prima, get_db() faceva psycopg2.connect(...) ad ogni chiamata e
+    'with conn:' su psycopg2 NON chiude la connessione (gestisce solo la
+    transazione), quindi ogni richiesta API lasciava una connessione TCP
+    aperta verso Postgres/Supabase fino al garbage collector. Con /api/live
+    che apriva 1 + N connessioni (N = utenti online) ad ogni poll dei
+    client, con 2+ utenti live il pool del pooler Supabase si esauriva
+    rapidamente e le richieste iniziavano a fallire silenziosamente.
+    """
+    conn = db_pool.getconn()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        db_pool.putconn(conn)
 
 def fetchone(cur):
     row = cur.fetchone()
@@ -986,33 +1014,49 @@ def api_live():
             """)
             users_online = fetchall(cur)
 
-    result = []
+            if not users_online:
+                return jsonify([])
+
+            user_ids = [u["user_id"] for u in users_online]
+
+            # Storico velocità per TUTTI gli utenti online in un'unica query
+            cur.execute("""
+                SELECT user_id, speed_kmh, sim_time, recorded_at::text AS recorded_at
+                FROM speed_history
+                WHERE user_id = ANY(%s)
+                ORDER BY user_id, recorded_at DESC
+            """, (user_ids,))
+            history_rows = fetchall(cur)
+
+            # Fermate per TUTTI gli utenti online in un'unica query
+            cur.execute("""
+                SELECT user_id, station_name, arrival, departure, delay_min,
+                       passed, is_current, sort_order
+                FROM live_stations
+                WHERE user_id = ANY(%s)
+                ORDER BY user_id, sort_order ASC
+            """, (user_ids,))
+            station_rows = fetchall(cur)
+
+    # Raggruppa storico velocità per utente (max 40 punti, ordine cronologico)
+    history_by_user = {}
+    for row in history_rows:
+        lst = history_by_user.setdefault(row["user_id"], [])
+        if len(lst) < 40:
+            lst.append(row)
+    for lst in history_by_user.values():
+        lst.reverse()
+
+    # Raggruppa fermate per utente
+    stations_by_user = {}
+    for row in station_rows:
+        stations_by_user.setdefault(row["user_id"], []).append(row)
+
     for u in users_online:
-        with get_db() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT speed_kmh, sim_time, recorded_at::text AS recorded_at
-                    FROM speed_history
-                    WHERE user_id=%s
-                    ORDER BY recorded_at DESC LIMIT 40
-                """, (u["user_id"],))
-                history = fetchall(cur)
-                history.reverse()
+        u["speed_history"] = history_by_user.get(u["user_id"], [])
+        u["stations"] = stations_by_user.get(u["user_id"], [])
 
-                cur.execute("""
-                    SELECT station_name, arrival, departure, delay_min,
-                           passed, is_current, sort_order
-                    FROM live_stations
-                    WHERE user_id=%s
-                    ORDER BY sort_order ASC
-                """, (u["user_id"],))
-                stations = fetchall(cur)
-
-        u["speed_history"] = history
-        u["stations"] = stations
-        result.append(u)
-
-    return jsonify(result)
+    return jsonify(users_online)
 
 @app.route("/api/live_stations", methods=["POST"])
 @limiter.limit("120 per minute")
