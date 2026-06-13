@@ -155,6 +155,8 @@ tr.lb-online-row td{padding:0!important;border-bottom:none!important}
 /* Main data row for online users */
 tr.lb-user-online td:first-child{border-left:3px solid var(--accent)!important}
 tr.lb-user-online td{background:rgba(206,27,38,.02)}
+tr.lb-user-online{cursor:pointer}
+tr.lb-user-online:hover td{background:rgba(206,27,38,.05)!important}
 .lb-live-bar{display:flex;align-items:center;gap:0;background:rgba(0,122,61,.04);border-top:1px solid rgba(0,122,61,.12);cursor:pointer;transition:background .12s;font-family:var(--font);font-size:11px;user-select:none}
 .lb-live-bar:hover{background:rgba(0,122,61,.09)}
 .lb-live-act{flex:1;font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--white);padding:7px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -168,7 +170,7 @@ tr.lb-user-online td{background:rgba(206,27,38,.02)}
 .lb-live-chevron{padding:6px 12px;color:var(--dimgrey);font-size:10px;transition:transform .2s}
 .lb-live-chevron.open{transform:rotate(180deg)}
 /* panel expanded */
-.lb-live-panel{display:none;background:var(--bg);border-top:1px solid rgba(0,122,61,.15);padding:14px 14px 0}
+.lb-live-panel{display:none;background:var(--card);border-top:1px solid rgba(0,122,61,.15);padding:14px}
 .lb-live-panel.open{display:block}
 /* Location pin icon in rank cell for online users */
 .online-map-btn{background:none;border:none;padding:0 0 0 4px;color:var(--green);font-size:13px;cursor:pointer;line-height:1;transition:color .15s;vertical-align:middle;opacity:.9}
@@ -1128,11 +1130,13 @@ function renderLbPage(){
         <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
       </tr>`;
     }
-    // Online user: solo riga dati con bordo rosso sinistro
-    return `<tr class="lb-user-online">
+    // Online user: riga con accordion dettaglio
+    const panelId='lb-panel-'+row.username.replace(/\W/g,'_');
+    const chevId ='lb-chev-'+row.username.replace(/\W/g,'_');
+    return `<tr class="lb-user-online" onclick="toggleLbLivePanel('${panelId}','${chevId}','${row.username}')">
         <td class="rank">
-          <button class="username-btn" onclick="openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
-          <button class="online-map-btn" onclick="lbFlyToUser('${row.username}')" title="Mostra sulla mappa"><i class="fa-solid fa-location-pin"></i></button>
+          <button class="username-btn" onclick="event.stopPropagation();openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
+          <button class="online-map-btn" onclick="event.stopPropagation();lbFlyToUser('${row.username}')" title="Mostra sulla mappa"><i class="fa-solid fa-location-pin"></i></button>
         </td>
         <td class="username">
           <span class="username-text">${row.username}${(row.azienda||row.compartimento)?` <span class="username-extra">(${[row.azienda,row.compartimento].filter(Boolean).join(' – ')})</span>`:''}</span>
@@ -1143,8 +1147,14 @@ function renderLbPage(){
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
         </td>
         <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
-        <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
-      </tr>`;
+        <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">
+          ${row.corse}
+          <span class="lb-live-chevron" id="${chevId}" style="display:inline-block;margin-left:4px"><i class="fa-solid fa-chevron-down"></i></span>
+        </td>
+      </tr>
+      <tr class="lb-online-row"><td colspan="5" style="border-left:3px solid var(--accent);padding:0!important">
+        <div class="lb-live-panel" id="${panelId}"></div>
+      </td></tr>`;
   }).join('');
   renderLbPagination();
 }
@@ -1237,7 +1247,6 @@ function toggleLbLivePanel(panelId,chevId,username){
     const u=liveData.find(u=>u.username===username);
     if(u){
       renderPanel(u,panel);
-      // scrollIntoView smooth after brief paint
       setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}),80);
     } else {
       panel.innerHTML='<div style="padding:14px;font-size:11px;color:var(--dimgrey)">Dati live non disponibili.</div>';
