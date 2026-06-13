@@ -60,45 +60,8 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .sec-title{font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-family:var(--font-md);display:flex;align-items:center;gap:6px}
 .sec-title::before{content:'';display:inline-block;width:3px;height:14px;background:var(--accent);border-radius:1px}
 .sec-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(0,122,61,.1);border:1px solid rgba(0,122,61,.25);color:var(--green);font-family:var(--font-md);font-size:10px;font-weight:500;padding:2px 8px;border-radius:2px;letter-spacing:.06em}
-
-/* ── ONLINE CARDS ── */
-.online-section{margin-bottom:24px}
-.online-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
-.online-card{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--green);border-radius:3px;padding:14px;position:relative}
-.online-card-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
-.online-card-user{font-family:var(--font-md);font-size:14px;font-weight:500;color:var(--white)}
-.online-card-act{font-size:10px;color:var(--dimgrey);margin-top:2px;font-family:var(--font)}
-.online-dot-badge{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:500;color:var(--green);font-family:var(--font-md);letter-spacing:.06em;text-transform:uppercase}
 .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-
-/* Instrument cluster */
-.cluster{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
-.instrument{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:8px;text-align:center}
-.instrument-val{font-family:var(--font-md);font-size:22px;font-weight:500;line-height:1;color:var(--white)}
-.instrument-val.spd{color:var(--accent)}
-.instrument-val.dly-ok{color:var(--green)}
-.instrument-val.dly-bad{color:var(--red)}
-.instrument-val.comfort-hi{color:var(--green)}
-.instrument-val.comfort-mid{color:var(--amber)}
-.instrument-val.comfort-lo{color:var(--red)}
-.instrument-lbl{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dimgrey);margin-top:3px;font-family:var(--font)}
-
-/* Next station bar */
-.next-station-bar{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:7px 10px;display:flex;align-items:center;gap:8px;font-size:11px}
-.next-station-arrow{color:var(--accent);font-size:14px;flex-shrink:0}
-.next-station-name{font-family:var(--font-md);font-weight:500;color:var(--white);flex:1}
-.next-station-time{font-family:var(--mono);font-size:10px;color:var(--dimgrey)}
-
-/* Consist tag */
-.consist-tag{margin-top:6px;font-family:var(--font);font-size:10px;color:var(--dimgrey)}
-.consist-tag span{color:var(--grey)}
-
-/* comfort bar */
-.comfort-neutral{color:var(--grey)}
-.comfort-bar-wrap{margin-top:8px}
-.comfort-bar-track{height:4px;background:var(--panel);border-radius:2px;overflow:hidden}
-.comfort-bar-fill{height:100%;border-radius:2px;transition:width .5s}
 
 /* ── TRENI IN CORSA (sezione esistente) ── */
 .live-section{margin-bottom:24px}
@@ -161,6 +124,18 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .lb-tab:hover{background:var(--card);color:var(--white)}
 .lb-tab.active{background:var(--card);color:var(--accent);border-bottom-color:var(--card)}
 .lb-table-wrap-active{border-top-left-radius:0}
+.lb-pagination{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);border:1px solid var(--border);border-top:none;font-family:var(--font-md);font-size:11px;color:var(--grey)}
+.lb-pag-info{white-space:nowrap}
+.lb-pag-perpage{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.lb-pag-perpage select{background:var(--card);border:1px solid var(--border);color:var(--white);font-family:var(--font-md);font-size:11px;font-weight:500;padding:4px 8px;border-radius:2px;cursor:pointer}
+.lb-pag-perpage select:hover{border-color:var(--accent)}
+.lb-pag-pages{display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.lb-page-btn{min-width:28px;height:28px;padding:0 6px;background:var(--card);border:1px solid var(--border);color:var(--grey);font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:2px;transition:all .15s;line-height:26px}
+.lb-page-btn:hover:not(:disabled):not(.active){background:var(--bg);color:var(--accent);border-color:var(--accent)}
+.lb-page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);cursor:default}
+.lb-page-btn:disabled{opacity:.35;cursor:default}
+.lb-page-ellipsis{color:var(--dimgrey);font-size:11px;padding:0 4px}
+@media(max-width:640px){.lb-pagination{justify-content:center;text-align:center}.lb-pag-pages{justify-content:center}}
 .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:2px;overflow:hidden}
 table{width:100%;border-collapse:collapse}
 thead{background:var(--panel)}
@@ -173,6 +148,26 @@ tbody td{padding:9px 12px;vertical-align:middle}
 td.rank{font-family:var(--font-md);font-size:11px;color:var(--grey);width:40px;font-weight:500;text-align:center}
 td.rank .username-btn{font-size:15px;color:var(--grey)}
 td.rank .username-btn:hover{color:var(--accent)}
+.map-loc-btn{font-size:13px;color:var(--green);background:none;border:none;cursor:pointer;padding:0 0 0 4px;vertical-align:middle;line-height:1;transition:color .15s;opacity:.85}
+.map-loc-btn:hover{color:var(--accent);opacity:1}
+/* ── INLINE LIVE ROW / ACCORDION ── */
+tr.lb-online-row td{padding:0!important;border-bottom:1px solid rgba(0,122,61,.18)!important}
+.lb-live-bar{display:flex;align-items:center;gap:0;background:rgba(0,122,61,.04);border-top:1px solid rgba(0,122,61,.12);cursor:pointer;transition:background .12s;font-family:var(--font);font-size:11px;user-select:none}
+.lb-live-bar:hover{background:rgba(0,122,61,.09)}
+.lb-live-act{flex:1;font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--white);padding:7px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-live-sep{color:var(--border);padding:0 2px;font-size:13px}
+.lb-live-chip{display:flex;align-items:center;gap:4px;padding:6px 10px;white-space:nowrap;color:var(--grey)}
+.lb-live-chip i{font-size:10px;opacity:.7}
+.lb-live-chip strong{font-family:var(--font-md);color:var(--white)}
+.lb-live-treniamo{padding:6px 10px}
+.lb-live-treniamo a{color:var(--accent);font-size:10px;font-family:var(--font-md);text-decoration:none}
+.lb-live-treniamo a:hover{text-decoration:underline}
+.lb-live-chevron{padding:6px 12px;color:var(--dimgrey);font-size:10px;transition:transform .2s}
+.lb-live-chevron.open{transform:rotate(180deg)}
+/* panel expanded */
+.lb-live-panel{display:none;background:var(--bg);border-top:1px solid rgba(0,122,61,.15);padding:14px 14px 0}
+.lb-live-panel.open{display:block}
+@media(max-width:600px){.lb-live-chip{padding:5px 6px}.lb-live-act{padding:6px 8px}}
 @media(max-width:600px){.lb-col-corse{display:none}}
 td.username{font-weight:500;font-size:13px;color:var(--white);font-family:var(--font-md)}
 .sub{font-family:var(--font);font-size:10px;color:var(--dimgrey);margin-top:1px}
@@ -544,9 +539,6 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
   .statusbar-right{font-size:9px}
   #user-banner{flex-direction:column;align-items:flex-start;gap:6px;font-size:10px}
   #user-banner .tv{word-break:break-all;font-size:9px}
-  .online-grid{grid-template-columns:1fr}
-  .instrument-val{font-size:17px}
-  .instrument-lbl{font-size:8px}
   .live-kpis{gap:6px}
   .live-kpi{padding:5px 8px;min-width:56px}
   .live-kpi-val{font-size:15px}
@@ -577,14 +569,6 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
   #lb-registered{display:none}
   .sec-title{font-size:10px}
   .sec-badge{font-size:9px;padding:2px 6px}
-  .cluster{gap:5px}
-  .instrument{padding:6px 4px}
-  .instrument-val{font-size:14px}
-  .instrument-lbl{font-size:7px;letter-spacing:.05em}
-  .online-card{padding:10px}
-  .online-card-user{font-size:13px}
-  .next-station-bar{padding:6px 8px;font-size:10px}
-  .next-station-arrow{font-size:12px}
   .live-kpis{gap:4px;flex-wrap:wrap}
   .live-kpi{padding:4px 7px;min-width:50px}
   .live-kpi-val{font-size:14px}
@@ -618,9 +602,6 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 
 /* ── Extra small (≤360px) ── */
 @media(max-width:360px){
-  .cluster{grid-template-columns:1fr 1fr;gap:4px}
-  .cluster .instrument:last-child{grid-column:1/-1}
-  .instrument-val{font-size:13px}
   table{min-width:360px}
   .live-kpi{min-width:44px;padding:4px 5px}
   .live-kpi-val{font-size:13px}
@@ -701,15 +682,6 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
     </div>
   </div>
 
-  <!-- ══ SEZIONE 1: GIOCATORI ONLINE ══ -->
-  <div class="online-section" id="online-section" style="display:none">
-    <div class="sec-hdr">
-      <div class="sec-title">Giocatori Online</div>
-      <div class="sec-badge"><span class="pulse"></span><span id="online-count">0 online</span></div>
-    </div>
-    <div class="online-grid" id="online-grid"></div>
-  </div>
-
   <!-- ══ SEZIONE 2: TRENI IN CORSA ══ -->
   <div class="live-section" id="live-section" style="display:none">
     <div class="sec-hdr">
@@ -744,6 +716,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
         </tbody>
       </table>
     </div>
+    <div class="lb-pagination" id="lb-pagination" style="display:none"></div>
   </div>
 </main>
 
@@ -885,12 +858,16 @@ let liveData = [];
 let liveOrder = [];
 let lbRows = [];
 let lbPeriod = 'all';
+let lbPage = 1;
+let lbPerPage = 10;
+const LB_PERPAGE_OPTIONS = [10, 25, 50, 100];
 const LB_TITLES = {all:'Classifica Generale', month:'Classifica Mensile', week:'Classifica Settimanale'};
 const LB_SCORE_LABELS = {all:'Affidabilità', month:'Punteggio', week:'Punteggio'};
 
 function switchLbPeriod(period){
   if(lbPeriod===period) return;
   lbPeriod = period;
+  lbPage = 1;
   document.querySelectorAll('#lb-tabs .lb-tab').forEach(el=>{
     el.classList.toggle('active', el.dataset.period===period);
   });
@@ -1111,17 +1088,38 @@ async function loadLeaderboard(){
       document.getElementById('lb-registered').textContent='· '+d.count+' registrati';
     }).catch(()=>{});
     const body=document.getElementById('lb-body');
+    const pag=document.getElementById('lb-pagination');
     if(!rows.length){
       const emptyMsg = lbPeriod==='all'
         ? 'Nessuna sessione ancora. Completa una corsa con il monitor attivo!'
         : 'Nessuna corsa registrata in questo periodo. Sii il primo a scalare la classifica!';
       body.innerHTML='<tr><td colspan="5"><div class="empty-state">'+emptyMsg+'</div></td></tr>';
+      pag.style.display='none';
+      pag.innerHTML='';
       return;
     }
     lbRows = rows;
-    body.innerHTML=rows.map((row,i)=>`
+    const maxPage=Math.max(1,Math.ceil(lbRows.length/lbPerPage));
+    if(lbPage>maxPage) lbPage=maxPage;
+    renderLbPage();
+  }catch(e){
+    document.getElementById('lb-body').innerHTML='<tr><td colspan="5"><div class="empty-state">Errore caricamento.</div></td></tr>';
+    document.getElementById('lb-pagination').style.display='none';
+  }
+}
+
+function renderLbPage(){
+  const body=document.getElementById('lb-body');
+  const start=(lbPage-1)*lbPerPage;
+  const pageRows=lbRows.slice(start,start+lbPerPage);
+  body.innerHTML=pageRows.map((row,j)=>{
+    const i=start+j;
+    const rankCells=`
       <tr>
-        <td class="rank"><button class="username-btn" onclick="openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button></td>
+        <td class="rank">
+          <button class="username-btn" onclick="openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
+          ${row.online?`<button class="map-loc-btn" onclick="lbFlyToUser('${row.username}')" title="Mostra sulla mappa"><i class="fa-duotone fa-map-location"></i></button>`:''}
+        </td>
         <td class="username"><span class="username-text">${row.username}${(row.azienda||row.compartimento)?` <span class="username-extra">(${[row.azienda,row.compartimento].filter(Boolean).join(' – ')})</span>`:''}</span>
           ${row.online?'<span style="margin-left:6px;font-size:9px;color:var(--green);font-family:var(--font-md)">● ONLINE</span>':''}
         </td>
@@ -1131,76 +1129,122 @@ async function loadLeaderboard(){
         </td>
         <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
         <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
-      </tr>`).join('');
-  }catch(e){
-    document.getElementById('lb-body').innerHTML='<tr><td colspan="5"><div class="empty-state">Errore caricamento.</div></td></tr>';
-  }
+      </tr>`;
+    if(!row.online) return rankCells;
+    const liveUser=liveData.find(u=>u.username===row.username);
+    return rankCells+renderLbLiveRow(row.username,liveUser,i);
+  }).join('');
+  renderLbPagination();
 }
 
-// ── Online cards ──
-function comfortClass(c){
-  if(c===null||c===undefined||c===100) return 'comfort-neutral';
-  return c>=70?'comfort-hi':c>=40?'comfort-mid':'comfort-lo';
+function goLbPage(p){
+  const maxPage=Math.max(1,Math.ceil(lbRows.length/lbPerPage));
+  if(p<1||p>maxPage||p===lbPage) return;
+  lbPage=p;
+  renderLbPage();
+  document.querySelector('.lb-section')?.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+
+function setLbPerPage(val){
+  lbPerPage=parseInt(val,10)||10;
+  lbPage=1;
+  renderLbPage();
+}
+
+function renderLbPagination(){
+  const pag=document.getElementById('lb-pagination');
+  const total=lbRows.length;
+  if(!total){ pag.style.display='none'; pag.innerHTML=''; return; }
+  const maxPage=Math.max(1,Math.ceil(total/lbPerPage));
+  const start=(lbPage-1)*lbPerPage+1;
+  const end=Math.min(lbPage*lbPerPage,total);
+  pag.style.display='flex';
+
+  let html=`<div class="lb-pag-info">Visualizzazione da ${start} a ${end} di ${total} risultati</div>`;
+
+  html+=`<div class="lb-pag-perpage"><span>Per pagina</span><select onchange="setLbPerPage(this.value)">`;
+  LB_PERPAGE_OPTIONS.forEach(opt=>{
+    html+=`<option value="${opt}" ${opt===lbPerPage?'selected':''}>${opt}</option>`;
+  });
+  html+=`</select></div>`;
+
+  html+=`<div class="lb-pag-pages">`;
+  html+=`<button class="lb-page-btn" onclick="goLbPage(${lbPage-1})" ${lbPage===1?'disabled':''} title="Precedente"><i class="fa-solid fa-chevron-left"></i></button>`;
+  const pages=new Set([1,maxPage,lbPage,lbPage-1,lbPage+1]);
+  let prev=0;
+  for(let p=1;p<=maxPage;p++){
+    if(!pages.has(p)) continue;
+    if(p-prev>1) html+='<span class="lb-page-ellipsis">…</span>';
+    html+=`<button class="lb-page-btn${p===lbPage?' active':''}" onclick="goLbPage(${p})" ${p===lbPage?'disabled':''}>${p}</button>`;
+    prev=p;
+  }
+  html+=`<button class="lb-page-btn" onclick="goLbPage(${lbPage+1})" ${lbPage===maxPage?'disabled':''} title="Successiva"><i class="fa-solid fa-chevron-right"></i></button>`;
+  html+=`</div>`;
+
+  pag.innerHTML=html;
+}
+
 function comfortColor(c){
   if(c===null||c===undefined||c===100) return 'var(--grey)';
   return c>=70?'var(--green)':c>=40?'var(--amber)':'var(--red)';
 }
-function dlyClass(d){
-  const v=Math.abs(d||0);
-  if(v===0||d===null||d===undefined)return'dly-ok';
-  if(v<2)return'dly-amber';
-  return'dly-bad';
-}
-function dlyText(d){
-  if(!d||Math.abs(d)<0.1)return'0';
-  return(d>0?'+':'')+Math.round(d);
+
+function renderLbLiveRow(username,u,lbIdx){
+  const panelId='lb-panel-'+username.replace(/\W/g,'_');
+  const chevId ='lb-chev-'+username.replace(/\W/g,'_');
+  if(!u) return `<tr class="lb-online-row"><td colspan="5">
+    <div class="lb-live-bar" style="cursor:default;padding:6px 14px;color:var(--dimgrey);font-size:10px">
+      <i class="fa-solid fa-circle-notch fa-spin" style="margin-right:6px"></i>In attesa di dati live…
+    </div></td></tr>`;
+  const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
+  const spd=u.speed_kmh?Math.round(u.speed_kmh):'—';
+  const trainNum=vtTrainNumber(u.activity_name||'');
+  const tmLink=trainNum?`<a class="lb-live-treniamo" href="https://www.treniamo.it/treno/${trainNum}" target="_blank" rel="noopener" title="Treniamo.it" onclick="event.stopPropagation()">↗ Treniamo</a>`:'';
+  const simTime=u.sim_time||'';
+  return `<tr class="lb-online-row"><td colspan="5">
+    <div class="lb-live-bar" onclick="toggleLbLivePanel('${panelId}','${chevId}','${username}')">
+      <span class="lb-live-act">${u.activity_name||'—'}</span>
+      ${tmLink?`<span class="lb-live-treniamo">${tmLink}</span><span class="lb-live-sep">|</span>`:''}
+      ${simTime?`<span class="lb-live-chip"><i class="fa-regular fa-clock"></i><strong>${simTime}</strong></span><span class="lb-live-sep">|</span>`:''}
+      <span class="lb-live-chip"><i class="fa-solid fa-gauge-high"></i><strong style="color:var(--accent)">${spd}</strong>&nbsp;km/h</span>
+      <span class="lb-live-sep">|</span>
+      <span class="lb-live-chip"><i class="fa-solid fa-person-seat"></i><strong style="color:${comfortColor(cft)}">${cft}</strong>&nbsp;comfort</span>
+      <span class="lb-live-chevron" id="${chevId}"><i class="fa-solid fa-chevron-down"></i></span>
+    </div>
+    <div class="lb-live-panel" id="${panelId}"></div>
+  </td></tr>`;
 }
 
-function renderOnlineCards(users){
-  const sec=document.getElementById('online-section');
-  const grid=document.getElementById('online-grid');
-  document.getElementById('online-count').textContent=users.length+' online';
-  if(!users.length){sec.style.display='none';return;}
-  sec.style.display='block';
-  grid.innerHTML=users.map(u=>{
-    const spd=Math.round(u.speed_kmh||0);
-    const dly=u.delay_min||0;
-    const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
-    const barW=Math.max(0,Math.min(100,cft));
-    const barCol=comfortColor(cft);
-    return `<div class="online-card">
-      <div class="online-card-hdr">
-        <div>
-          <div class="online-card-user">👤 ${u.username}</div>
-          <div class="online-card-act">${u.activity_name||'—'}</div>
-        </div>
-        <div class="online-dot-badge"><span class="pulse"></span>LIVE</div>
-      </div>
-      <div class="cluster">
-        <div class="instrument">
-          <div class="instrument-val spd">${spd}</div>
-          <div class="instrument-lbl">km/h</div>
-        </div>
-        <div class="instrument">
-          <div class="instrument-val ${comfortClass(cft)}">${cft}</div>
-          <div class="instrument-lbl">Comfort</div>
-        </div>
-      </div>
-      ${u.next_station?`
-      <div class="next-station-bar">
-        <span class="next-station-arrow">→</span>
-        <span class="next-station-name">${u.next_station}</span>
-        ${u.sim_time?`<span class="next-station-time">${u.sim_time}</span>`:''}
-      </div>`:''}
-      <div class="comfort-bar-wrap">
-        <div class="comfort-bar-track">
-          <div class="comfort-bar-fill" style="width:${barW}%;background:${barCol}"></div>
-        </div>
-      </div>
-      ${u.consist?`<div class="consist-tag">🚂 <span>${u.consist}</span></div>`:''}
-    </div>`;
-  }).join('');
+function toggleLbLivePanel(panelId,chevId,username){
+  const panel=document.getElementById(panelId);
+  const chev=document.getElementById(chevId);
+  if(!panel) return;
+  const isOpen=panel.classList.contains('open');
+  panel.classList.toggle('open',!isOpen);
+  if(chev) chev.classList.toggle('open',!isOpen);
+  if(!isOpen){
+    const u=liveData.find(u=>u.username===username);
+    if(u){
+      renderPanel(u,panel);
+      // scrollIntoView smooth after brief paint
+      setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}),80);
+    } else {
+      panel.innerHTML='<div style="padding:14px;font-size:11px;color:var(--dimgrey)">Dati live non disponibili.</div>';
+    }
+  }
+}
+
+function lbFlyToUser(username){
+  const mapSection=document.querySelector('.map-section');
+  if(mapSection) mapSection.scrollIntoView({behavior:'smooth',block:'start'});
+  setTimeout(()=>{
+    if(!leafletMap) return;
+    const m=trainMarkers[username];
+    if(m){
+      leafletMap.flyTo(m.getLatLng(),11,{animate:true,duration:.8});
+      m.openPopup();
+    }
+  },400);
 }
 
 // ── Live section (Treni in Corsa) ──
@@ -1779,9 +1823,9 @@ async function loadLive(){
 
     liveData=liveOrder.map(name=>fresh.find(u=>u.username===name)).filter(Boolean);
 
-    renderOnlineCards(liveData);
     renderLiveSection();
     updateMap(liveData);
+    if(lbRows.length) renderLbPage();
   }catch(e){}
 }
 
