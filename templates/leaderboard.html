@@ -652,6 +652,18 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 </header>
 
 <main>
+  <!-- ── BANNER LANCIO (visibile 18:00–22:00) ── -->
+  <div id="launch-banner" role="dialog" aria-label="Annuncio lancio ViaggiaTreno Virtual">
+    <img src="https://i.postimg.cc/1X4rDtgJ/Gemini-Generated-Image-ruolbkruolbkruol.jpg" alt="ViaggiaTreno Virtual Launch">
+    <div class="popup-body">
+      <div class="popup-date-badge">14 Giugno · 18:00 – 22:00</div>
+      <p>Partecipa al lancio di <strong>ViaggiaTreno Virtual!</strong> Scopri la nuova piattaforma per Open Rails con simulazione in tempo reale e adrenalina pura. Prendi i comandi, la tua prossima avventura comincia ora!</p>
+      <div class="popup-footer">
+        <button class="popup-close" onclick="dismissLaunchBanner()">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Token banner -->
   <div id="user-banner">
     <span><span class="lbl">Token API per il .exe: </span><span class="tv" id="banner-token"></span></span>
@@ -2405,7 +2417,127 @@ setInterval(loadStationCoords,300000);
   </div>
 </div>
 
-<!-- ── POPUP LANCIO ── -->
+<!-- ── BANNER LANCIO (in pagina, visibile 18:00–22:00) ── -->
+<style>
+#launch-banner {
+  display: flex;
+  align-items: stretch;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  overflow: hidden;
+  border-top: 3px solid var(--accent);
+  margin-bottom: 14px;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.55s cubic-bezier(0.22,1,0.36,1), opacity 0.45s ease, margin-bottom 0.55s ease;
+}
+#launch-banner.popup-visible {
+  max-height: 220px;
+  opacity: 1;
+}
+#launch-banner.popup-hidden {
+  display: none;
+  margin-bottom: 0;
+}
+#launch-banner img {
+  width: 200px;
+  height: 100%;
+  min-height: 140px;
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+}
+#launch-banner .popup-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+}
+#launch-banner .popup-date-badge {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-md);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 2px;
+  margin-bottom: 9px;
+  align-self: flex-start;
+}
+#launch-banner .popup-body p {
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--white);
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+#launch-banner .popup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+}
+#launch-banner .popup-close {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--dimgrey);
+  cursor: pointer;
+  font-family: var(--font);
+  padding: 0;
+  text-decoration: underline;
+}
+#launch-banner .popup-close:hover { color: var(--grey); }
+
+@media (max-width: 600px) {
+  #launch-banner { flex-direction: column; }
+  #launch-banner img { width: 100%; height: 140px; min-height: 0; }
+  #launch-banner.popup-visible { max-height: 360px; }
+}
+</style>
+
+<script>
+(function() {
+  var STORAGE_KEY = 'vtv_launch_banner_dismissed';
+  var banner = document.getElementById('launch-banner');
+
+  function inWindow() {
+    var h = new Date().getHours();
+    return h >= 18 && h < 22; // visibile dalle 18:00 alle 22:00
+  }
+
+  function show() {
+    setTimeout(function() {
+      banner.classList.add('popup-visible');
+    }, 400);
+  }
+
+  function dismissLaunchBanner() {
+    banner.classList.remove('popup-visible');
+    banner.classList.add('popup-hidden');
+    try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch(e) {}
+  }
+
+  window.dismissLaunchBanner = dismissLaunchBanner;
+
+  if (!inWindow()) {
+    banner.classList.add('popup-hidden');
+  } else {
+    try {
+      if (!sessionStorage.getItem(STORAGE_KEY)) show();
+      else banner.classList.add('popup-hidden');
+    } catch(e) {
+      show();
+    }
+  }
+})();
+</script>
+
+<!-- ── POPUP LANCIO (flottante, visibile fino alle 17:59) ── -->
 <style>
 #launch-popup {
   position: fixed;
@@ -2429,6 +2561,7 @@ setInterval(loadStationCoords,300000);
 #launch-popup.popup-hidden {
   transform: translateX(110%);
   opacity: 0;
+  display: none;
 }
 #launch-popup img {
   width: 100%;
@@ -2436,10 +2569,10 @@ setInterval(loadStationCoords,300000);
   object-fit: cover;
   display: block;
 }
-.popup-body {
+#launch-popup .popup-body {
   padding: 14px 16px 16px;
 }
-.popup-date-badge {
+#launch-popup .popup-date-badge {
   display: inline-block;
   background: var(--accent);
   color: #fff;
@@ -2452,20 +2585,20 @@ setInterval(loadStationCoords,300000);
   border-radius: 2px;
   margin-bottom: 9px;
 }
-.popup-body p {
+#launch-popup .popup-body p {
   font-family: var(--font);
   font-size: 12px;
   color: var(--white);
   line-height: 1.55;
   margin: 0 0 12px;
 }
-.popup-footer {
+#launch-popup .popup-footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
 }
-.popup-close {
+#launch-popup .popup-close {
   background: none;
   border: none;
   font-size: 12px;
@@ -2475,8 +2608,7 @@ setInterval(loadStationCoords,300000);
   padding: 0;
   text-decoration: underline;
 }
-.popup-close:hover { color: var(--grey); }
-
+#launch-popup .popup-close:hover { color: var(--grey); }
 </style>
 
 <div id="launch-popup" role="dialog" aria-label="Annuncio lancio ViaggiaTreno Virtual">
@@ -2495,8 +2627,12 @@ setInterval(loadStationCoords,300000);
   var STORAGE_KEY = 'vtv_launch_popup_dismissed';
   var popup = document.getElementById('launch-popup');
 
-  function showPopup() {
-    // Small delay so the slide feels intentional
+  function inWindow() {
+    var h = new Date().getHours();
+    return h < 18; // visibile fino alle 17:59
+  }
+
+  function show() {
     setTimeout(function() {
       popup.classList.add('popup-visible');
     }, 1800);
@@ -2510,11 +2646,15 @@ setInterval(loadStationCoords,300000);
 
   window.dismissLaunchPopup = dismissLaunchPopup;
 
-  // Show unless already dismissed this session
-  try {
-    if (!sessionStorage.getItem(STORAGE_KEY)) showPopup();
-  } catch(e) {
-    showPopup();
+  if (!inWindow()) {
+    popup.classList.add('popup-hidden');
+  } else {
+    try {
+      if (!sessionStorage.getItem(STORAGE_KEY)) show();
+      else popup.classList.add('popup-hidden');
+    } catch(e) {
+      show();
+    }
   }
 })();
 </script>
