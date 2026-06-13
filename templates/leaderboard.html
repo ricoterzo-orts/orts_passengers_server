@@ -63,8 +63,8 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* ── TRENI IN CORSA (sezione esistente) ── */
-.live-section{margin-bottom:24px}
+/* ── TRENI IN CORSA (sezione rimossa) ── */
+.live-section{display:none!important;margin-bottom:24px}
 .live-tabs{display:flex;gap:4px;margin-bottom:0;flex-wrap:wrap}
 .live-tab{padding:5px 14px;background:var(--panel);border:1px solid var(--border);border-bottom:none;color:var(--grey);font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:2px 2px 0 0;transition:all .15s;display:flex;align-items:center;gap:5px}
 .live-tab:hover{background:var(--card);color:var(--white)}
@@ -151,7 +151,11 @@ td.rank .username-btn:hover{color:var(--accent)}
 .map-loc-btn{font-size:13px;color:var(--green);background:none;border:none;cursor:pointer;padding:0 0 0 4px;vertical-align:middle;line-height:1;transition:color .15s;opacity:.85}
 .map-loc-btn:hover{color:var(--accent);opacity:1}
 /* ── INLINE LIVE ROW / ACCORDION ── */
-tr.lb-online-row td{padding:0!important;border-bottom:1px solid rgba(0,122,61,.18)!important}
+tr.lb-online-row td{padding:0!important;border-bottom:none!important}
+/* Main data row for online users */
+tr.lb-user-online td{border-left:3px solid var(--accent)!important}
+tr.lb-user-online{cursor:pointer}
+tr.lb-user-online:hover td{background:rgba(206,27,38,.05)!important}
 .lb-live-bar{display:flex;align-items:center;gap:0;background:rgba(0,122,61,.04);border-top:1px solid rgba(0,122,61,.12);cursor:pointer;transition:background .12s;font-family:var(--font);font-size:11px;user-select:none}
 .lb-live-bar:hover{background:rgba(0,122,61,.09)}
 .lb-live-act{flex:1;font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--white);padding:7px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -167,6 +171,9 @@ tr.lb-online-row td{padding:0!important;border-bottom:1px solid rgba(0,122,61,.1
 /* panel expanded */
 .lb-live-panel{display:none;background:var(--bg);border-top:1px solid rgba(0,122,61,.15);padding:14px 14px 0}
 .lb-live-panel.open{display:block}
+/* Location pin icon in rank cell for online users */
+.online-map-btn{background:none;border:none;padding:0 0 0 4px;color:var(--green);font-size:13px;cursor:pointer;line-height:1;transition:color .15s;vertical-align:middle;opacity:.9}
+.online-map-btn:hover{color:var(--accent);opacity:1}
 @media(max-width:600px){.lb-live-chip{padding:5px 6px}.lb-live-act{padding:6px 8px}}
 @media(max-width:600px){.lb-col-corse{display:none}}
 td.username{font-weight:500;font-size:13px;color:var(--white);font-family:var(--font-md)}
@@ -682,14 +689,8 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
     </div>
   </div>
 
-  <!-- ══ SEZIONE 2: TRENI IN CORSA ══ -->
-  <div class="live-section" id="live-section" style="display:none">
-    <div class="sec-hdr">
-      <div class="sec-title">Treni in Corsa</div>
-    </div>
-    <div class="live-tabs" id="live-tabs"></div>
-    <div id="live-panel-main" class="live-panel-main"></div>
-  </div>
+  <!-- ══ SEZIONE 2: TRENI IN CORSA ══ (nascosta) -->
+  <div id="live-section" style="display:none"><div id="live-tabs"></div><div id="live-panel-main"></div></div>
 
   <!-- ══ SEZIONE 3: CLASSIFICA ══ -->
   <div class="lb-section">
@@ -1114,15 +1115,12 @@ function renderLbPage(){
   const pageRows=lbRows.slice(start,start+lbPerPage);
   body.innerHTML=pageRows.map((row,j)=>{
     const i=start+j;
-    const rankCells=`
-      <tr>
+    if(!row.online){
+      return `<tr>
         <td class="rank">
           <button class="username-btn" onclick="openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
-          ${row.online?`<button class="map-loc-btn" onclick="lbFlyToUser('${row.username}')" title="Mostra sulla mappa"><i class="fa-solid fa-location-pin"></i></button>`:''}
         </td>
-        <td class="username"><span class="username-text">${row.username}${(row.azienda||row.compartimento)?` <span class="username-extra">(${[row.azienda,row.compartimento].filter(Boolean).join(' – ')})</span>`:''}</span>
-          ${row.online?'<span style="margin-left:6px;font-size:9px;color:var(--green);font-family:var(--font-md)">● ONLINE</span>':''}
-        </td>
+        <td class="username"><span class="username-text">${row.username}${(row.azienda||row.compartimento)?` <span class="username-extra">(${[row.azienda,row.compartimento].filter(Boolean).join(' – ')})</span>`:''}</span></td>
         <td class="score">
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
@@ -1130,9 +1128,32 @@ function renderLbPage(){
         <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
         <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
       </tr>`;
-    if(!row.online) return rankCells;
+    }
+    // Online user: accordion
     const liveUser=liveData.find(u=>u.username===row.username);
-    return rankCells+renderLbLiveRow(row.username,liveUser,i);
+    const panelId='lb-panel-'+row.username.replace(/\W/g,'_');
+    const chevId ='lb-chev-'+row.username.replace(/\W/g,'_');
+    const mainRowId='lb-main-'+row.username.replace(/\W/g,'_');
+    return `<tr class="lb-user-online" id="${mainRowId}" onclick="toggleLbLivePanel('${panelId}','${chevId}','${row.username}')">
+        <td class="rank" style="border-left:3px solid var(--accent)">
+          <button class="username-btn" onclick="event.stopPropagation();openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
+          <button class="online-map-btn" onclick="event.stopPropagation();lbFlyToUser('${row.username}')" title="Mostra sulla mappa"><i class="fa-solid fa-location-pin"></i></button>
+        </td>
+        <td class="username" style="border-left:none">
+          <span class="username-text">${row.username}${(row.azienda||row.compartimento)?` <span class="username-extra">(${[row.azienda,row.compartimento].filter(Boolean).join(' – ')})</span>`:''}</span>
+          <span style="margin-left:6px;font-size:9px;color:var(--green);font-family:var(--font-md)">● ONLINE</span>
+        </td>
+        <td class="score" style="border-left:none">
+          <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
+          <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
+        </td>
+        <td class="servizio" style="border-left:none"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
+        <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey);border-left:none">
+          ${row.corse}
+          <span class="lb-live-chevron" id="${chevId}" style="display:inline-block;margin-left:4px"><i class="fa-solid fa-chevron-down"></i></span>
+        </td>
+      </tr>
+      ${renderLbLiveRow(row.username,liveUser,i,panelId,chevId)}`;
   }).join('');
   renderLbPagination();
 }
@@ -1189,19 +1210,19 @@ function comfortColor(c){
   return c>=70?'var(--green)':c>=40?'var(--amber)':'var(--red)';
 }
 
-function renderLbLiveRow(username,u,lbIdx){
-  const panelId='lb-panel-'+username.replace(/\W/g,'_');
-  const chevId ='lb-chev-'+username.replace(/\W/g,'_');
-  if(!u) return `<tr class="lb-online-row"><td colspan="5">
+function renderLbLiveRow(username,u,lbIdx,panelId,chevId){
+  if(!u) return `<tr class="lb-online-row"><td colspan="5" style="border-left:3px solid var(--accent)">
     <div class="lb-live-bar" style="cursor:default;padding:6px 14px;color:var(--dimgrey);font-size:10px">
       <i class="fa-solid fa-circle-notch fa-spin" style="margin-right:6px"></i>In attesa di dati live…
-    </div></td></tr>`;
+    </div>
+    <div class="lb-live-panel" id="${panelId}"></div>
+  </td></tr>`;
   const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
   const spd=u.speed_kmh?Math.round(u.speed_kmh):'—';
   const trainNum=vtTrainNumber(u.activity_name||'');
   const tmLink=trainNum?`<a class="lb-live-treniamo" href="https://www.treniamo.it/treno/${trainNum}" target="_blank" rel="noopener" title="Treniamo.it" onclick="event.stopPropagation()">↗ Treniamo</a>`:'';
   const simTime=u.sim_time||'';
-  return `<tr class="lb-online-row"><td colspan="5">
+  return `<tr class="lb-online-row"><td colspan="5" style="border-left:3px solid var(--accent);padding:0!important">
     <div class="lb-live-bar" onclick="toggleLbLivePanel('${panelId}','${chevId}','${username}')">
       <span class="lb-live-act">${u.activity_name||'—'}</span>
       ${tmLink?`<span class="lb-live-treniamo">${tmLink}</span><span class="lb-live-sep">|</span>`:''}
@@ -1209,7 +1230,6 @@ function renderLbLiveRow(username,u,lbIdx){
       <span class="lb-live-chip"><i class="fa-solid fa-gauge-high"></i><strong style="color:var(--accent)">${spd}</strong>&nbsp;km/h</span>
       <span class="lb-live-sep">|</span>
       <span class="lb-live-chip"><i class="fa-solid fa-person-seat"></i><strong style="color:${comfortColor(cft)}">${cft}</strong>&nbsp;comfort</span>
-      <span class="lb-live-chevron" id="${chevId}"><i class="fa-solid fa-chevron-down"></i></span>
     </div>
     <div class="lb-live-panel" id="${panelId}"></div>
   </td></tr>`;
