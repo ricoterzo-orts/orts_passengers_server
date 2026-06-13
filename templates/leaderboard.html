@@ -867,6 +867,7 @@ let lbRows = [];
 let lbPeriod = 'all';
 let lbPage = 1;
 let lbPerPage = 10;
+let lbOpenPanels = new Set();
 const LB_PERPAGE_OPTIONS = [10, 25, 50, 100];
 const LB_TITLES = {all:'Classifica Generale', month:'Classifica Mensile', week:'Classifica Settimanale'};
 const LB_SCORE_LABELS = {all:'Affidabilità', month:'Punteggio', week:'Punteggio'};
@@ -1165,6 +1166,26 @@ function renderLbPage(){
       </td></tr>`;
   }).join('');
   renderLbPagination();
+  restoreLbOpenPanels();
+}
+
+function restoreLbOpenPanels(){
+  if(!lbOpenPanels.size) return;
+  const start=(lbPage-1)*lbPerPage;
+  const pageRows=lbRows.slice(start,start+lbPerPage);
+  pageRows.forEach(row=>{
+    if(!row.online || !lbOpenPanels.has(row.username)) return;
+    const panelId='lb-panel-'+row.username.replace(/\W/g,'_');
+    const chevId ='lb-chev-'+row.username.replace(/\W/g,'_');
+    const panel=document.getElementById(panelId);
+    const chev=document.getElementById(chevId);
+    if(!panel) return;
+    panel.classList.add('open');
+    if(chev) chev.classList.add('open');
+    const u=liveData.find(u=>u.username===row.username);
+    if(u) renderPanel(u,panel);
+    else panel.innerHTML='<div style="padding:14px;font-size:11px;color:var(--dimgrey)">Dati live non disponibili.</div>';
+  });
 }
 
 function goLbPage(p){
@@ -1252,6 +1273,7 @@ function toggleLbLivePanel(panelId,chevId,username){
   panel.classList.toggle('open',!isOpen);
   if(chev) chev.classList.toggle('open',!isOpen);
   if(!isOpen){
+    lbOpenPanels.add(username);
     const u=liveData.find(u=>u.username===username);
     if(u){
       renderPanel(u,panel);
@@ -1259,6 +1281,8 @@ function toggleLbLivePanel(panelId,chevId,username){
     } else {
       panel.innerHTML='<div style="padding:14px;font-size:11px;color:var(--dimgrey)">Dati live non disponibili.</div>';
     }
+  } else {
+    lbOpenPanels.delete(username);
   }
 }
 
