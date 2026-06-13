@@ -170,7 +170,7 @@ tr.lb-user-online:hover td{background:rgba(206,27,38,.05)!important}
 .lb-live-chevron{padding:6px 12px;color:var(--dimgrey);font-size:10px;transition:transform .2s}
 .lb-live-chevron.open{transform:rotate(180deg)}
 /* panel expanded */
-.lb-live-panel{display:none;background:var(--card);border-top:1px solid rgba(0,122,61,.15);padding:14px}
+.lb-live-panel{display:none;background:var(--card);border-top:1px solid rgba(0,122,61,.15)}
 .lb-live-panel.open{display:block}
 /* Location pin icon in rank cell for online users */
 .online-map-btn{background:none;border:none;padding:0 0 0 4px;color:var(--green);font-size:13px;cursor:pointer;line-height:1;transition:color .15s;vertical-align:middle;opacity:.9}
@@ -690,8 +690,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
     </div>
   </div>
 
-  <!-- ══ SEZIONE 2: TRENI IN CORSA ══ (nascosta) -->
-  <div id="live-section" style="display:none"><div id="live-tabs"></div><div id="live-panel-main"></div></div>
+
 
   <!-- ══ SEZIONE 3: CLASSIFICA ══ -->
   <div class="lb-section">
@@ -1267,38 +1266,6 @@ function lbFlyToUser(username){
   },400);
 }
 
-// ── Live section (Treni in Corsa) ──
-function switchTab(i){
-  lockedUsername = liveData[i] ? liveData[i].username : null;
-  activeTab = i;
-  renderLiveSection();
-}
-
-function renderLiveSection(){
-  const sec=document.getElementById('live-section');
-  const tabsEl=document.getElementById('live-tabs');
-  const panelEl=document.getElementById('live-panel-main');
-  if(!liveData.length){sec.style.display='none';return;}
-  sec.style.display='block';
-
-  if(lockedUsername){
-    const idx=liveData.findIndex(u=>u.username===lockedUsername);
-    if(idx!==-1){
-      activeTab=idx;
-    } else {
-      lockedUsername=null;
-      activeTab=0;
-    }
-  } else {
-    activeTab=0;
-  }
-
-  tabsEl.innerHTML=liveData.map((u,i)=>`
-    <div class="live-tab ${i===activeTab?'active':''}" onclick="switchTab(${i})" title="${u.username}">
-      <span class="tab-dot"></span>${u.username}
-    </div>`).join('');
-  renderPanel(liveData[activeTab],panelEl);
-}
 
 function renderActivityName(name){
   if(!name) return '—';
@@ -1320,6 +1287,7 @@ function gradeColorFromLabel(g){
 function renderPanel(u,el){
   const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
   el.innerHTML=`
+  <div class="live-panel-main">
     <div class="live-run-hdr">
       <div>
         <div class="live-run-name">${renderActivityName(u.activity_name)}</div>
@@ -1366,7 +1334,8 @@ function renderPanel(u,el){
         <div class="live-stops-title">Fermate</div>
         ${renderStopsTable(u.stations||[])}
       </div>
-    </div>`;
+    </div>
+  </div>`;
   requestAnimationFrame(()=>drawSpeedChart(u));
 }
 
@@ -1843,7 +1812,6 @@ async function loadLive(){
 
     liveData=liveOrder.map(name=>fresh.find(u=>u.username===name)).filter(Boolean);
 
-    renderLiveSection();
     updateMap(liveData);
     if(lbRows.length) renderLbPage();
   }catch(e){}
