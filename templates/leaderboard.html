@@ -1118,7 +1118,7 @@ function renderLbPage(){
       <tr>
         <td class="rank">
           <button class="username-btn" onclick="openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
-          ${row.online?`<button class="map-loc-btn" onclick="lbFlyToUser('${row.username}')" title="Mostra sulla mappa"><i class="fa-duotone fa-map-location"></i></button>`:''}
+          ${row.online?`<button class="map-loc-btn" onclick="lbFlyToUser('${row.username}')" title="Mostra sulla mappa"><i class="fa-solid fa-location-pin"></i></button>`:''}
         </td>
         <td class="username"><span class="username-text">${row.username}${(row.azienda||row.compartimento)?` <span class="username-extra">(${[row.azienda,row.compartimento].filter(Boolean).join(' – ')})</span>`:''}</span>
           ${row.online?'<span style="margin-left:6px;font-size:9px;color:var(--green);font-family:var(--font-md)">● ONLINE</span>':''}
