@@ -153,9 +153,8 @@ td.rank .username-btn:hover{color:var(--accent)}
 /* ── INLINE LIVE ROW / ACCORDION ── */
 tr.lb-online-row td{padding:0!important;border-bottom:none!important}
 /* Main data row for online users */
-tr.lb-user-online td{border-left:3px solid var(--accent)!important}
-tr.lb-user-online{cursor:pointer}
-tr.lb-user-online:hover td{background:rgba(206,27,38,.05)!important}
+tr.lb-user-online td:first-child{border-left:3px solid var(--accent)!important}
+tr.lb-user-online td{background:rgba(206,27,38,.02)}
 .lb-live-bar{display:flex;align-items:center;gap:0;background:rgba(0,122,61,.04);border-top:1px solid rgba(0,122,61,.12);cursor:pointer;transition:background .12s;font-family:var(--font);font-size:11px;user-select:none}
 .lb-live-bar:hover{background:rgba(0,122,61,.09)}
 .lb-live-act{flex:1;font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--white);padding:7px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1129,31 +1128,23 @@ function renderLbPage(){
         <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
       </tr>`;
     }
-    // Online user: accordion
-    const liveUser=liveData.find(u=>u.username===row.username);
-    const panelId='lb-panel-'+row.username.replace(/\W/g,'_');
-    const chevId ='lb-chev-'+row.username.replace(/\W/g,'_');
-    const mainRowId='lb-main-'+row.username.replace(/\W/g,'_');
-    return `<tr class="lb-user-online" id="${mainRowId}" onclick="toggleLbLivePanel('${panelId}','${chevId}','${row.username}')">
-        <td class="rank" style="border-left:3px solid var(--accent)">
-          <button class="username-btn" onclick="event.stopPropagation();openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
-          <button class="online-map-btn" onclick="event.stopPropagation();lbFlyToUser('${row.username}')" title="Mostra sulla mappa"><i class="fa-solid fa-location-pin"></i></button>
+    // Online user: solo riga dati con bordo rosso sinistro
+    return `<tr class="lb-user-online">
+        <td class="rank">
+          <button class="username-btn" onclick="openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
+          <button class="online-map-btn" onclick="lbFlyToUser('${row.username}')" title="Mostra sulla mappa"><i class="fa-solid fa-location-pin"></i></button>
         </td>
-        <td class="username" style="border-left:none">
+        <td class="username">
           <span class="username-text">${row.username}${(row.azienda||row.compartimento)?` <span class="username-extra">(${[row.azienda,row.compartimento].filter(Boolean).join(' – ')})</span>`:''}</span>
           <span style="margin-left:6px;font-size:9px;color:var(--green);font-family:var(--font-md)">● ONLINE</span>
         </td>
-        <td class="score" style="border-left:none">
+        <td class="score">
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
         </td>
-        <td class="servizio" style="border-left:none"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
-        <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey);border-left:none">
-          ${row.corse}
-          <span class="lb-live-chevron" id="${chevId}" style="display:inline-block;margin-left:4px"><i class="fa-solid fa-chevron-down"></i></span>
-        </td>
-      </tr>
-      ${renderLbLiveRow(row.username,liveUser,i,panelId,chevId)}`;
+        <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
+        <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
+      </tr>`;
   }).join('');
   renderLbPagination();
 }
