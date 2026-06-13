@@ -16,7 +16,7 @@ Modifiche sicurezza rispetto a v1.1:
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from functools import wraps
 import psycopg2, psycopg2.extras, psycopg2.errorcodes, psycopg2.pool
-import os, secrets, re, logging
+import os, secrets, re, logging, threading, time
 from contextlib import contextmanager
 
 import bcrypt
@@ -114,14 +114,27 @@ def get_db():
     rapidamente e le richieste iniziavano a fallire silenziosamente.
     """
     conn = db_pool.getconn()
+    # Scarta connessioni "morte" (es. chiuse per inattività dal pooler
+    # Supabase): senza questo controllo verrebbe restituito un errore al
+    # primo utilizzo, e quella connessione resterebbe bloccata nel pool.
+    if conn.closed:
+        db_pool.putconn(conn, close=True)
+        conn = db_pool.getconn()
+
+    ok = True
     try:
         yield conn
         conn.commit()
+    except psycopg2.OperationalError:
+        # Connessione caduta durante l'uso: non rimetterla nel pool,
+        # la prossima getconn() ne aprirà una nuova.
+        ok = False
+        raise
     except Exception:
         conn.rollback()
         raise
     finally:
-        db_pool.putconn(conn)
+        db_pool.putconn(conn, close=not ok)
 
 def fetchone(cur):
     row = cur.fetchone()
@@ -985,8 +998,8 @@ def api_heartbeat():
 #  API dati live
 # ─────────────────────────────────────────────────────────
 
-@app.route("/api/live")
-def api_live():
+def _fetch_live_data():
+    """Esegue le query reali per /api/live (3 query batch, 1 sola connessione)."""
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -1015,7 +1028,7 @@ def api_live():
             users_online = fetchall(cur)
 
             if not users_online:
-                return jsonify([])
+                return []
 
             user_ids = [u["user_id"] for u in users_online]
 
@@ -1056,7 +1069,60 @@ def api_live():
         u["speed_history"] = history_by_user.get(u["user_id"], [])
         u["stations"] = stations_by_user.get(u["user_id"], [])
 
-    return jsonify(users_online)
+    return users_online
+
+
+# ── Cache in memoria per /api/live ──────────────────────────────────────
+# I client (ognuno dei quali può avere la pagina leaderboard aperta) fanno
+# polling di /api/live ogni 5s. Prima, OGNI poll di OGNI client generava
+# query dirette al DB (e con l'N+1 di prima, 1+N connessioni per poll).
+# Con N client connessi e M treni live il carico cresceva come N*M.
+#
+# Ora un singolo thread di background interroga il DB ogni
+# LIVE_CACHE_INTERVAL secondi e tiene il risultato in memoria; tutte le
+# richieste /api/live leggono semplicemente questa cache, quindi il carico
+# sul DB non dipende più dal numero di client connessi (resta O(1) per
+# processo worker). Se la cache è vuota o troppo vecchia (es. il thread
+# non è ancora partito, o gunicorn è in modalità --preload), la route fa
+# comunque un fetch diretto come fallback "self-healing".
+LIVE_CACHE_INTERVAL = float(os.environ.get("LIVE_CACHE_INTERVAL", "3"))
+LIVE_CACHE_MAX_AGE  = float(os.environ.get("LIVE_CACHE_MAX_AGE", "15"))
+
+_live_cache_lock = threading.Lock()
+_live_cache = {"data": [], "updated": 0.0}
+
+
+def _live_cache_loop():
+    while True:
+        try:
+            data = _fetch_live_data()
+            with _live_cache_lock:
+                _live_cache["data"] = data
+                _live_cache["updated"] = time.time()
+        except Exception:
+            logger.exception("Errore aggiornamento cache /api/live")
+        time.sleep(LIVE_CACHE_INTERVAL)
+
+
+threading.Thread(target=_live_cache_loop, daemon=True).start()
+
+
+@app.route("/api/live")
+def api_live():
+    with _live_cache_lock:
+        data = _live_cache["data"]
+        age = time.time() - _live_cache["updated"]
+
+    if age > LIVE_CACHE_MAX_AGE:
+        try:
+            data = _fetch_live_data()
+            with _live_cache_lock:
+                _live_cache["data"] = data
+                _live_cache["updated"] = time.time()
+        except Exception:
+            logger.exception("Fallback diretto /api/live fallito")
+
+    return jsonify(data)
 
 @app.route("/api/live_stations", methods=["POST"])
 @limiter.limit("120 per minute")
