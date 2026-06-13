@@ -94,7 +94,7 @@ limiter = Limiter(
 
 db_pool = psycopg2.pool.ThreadedConnectionPool(
     minconn=1,
-    maxconn=int(os.environ.get("DB_POOL_MAX", "5")),
+    maxconn=int(os.environ.get("DB_POOL_MAX", "8")),
     dsn=DATABASE_URL,
 )
 
