@@ -17,6 +17,7 @@ from flask import Flask, request, jsonify, render_template, session, redirect, u
 from functools import wraps
 import psycopg2, psycopg2.extras, psycopg2.errorcodes
 import os, secrets, re, logging
+from collections import defaultdict
 
 import bcrypt
 import requests
@@ -75,6 +76,68 @@ def notify_discord(content=None, embed=None):
         requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=5)
     except Exception:
         logger.warning("Invio notifica Discord fallito", exc_info=True)
+
+# ─────────────────────────────────────────────────────────
+#  Helper badge / traguardi
+# ─────────────────────────────────────────────────────────
+
+def _streak_for_days(days):
+    """days: set di date. Ritorna la lunghezza dello streak attivo
+    (giorni consecutivi fino a oggi o ieri; 0 se la streak si è interrotta)."""
+    if not days:
+        return 0
+    oggi = date.today()
+    if oggi in days:
+        cursore = oggi
+    elif (oggi - timedelta(days=1)) in days:
+        cursore = oggi - timedelta(days=1)
+    else:
+        return 0
+    streak = 0
+    while cursore in days:
+        streak += 1
+        cursore -= timedelta(days=1)
+    return streak
+
+def _primato_user_ids(cur):
+    """Ritorna l'insieme di user_id che detengono il punteggio più alto
+    su almeno una linea (ultimo_servizio)."""
+    cur.execute("""
+        WITH best_per_user AS (
+            SELECT ultimo_servizio, user_id, MAX(punteggio) AS best
+            FROM sessions
+            WHERE ultimo_servizio <> ''
+            GROUP BY ultimo_servizio, user_id
+        ),
+        ranked AS (
+            SELECT ultimo_servizio, user_id,
+                   RANK() OVER (PARTITION BY ultimo_servizio ORDER BY best DESC) AS rnk
+            FROM best_per_user
+        )
+        SELECT DISTINCT user_id FROM ranked WHERE rnk=1
+    """)
+    return {r["user_id"] for r in fetchall(cur)}
+
+def _primati_for_user(cur, user_id):
+    """Ritorna le linee (con punteggio) dove user_id ha il record assoluto."""
+    cur.execute("""
+        WITH best_per_user AS (
+            SELECT ultimo_servizio, user_id, MAX(punteggio) AS best
+            FROM sessions
+            WHERE ultimo_servizio <> ''
+            GROUP BY ultimo_servizio, user_id
+        ),
+        ranked AS (
+            SELECT ultimo_servizio, user_id, best,
+                   RANK() OVER (PARTITION BY ultimo_servizio ORDER BY best DESC) AS rnk
+            FROM best_per_user
+        )
+        SELECT ultimo_servizio, best
+        FROM ranked
+        WHERE user_id=%s AND rnk=1
+        ORDER BY ultimo_servizio
+    """, (user_id,))
+    return fetchall(cur)
 
 # ─────────────────────────────────────────────────────────
 #  Rate Limiting
@@ -569,6 +632,7 @@ def api_leaderboard():
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT
+                    u.id                              AS user_id,
                     u.username,
                     COALESCE(u.azienda, '')          AS azienda,
                     COALESCE(u.compartimento, '')    AS compartimento,
@@ -601,6 +665,24 @@ def api_leaderboard():
                 LIMIT 100
             """)
             rows = fetchall(cur)
+
+            # ── Badge in blocco per tutta la classifica ──
+            cur.execute("""
+                SELECT DISTINCT user_id, registrata_at::date AS giorno
+                FROM sessions
+            """)
+            date_rows = fetchall(cur)
+            primato_ids = _primato_user_ids(cur)
+
+    days_by_user = defaultdict(set)
+    for r in date_rows:
+        days_by_user[r["user_id"]].add(r["giorno"])
+
+    for row in rows:
+        uid = row.pop("user_id")
+        row["streak"] = _streak_for_days(days_by_user.get(uid, set()))
+        row["has_primato"] = uid in primato_ids
+
     return jsonify(rows)
 
 @app.route("/api/users/count")
@@ -686,28 +768,16 @@ def api_badges(username):
 
     badges = []
 
-    # ── Streak giorni consecutivi ──
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT DISTINCT registrata_at::date AS giorno
                 FROM sessions WHERE user_id=%s
-                ORDER BY giorno DESC
             """, (user["id"],))
-            giorni = [r["giorno"] for r in fetchall(cur)]
+            giorni = {r["giorno"] for r in fetchall(cur)}
+            primati = _primati_for_user(cur, user["id"])
 
-    streak = 0
-    if giorni:
-        oggi = date.today()
-        if giorni[0] >= oggi - timedelta(days=1):
-            streak = 1
-            cursore = giorni[0]
-            for g in giorni[1:]:
-                if cursore - g == timedelta(days=1):
-                    streak += 1
-                    cursore = g
-                else:
-                    break
+    streak = _streak_for_days(giorni)
 
     if streak >= 30:
         badges.append({"id": "streak_oro", "label": "Macchinista inarrestabile", "tier": "oro",
@@ -718,28 +788,6 @@ def api_badges(username):
     elif streak >= 3:
         badges.append({"id": "streak_bronzo", "label": "Si comincia a scaldare", "tier": "bronzo",
                         "desc": f"{streak} giorni consecutivi di guida"})
-
-    # ── Primato per linea (miglior punteggio assoluto su una tratta) ──
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                WITH best_per_user AS (
-                    SELECT ultimo_servizio, user_id, MAX(punteggio) AS best
-                    FROM sessions
-                    WHERE ultimo_servizio <> ''
-                    GROUP BY ultimo_servizio, user_id
-                ),
-                ranked AS (
-                    SELECT ultimo_servizio, user_id, best,
-                           RANK() OVER (PARTITION BY ultimo_servizio ORDER BY best DESC) AS rnk
-                    FROM best_per_user
-                )
-                SELECT ultimo_servizio, best
-                FROM ranked
-                WHERE user_id=%s AND rnk=1
-                ORDER BY ultimo_servizio
-            """, (user["id"],))
-            primati = fetchall(cur)
 
     for p in primati:
         badges.append({
@@ -897,7 +945,7 @@ def api_heartbeat():
         conn.commit()
 
     if new_session:
-        msg = f"🚆 **{user['username']}** è online per il servizio: "
+        msg = f"🚆 **{user['username']}** è entrato in linea"
         if activity_name:
             msg += f" su *{activity_name}*"
         notify_discord(embed={
