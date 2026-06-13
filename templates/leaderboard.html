@@ -71,8 +71,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .live-tab.active{background:var(--card);color:var(--white);border-bottom-color:var(--card)}
 .live-tab .tab-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
 .live-panel-main{background:var(--card);border:1px solid var(--border);border-radius:0 2px 2px 2px;padding:14px}
-.live-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:700px){.live-grid{grid-template-columns:1fr}}
+.live-grid{display:grid;grid-template-columns:1fr;gap:14px}
 .live-run-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
 .live-run-name{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white)}
 .live-run-consist{font-family:var(--font);font-size:10px;color:var(--dimgrey);margin-top:2px}
@@ -101,7 +100,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .live-chart-title{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase}
 .live-chart-speed{font-family:var(--font-md);font-size:20px;font-weight:500;color:var(--accent);line-height:1;letter-spacing:-.5px}
 .live-chart-speed-unit{font-size:9px;font-weight:400;color:var(--dimgrey);margin-left:2px;font-family:var(--font)}
-.live-chart-canvas{width:100%;height:100px;display:block}
+.live-chart-canvas{width:100%;height:160px;display:block}
 .chart-zoom-btns{display:flex;gap:3px;align-items:center}
 .chart-zoom-btn{background:var(--panel);border:1px solid var(--border);color:var(--grey);font-family:var(--font-md);font-size:11px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:2px;line-height:1;padding:0;transition:all .12s;user-select:none;flex-shrink:0}
 .chart-zoom-btn:hover{background:var(--card);border-color:var(--accent);color:var(--accent)}
@@ -109,12 +108,12 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .live-stops-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden}
 .live-stops-title{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border)}
 .live-stops-table{width:100%;border-collapse:collapse;table-layout:fixed}
-.live-stops-table th{font-family:var(--font);font-size:9px;color:var(--dimgrey);padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);letter-spacing:.08em;text-transform:uppercase}
-.live-stops-table td{font-family:var(--font);font-size:10px;padding:9px 10px;line-height:1.6;border-bottom:1px solid rgba(204,204,204,.3);vertical-align:middle}
-.live-stops-table th:nth-child(1),.live-stops-table td:nth-child(1){width:46%;text-align:left}
-.live-stops-table th:nth-child(2),.live-stops-table td:nth-child(2){width:18%;text-align:right}
-.live-stops-table th:nth-child(3),.live-stops-table td:nth-child(3){width:18%;text-align:right}
-.live-stops-table th:nth-child(4),.live-stops-table td:nth-child(4){width:18%;text-align:right}
+.live-stops-table th{font-family:var(--font);font-size:10px;color:var(--dimgrey);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);letter-spacing:.08em;text-transform:uppercase}
+.live-stops-table td{font-family:var(--font);font-size:11px;padding:10px 12px;line-height:1.6;border-bottom:1px solid rgba(204,204,204,.3);vertical-align:middle}
+.live-stops-table th:nth-child(1),.live-stops-table td:nth-child(1){width:52%;text-align:left}
+.live-stops-table th:nth-child(2),.live-stops-table td:nth-child(2){width:16%;text-align:right}
+.live-stops-table th:nth-child(3),.live-stops-table td:nth-child(3){width:16%;text-align:right}
+.live-stops-table th:nth-child(4),.live-stops-table td:nth-child(4){width:16%;text-align:right}
 .live-stops-table tr:last-child td{border-bottom:none}
 .live-stops-table tr.passed td{color:var(--dimgrey)}
 .live-stops-table tr.current td{background:rgba(0,122,61,.06);color:var(--white);font-family:var(--font-md);font-weight:500}
