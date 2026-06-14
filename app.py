@@ -92,10 +92,57 @@ limiter = Limiter(
 #  Database
 # ─────────────────────────────────────────────────────────
 
-db_pool = psycopg2.pool.ThreadedConnectionPool(
+def _create_pool_with_retry(
+    dsn: str,
+    minconn: int = 1,
+    maxconn: int = 8,
+    delays: tuple = (2, 4, 8, 16, 32),
+) -> psycopg2.pool.ThreadedConnectionPool:
+    """
+    Crea il ThreadedConnectionPool con retry esponenziale.
+
+    Un blip momentaneo al boot (pooler che si sveglia, network glitch,
+    circuit breaker Supabase) non causa più un crash immediato: il processo
+    ritenta fino a len(delays) volte prima di arrendersi — evitando il
+    crash-loop su Render.
+
+    delays: sequenza di secondi di attesa tra un tentativo e il successivo.
+            Default: 2 → 4 → 8 → 16 → 32 s  (totale max ~62 s di attesa).
+    """
+    last_exc: Exception | None = None
+    for attempt, wait in enumerate(delays, start=1):
+        try:
+            pool = psycopg2.pool.ThreadedConnectionPool(
+                minconn=minconn,
+                maxconn=maxconn,
+                dsn=dsn,
+            )
+            if attempt > 1:
+                logger.info("DB pool creato al tentativo %d.", attempt)
+            return pool
+        except Exception as exc:
+            last_exc = exc
+            logger.warning(
+                "Impossibile creare il DB pool (tentativo %d/%d): %s — "
+                "nuovo tentativo tra %ds…",
+                attempt, len(delays), exc, wait,
+            )
+            time.sleep(wait)
+
+    # Tutti i tentativi esauriti: crash esplicito con log chiaro
+    logger.critical(
+        "DB pool non creato dopo %d tentativi. Arresto del processo.",
+        len(delays),
+    )
+    raise RuntimeError(
+        f"Impossibile connettersi al database dopo {len(delays)} tentativi."
+    ) from last_exc
+
+
+db_pool = _create_pool_with_retry(
+    dsn=DATABASE_URL,
     minconn=1,
     maxconn=int(os.environ.get("DB_POOL_MAX", "8")),
-    dsn=DATABASE_URL,
 )
 
 @contextmanager
