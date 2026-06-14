@@ -1,1 +1,41 @@
+name: Supabase Keep-Alive & Backup
 
+on:
+  schedule:
+    # Keep-alive: ogni 4 giorni alle 06:00 UTC (previene la pausa dopo 7gg)
+    - cron: '0 6 */4 * *'
+    # Backup completo: ogni domenica alle 07:00 UTC
+    - cron: '0 7 * * 0'
+  workflow_dispatch: {} # permette di lanciarlo manualmente da GitHub
+
+jobs:
+  keepalive:
+    if: github.event.schedule == '0 6 */4 * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/?select=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
+
+  backup:
+    if: github.event.schedule == '0 7 * * 0' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install postgresql-client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Dump database
+        run: |
+          pg_dump "${{ secrets.SUPABASE_DB_URL }}" \
+            --no-owner --no-privileges \
+            -F c -f vtv_backup_$(date +%Y-%m-%d).dump
+
+      - name: Upload backup as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vtv-backup-${{ github.run_id }}
+          path: vtv_backup_*.dump
+          retention-days: 30
