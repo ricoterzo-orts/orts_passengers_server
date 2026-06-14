@@ -59,7 +59,7 @@ app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
 app.config["SESSION_COOKIE_SECURE"]   = True   # ← era False, CORRETTO
 app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "Strict"  # ← era "Lax", più sicuro
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"   # era "Strict", necessario per OAuth redirect
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
 
 # reCAPTCHA secret SOLO da env var — mai hardcoded nel codice
