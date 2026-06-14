@@ -27,6 +27,18 @@ from datetime import timedelta
 from authlib.integrations.flask_client import OAuth
 
 # ─────────────────────────────────────────────────────────
+#  App setup
+# ─────────────────────────────────────────────────────────
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+
+app.config["SESSION_COOKIE_SECURE"]   = True   # ← era False, CORRETTO
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"   # era "Strict", necessario per OAuth redirect
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
+
+# ─────────────────────────────────────────────────────────
 #  OAuth2 — Google e Discord
 # ─────────────────────────────────────────────────────────
 
@@ -49,18 +61,6 @@ oauth.register(
     api_base_url='https://discord.com/',
     client_kwargs={'scope': 'identify email'}
 )
-
-# ─────────────────────────────────────────────────────────
-#  App setup
-# ─────────────────────────────────────────────────────────
-
-app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
-
-app.config["SESSION_COOKIE_SECURE"]   = True   # ← era False, CORRETTO
-app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"   # era "Strict", necessario per OAuth redirect
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
 
 # reCAPTCHA secret SOLO da env var — mai hardcoded nel codice
 RECAPTCHA_SECRET = os.environ.get("RECAPTCHA_SECRET", "")
@@ -378,7 +378,11 @@ def hash_password(pw: str) -> str:
 
 def check_password(pw: str, hashed: str) -> bool:
     """Verifica password contro hash bcrypt.
-    Supporta anche hash SHA-256 legacy per utenti pre-migrazione."""
+    Supporta anche hash SHA-256 legacy per utenti pre-migrazione.
+    Utenti OAuth hanno password_hash vuoto: per loro il login classico
+    è sempre negato, indipendentemente dalla password inserita."""
+    if not hashed:
+        return False
     try:
         # Tenta verifica bcrypt (nuovo formato)
         return bcrypt.checkpw(pw.encode(), hashed.encode())
@@ -387,7 +391,19 @@ def check_password(pw: str, hashed: str) -> bool:
         import hashlib
         return hashlib.sha256(pw.encode()).hexdigest() == hashed
 
-def migrate_password_if_neededdef _oauth_login_or_create(provider: str, provider_id: str, email: str,
+def migrate_password_if_needed(user_id: int, password: str, stored_hash: str) -> None:
+    """Se l'hash è ancora nel vecchio formato SHA-256 (non bcrypt),
+    lo rigenera in bcrypt dopo un login riuscito. Migrazione 'lazy',
+    un utente alla volta, senza toccare gli altri."""
+    if stored_hash and not stored_hash.startswith(("$2a$", "$2b$", "$2y$")):
+        new_hash = hash_password(password)
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_hash, user_id))
+            conn.commit()
+        logger.info("Password migrata a bcrypt per user_id=%s", user_id)
+
+def _oauth_login_or_create(provider: str, provider_id: str, email: str,
                             nome: str, cognome: str) -> dict:
     """
     Cerca l'utente per provider_id o email.
@@ -549,6 +565,12 @@ def leaderboard_page():
     if "user_id" not in session:
         return redirect(url_for("login_page"))
     return render_template("leaderboard.html")
+
+@app.route("/completa-profilo")
+@require_login
+def complete_profile_page():
+    token = generate_csrf_token()
+    return render_template("complete_profile.html", csrf_token=token)
 
 @app.route("/profile")
 @require_login
@@ -782,6 +804,8 @@ def auth_google_callback():
     session["username"]= user["username"]
     session.pop("csrf_token", None)
     generate_csrf_token()
+    if not (user.get("azienda") and user.get("compartimento")):
+        return redirect(url_for("complete_profile_page"))
     return redirect(url_for("leaderboard_page"))
 
 # ─────────────────────────────────────────────────────────
@@ -814,6 +838,8 @@ def auth_discord_callback():
     session["username"]= user["username"]
     session.pop("csrf_token", None)
     generate_csrf_token()
+    if not (user.get("azienda") and user.get("compartimento")):
+        return redirect(url_for("complete_profile_page"))
     return redirect(url_for("leaderboard_page"))
 
 # ─────────────────────────────────────────────────────────
