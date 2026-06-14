@@ -4,3 +4,4 @@ bcrypt>=4.1.2
 flask-limiter>=3.7.0
 gunicorn>=21.2.0
 requests>=2.31
+authlib
