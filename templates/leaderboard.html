@@ -174,8 +174,11 @@ tr.lb-user-online:hover td{background:rgba(206,27,38,.05)!important}
 .lb-live-panel{display:none;background:var(--card);border-top:1px solid rgba(0,122,61,.15)}
 .lb-live-panel.open{display:block}
 /* Location pin icon in rank cell for online users */
-.online-map-btn{background:none;border:none;padding:0 0 0 4px;color:var(--green);font-size:13px;cursor:pointer;line-height:1;transition:color .15s;vertical-align:middle;opacity:.9}
+.online-map-btn{background:none;border:none;padding:0;color:var(--green);font-size:13px;cursor:pointer;line-height:1;transition:color .15s;vertical-align:middle;opacity:.9}
 .online-map-btn:hover{color:var(--accent);opacity:1}
+/* GPS column — hidden when no one is online */
+.lb-col-gps{display:none}
+.lb-has-online .lb-col-gps{display:table-cell}
 @media(max-width:600px){.lb-live-chip{padding:5px 6px}.lb-live-act{padding:6px 8px}}
 @media(max-width:600px){.lb-col-corse{display:none}}
 td.username{font-weight:500;font-size:13px;color:var(--white);font-family:var(--font-md)}
@@ -720,7 +723,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
         <thead>
           <tr>
             <th style="text-align:center"><i class="fa-solid fa-user"></i></th>
-            <th style="text-align:center;width:32px"></th>
+            <th class="lb-col-gps" style="text-align:center;width:32px;font-size:9px;letter-spacing:.08em">GPS</th>
             <th>Username</th>
             <th class="c" id="lb-score-col">Affidabilità</th>
             <th class="c">Ultima Tratta</th>
@@ -1129,6 +1132,10 @@ function renderLbPage(){
   const body=document.getElementById('lb-body');
   const start=(lbPage-1)*lbPerPage;
   const pageRows=lbRows.slice(start,start+lbPerPage);
+  // Mostra/nascondi colonna GPS in base alla presenza di utenti online
+  const hasOnline=lbRows.some(r=>r.online);
+  const tbl=body.closest('table');
+  if(tbl) tbl.classList.toggle('lb-has-online',hasOnline);
   body.innerHTML=pageRows.map((row,j)=>{
     const i=start+j;
     if(!row.online){
@@ -1136,7 +1143,7 @@ function renderLbPage(){
         <td class="rank">
           <button class="username-btn" onclick="openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
         </td>
-        <td class="rank"></td>
+        <td class="rank lb-col-gps"></td>
         <td class="username"><span class="username-text">${row.username}${(row.azienda||row.compartimento)?` <span class="username-extra">(${[row.azienda,row.compartimento].filter(Boolean).join(' – ')})</span>`:''}</span></td>
         <td class="score">
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
@@ -1153,7 +1160,7 @@ function renderLbPage(){
         <td class="rank">
           <button class="username-btn" onclick="event.stopPropagation();openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
         </td>
-        <td class="rank" style="text-align:center">
+        <td class="rank lb-col-gps" style="text-align:center">
           <button class="online-map-btn" onclick="event.stopPropagation();lbFlyToUser('${row.username}')" title="Mostra sulla mappa"><i class="fa-solid fa-location-pin"></i></button>
         </td>
         <td class="username">
