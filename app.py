@@ -1124,6 +1124,38 @@ def api_live():
 
     return jsonify(data)
 
+def _norm_station_name(name):
+    """Normalizza il nome stazione per il confronto di deduplica."""
+    return str(name or "").strip().casefold()
+
+
+def _dedupe_stations(stations):
+    """Unisce fermate consecutive con lo stesso nome (es. doppio PlatformItem
+    per binari/direzioni diverse) in una sola riga, mantenendo i dati piu'
+    completi tra le due (arrivo/partenza/ritardo/stato)."""
+    result = []
+    for st in stations:
+        name = _norm_station_name(st.get("name"))
+        if result and _norm_station_name(result[-1].get("name")) == name:
+            prev = result[-1]
+            # arrivo/partenza: tieni il valore non vuoto
+            if not str(prev.get("arrival", "") or "").strip():
+                prev["arrival"] = st.get("arrival", "")
+            if not str(prev.get("departure", "") or "").strip():
+                prev["departure"] = st.get("departure", "")
+            # stato: basta che una delle due righe sia passata/corrente
+            prev["passed"] = bool(prev.get("passed")) or bool(st.get("passed"))
+            prev["is_current"] = bool(prev.get("is_current")) or bool(st.get("is_current"))
+            # ritardo: tieni il valore non nullo/non zero piu' significativo
+            prev_delay = prev.get("delay_min", 0) or 0
+            cur_delay = st.get("delay_min", 0) or 0
+            if abs(float(cur_delay)) > abs(float(prev_delay)):
+                prev["delay_min"] = cur_delay
+            continue
+        result.append(dict(st))
+    return result
+
+
 @app.route("/api/live_stations", methods=["POST"])
 @limiter.limit("120 per minute")
 def api_live_stations():
@@ -1138,7 +1170,7 @@ def api_live_stations():
         return jsonify({"ok": False, "error": "Token non valido"}), 401
 
     data = request.get_json(force=True) or {}
-    stations = data.get("stations", [])
+    stations = _dedupe_stations(data.get("stations", []))
 
     with get_db() as conn:
         with conn.cursor() as cur:
