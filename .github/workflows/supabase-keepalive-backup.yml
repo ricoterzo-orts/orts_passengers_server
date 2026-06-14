@@ -36,7 +36,7 @@ jobs:
 
       - name: Dump database
         run: |
-          pg_dump "${{ secrets.SUPABASE_DB_URL }}" \
+          /usr/lib/postgresql/17/bin/pg_dump "${{ secrets.SUPABASE_DB_URL }}" \
             --no-owner --no-privileges \
             -F c -f vtv_backup_$(date +%Y-%m-%d).dump
 
