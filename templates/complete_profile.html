@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="/static/favicon.png" type="image/png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Completa il profilo — ViaggiaTreno Virtual</title>
+<style>
+@font-face {
+  font-family: 'Futura';
+  src: url('/static/futur.woff2') format('woff2'),
+       url('/static/futur.ttf') format('truetype');
+  font-weight: normal;
+}
+@font-face {
+  font-family: 'Futura';
+  src: url('/static/futura_medium_bt.woff2') format('woff2'),
+       url('/static/futura_medium_bt.ttf') format('truetype');
+  font-weight: 500;
+}
+:root {
+  --accent:  #CE1B26;
+  --accent2: #A8141D;
+  --green:   #007A3D;
+  --font:    'Futura','Trebuchet MS',sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body, html { height: 100%; font-family: var(--font); }
+body { display: flex; flex-direction: column; min-height: 100vh; }
+
+.bg {
+  background-image: url('/static/train-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  position: fixed; inset: 0; z-index: -1;
+  filter: brightness(0.45);
+}
+
+.container {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+
+.box {
+  background: #fff;
+  padding: 36px 32px;
+  border-radius: 4px;
+  width: 100%; max-width: 380px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+
+.logo { max-width: 160px; margin-bottom: 20px; }
+
+h2 {
+  font-size: 13px; font-weight: 500;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: #444; margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 11px; color: #999; margin-bottom: 22px;
+  line-height: 1.5;
+}
+
+/* Form fields */
+.field { text-align: left; margin-bottom: 12px; }
+.field label {
+  display: block; font-size: 9px; font-weight: 500;
+  color: #888; margin-bottom: 4px;
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.required-mark { color: var(--accent); }
+.field select {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid #ddd; border-radius: 2px;
+  font-family: var(--font); font-size: 13px;
+  outline: none; transition: border-color .15s;
+  background: #fff; color: inherit;
+}
+.field select:focus { border-color: var(--accent); }
+
+/* Button */
+.btn {
+  width: 100%; padding: 12px;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: 2px;
+  font-family: var(--font); font-size: 12px;
+  font-weight: 500; letter-spacing: .1em;
+  text-transform: uppercase; cursor: pointer;
+  transition: background .15s;
+  margin-top: 6px;
+}
+.btn:hover { background: var(--accent2); }
+.btn:disabled { background: #ccc; cursor: not-allowed; }
+
+/* Messages */
+.msg {
+  margin-top: 12px; font-size: 12px; min-height: 18px;
+  font-family: var(--font);
+}
+.msg.err { color: var(--accent); }
+.msg.ok  { color: var(--green); }
+
+/* Footer */
+footer{position:relative;z-index:1;text-align:center;padding:18px 20px;font-family:var(--font);font-size:10px;color:#ddd;letter-spacing:.06em;border-top:2px solid var(--accent)}
+footer span{color:var(--accent);font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="bg"></div>
+
+<div class="container">
+  <div class="box">
+    <img src="/static/VTV_logo.jpg" alt="ViaggiaTreno Virtual" class="logo">
+    <h2>Completa il profilo</h2>
+    <p class="subtitle">Un'ultima cosa prima di entrare: indica la tua azienda ferroviaria e il compartimento di riferimento.</p>
+
+    <div class="field">
+      <label>Azienda ferroviaria <span class="required-mark">*</span></label>
+      <select id="cp-azienda">
+        <option value="">— Seleziona —</option>
+        <option value="Trenitalia">Trenitalia</option>
+        <option value="Trenitalia DPR">Trenitalia DPR</option>
+        <option value="Trenitalia TPER">Trenitalia TPER</option>
+        <option value="TrenoNord">TrenoNord</option>
+        <option value="ITALO - Nuovo Trasporto Viaggiatori">ITALO – Nuovo Trasporto Viaggiatori</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Compartimento <span class="required-mark">*</span></label>
+      <select id="cp-compartimento">
+        <option value="">— Seleziona —</option>
+        <option value="Torino">Torino</option>
+        <option value="Milano">Milano</option>
+        <option value="Verona">Verona</option>
+        <option value="Venezia">Venezia</option>
+        <option value="Trieste">Trieste</option>
+        <option value="Genova">Genova</option>
+        <option value="Bologna">Bologna</option>
+        <option value="Firenze">Firenze</option>
+        <option value="Ancona">Ancona</option>
+        <option value="Roma">Roma</option>
+        <option value="Napoli">Napoli</option>
+        <option value="Bari">Bari</option>
+        <option value="Reggio Calabria">Reggio Calabria</option>
+        <option value="Palermo">Palermo</option>
+        <option value="Cagliari">Cagliari</option>
+      </select>
+    </div>
+
+    <button class="btn" id="cp-btn" onclick="saveProfile()">Continua</button>
+    <div class="msg" id="cp-msg"></div>
+  </div>
+</div>
+
+<footer>
+  <span>ViaggiaTreno Virtual</span> &mdash; by TSH Studio Repaint &copy; <span id="footer-year"></span>
+</footer>
+<script>document.getElementById('footer-year').textContent=new Date().getFullYear();</script>
+
+<script>
+const CSRF_TOKEN = "{{ csrf_token }}";
+
+async function saveProfile() {
+  const btn = document.getElementById('cp-btn');
+  const msg = document.getElementById('cp-msg');
+  const azienda = document.getElementById('cp-azienda').value;
+  const compartimento = document.getElementById('cp-compartimento').value;
+
+  if(!azienda || !compartimento) {
+    msg.textContent = '✗ Seleziona azienda e compartimento'; msg.className = 'msg err';
+    return;
+  }
+
+  btn.disabled = true; msg.textContent = 'Salvataggio...'; msg.className = 'msg';
+  try {
+    const r = await fetch('/api/profile/extra', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': CSRF_TOKEN
+      },
+      body: JSON.stringify({azienda, compartimento})
+    });
+    const d = await r.json();
+    if(d.ok) {
+      msg.textContent = '✓ Profilo completato!'; msg.className = 'msg ok';
+      setTimeout(() => window.location.href = '/leaderboard', 500);
+    } else {
+      msg.textContent = '✗ ' + (d.error || 'Errore durante il salvataggio'); msg.className = 'msg err';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    msg.textContent = 'Errore di connessione'; msg.className = 'msg err';
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
