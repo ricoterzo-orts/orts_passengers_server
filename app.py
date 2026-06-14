@@ -341,6 +341,10 @@ def migrate_db():
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS train_dir REAL DEFAULT 0""",
         """ALTER TABLE users ADD COLUMN IF NOT EXISTS azienda TEXT DEFAULT ''""",
         """ALTER TABLE users ADD COLUMN IF NOT EXISTS compartimento TEXT DEFAULT ''""",
+        """ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT""",
+        """ALTER TABLE users ADD COLUMN IF NOT EXISTS discord_id TEXT""",
+        # password_hash diventa nullable per utenti OAuth (non hanno password)
+        """ALTER TABLE users ALTER COLUMN password_hash SET DEFAULT ''""",
         """CREATE TABLE IF NOT EXISTS user_stats_period (
             user_id      INTEGER NOT NULL REFERENCES users(id),
             period       TEXT    NOT NULL,
@@ -383,21 +387,64 @@ def check_password(pw: str, hashed: str) -> bool:
         import hashlib
         return hashlib.sha256(pw.encode()).hexdigest() == hashed
 
-def migrate_password_if_needed(user_id: int, pw: str, current_hash: str):
-    """Se l'hash è SHA-256 legacy, lo aggiorna a bcrypt silenziosamente."""
-    import hashlib
-    if not current_hash.startswith("$2b$"):
-        new_hash = hash_password(pw)
-        try:
-            with get_db() as conn:
-                with conn.cursor() as cur:
+def migrate_password_if_neededdef _oauth_login_or_create(provider: str, provider_id: str, email: str,
+                            nome: str, cognome: str) -> dict:
+    """
+    Cerca l'utente per provider_id o email.
+    Se non esiste lo crea con password vuota (non può fare login classico).
+    Restituisce il record utente.
+    """
+    id_col = f"{provider}_id"   # 'google_id' o 'discord_id'
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            # Prima cerca per provider ID
+            cur.execute(f"SELECT * FROM users WHERE {id_col}=%s", (provider_id,))
+            user = fetchone(cur)
+            if not user and email:
+                # Poi per email (utente già registrato con metodo classico)
+                cur.execute("SELECT * FROM users WHERE email=%s", (email,))
+                user = fetchone(cur)
+
+            if user:
+                # Collega il provider_id se mancava (es. stesso utente, prima volta OAuth)
+                if not user.get(id_col):
                     cur.execute(
-                        "UPDATE users SET password_hash=%s WHERE id=%s",
-                        (new_hash, user_id)
+                        f"UPDATE users SET {id_col}=%s WHERE id=%s",
+                        (provider_id, user["id"])
                     )
-                conn.commit()
-        except Exception:
-            pass
+                return user
+
+            # Crea nuovo utente OAuth
+            username_base = (email.split("@")[0] if email else f"{provider}_{provider_id[:8]}")
+            username_base = re.sub(r"[^a-zA-Z0-9_.\-]", "_", username_base)[:28]
+            username = username_base
+            suffix = 1
+            while True:
+                cur.execute("SELECT id FROM users WHERE username=%s", (username,))
+                if not cur.fetchone():
+                    break
+                username = f"{username_base}_{suffix}"
+                suffix += 1
+
+            api_token = secrets.token_hex(32)
+            cur.execute(
+                f"""INSERT INTO users
+                    (nome, cognome, username, email, password_hash, api_token, {id_col})
+                    VALUES (%s,%s,%s,%s,%s,%s,%s)
+                    RETURNING *""",
+                (nome or username, cognome or "", username,
+                 email or "", "", api_token, provider_id)
+            )
+            user = fetchone(cur)
+            # Crea riga user_stats
+            cur.execute(
+                "INSERT INTO user_stats (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                (user["id"],)
+            )
+            logger.info("Nuovo utente OAuth (%s) creato: %s", provider, username)
+            notify_discord(content=f"🆕 Nuovo utente via {provider.capitalize()}: **{username}**")
+            return user
 
 # ─────────────────────────────────────────────────────────
 #  Utility — Validazione
@@ -706,6 +753,68 @@ def api_regenerate_token():
         conn.commit()
     logger.info("API token rigenerato per user_id=%s", session["user_id"])
     return jsonify({"ok": True, "api_token": new_token})
+
+# ─────────────────────────────────────────────────────────
+#  OAuth2 — Google
+# ─────────────────────────────────────────────────────────
+
+@app.route("/auth/google")
+def auth_google():
+    redirect_uri = url_for("auth_google_callback", _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
+
+@app.route("/auth/google/callback")
+def auth_google_callback():
+    try:
+        token = oauth.google.authorize_access_token()
+        info  = token.get("userinfo") or oauth.google.userinfo(token=token)
+        provider_id = str(info["sub"])
+        email       = (info.get("email") or "").lower()
+        nome        = info.get("given_name", "")
+        cognome     = info.get("family_name", "")
+    except Exception as e:
+        logger.warning("Google OAuth callback error: %s", e)
+        return redirect(url_for("login_page") + "?oauth_error=google")
+
+    user = _oauth_login_or_create("google", provider_id, email, nome, cognome)
+    session.permanent  = True
+    session["user_id"] = user["id"]
+    session["username"]= user["username"]
+    session.pop("csrf_token", None)
+    generate_csrf_token()
+    return redirect(url_for("leaderboard_page"))
+
+# ─────────────────────────────────────────────────────────
+#  OAuth2 — Discord
+# ─────────────────────────────────────────────────────────
+
+@app.route("/auth/discord")
+def auth_discord():
+    redirect_uri = url_for("auth_discord_callback", _external=True)
+    return oauth.discord.authorize_redirect(redirect_uri)
+
+@app.route("/auth/discord/callback")
+def auth_discord_callback():
+    try:
+        oauth.discord.authorize_access_token()
+        resp = oauth.discord.get("api/users/@me")
+        info = resp.json()
+        provider_id = str(info["id"])
+        email       = (info.get("email") or "").lower()
+        username_dc = info.get("username", "")
+        nome        = username_dc
+        cognome     = ""
+    except Exception as e:
+        logger.warning("Discord OAuth callback error: %s", e)
+        return redirect(url_for("login_page") + "?oauth_error=discord")
+
+    user = _oauth_login_or_create("discord", provider_id, email, nome, cognome)
+    session.permanent  = True
+    session["user_id"] = user["id"]
+    session["username"]= user["username"]
+    session.pop("csrf_token", None)
+    generate_csrf_token()
+    return redirect(url_for("leaderboard_page"))
 
 # ─────────────────────────────────────────────────────────
 #  API Leaderboard
