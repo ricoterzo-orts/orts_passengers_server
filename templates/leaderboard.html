@@ -1861,7 +1861,9 @@ async function loadLive(){
     liveData=liveOrder.map(name=>fresh.find(u=>u.username===name)).filter(Boolean);
 
     updateMap(liveData);
+    // Aggiorna la classifica per sincronizzare lo stato online/offline dei pin
     if(lbRows.length) renderLbPage();
+    else if(liveData.length) loadLeaderboard(); // forza carico se arriva un giocatore prima del primo poll lb
   }catch(e){}
 }
 
@@ -2009,70 +2011,106 @@ function updateMap(users){
     const stations = u.stations || [];
     const userColor = getUserColor(u.username);
 
-    const pos = (u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1 && Math.abs(u.train_lon) > 0.1)
-             ? [u.train_lat, u.train_lon]
-             : interpolatePosition(stations, u.next_station)
-             || (u.next_station ? (() => { const c = getStationCoord(u.next_station); return c ? [c.lat, c.lon] : null; })() : null)
-             || (() => {
-                  const p = (stations||[]).filter(s=>s.passed);
-                  if(p.length){ const c=getStationCoord(p[p.length-1].station_name); if(c) return [c.lat,c.lon]; }
-                  return null;
-                })();
+    // Cerca la posizione con tutti i fallback disponibili
+    let pos = null;
+    let posSource = 'nessuna';
 
-    if(pos){
-      const delayMin = getDelayFromStations(u);
-      const markerColor = delayMin <= 5 ? '#007A3D' : delayMin <= 30 ? '#E07B00' : '#CE1B26';
-      const delayLabel = delayMin <= 0 ? 'in orario' : `+${Math.round(delayMin)} min`;
-      const trainNum = u.activity_name || u.username;
-      const hasGPS = u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1;
-      const gpsLabel = hasGPS
-        ? `<tr style="background:#f8f8f8"><td colspan="2" style="padding:4px 8px;font-size:9px;color:#888;font-family:var(--font);letter-spacing:.06em">📡 GPS live da OpenRails</td></tr>`
-        : `<tr style="background:#f8f8f8"><td colspan="2" style="padding:4px 8px;font-size:9px;color:#aaa;font-family:var(--font);letter-spacing:.06em">⚠ Posizione stimata</td></tr>`;
-      const popupHtml = `<div style="font-family:'Futura',sans-serif;font-size:11px;min-width:220px;background:#fff;border-radius:2px;overflow:hidden">
-        <div style="background:${userColor};height:6px"></div>
-        <table style="width:100%;border-collapse:collapse">
-          <thead>
-            <tr style="background:#E4E4E4">
-              <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Treno</th>
-              <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Ritardo</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style="background:#fff">
-              <td style="padding:7px 8px;color:#2B2B2B;font-weight:500;white-space:nowrap">${trainNum}</td>
-              <td style="padding:7px 8px;white-space:nowrap">
-                <span style="display:inline-flex;align-items:center;gap:5px">
-                  <span style="width:8px;height:8px;border-radius:50%;background:${markerColor};flex-shrink:0;display:inline-block"></span>
-                  <span style="color:#2B2B2B">${delayLabel}</span>
-                </span>
-              </td>
-            </tr>
-            ${gpsLabel}
-          </tbody>
-        </table>
-      </div>`;
-
-      const trainIcon = L.divIcon({
-        className: '',
-        html: `<div style="position:relative;width:20px;height:20px">
-          <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="10" cy="10" r="9" fill="${markerColor}" stroke="#fff" stroke-width="2"/>
-          </svg>
-        </div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
-        popupAnchor: [0, -16],
-      });
-
-      if(trainMarkers[u.username]){
-        trainMarkers[u.username].setLatLng(pos);
-        trainMarkers[u.username].setIcon(trainIcon);
-        trainMarkers[u.username].getPopup().setContent(popupHtml);
-        trainMarkers[u.username].bringToFront();
-      } else {
-        trainMarkers[u.username] = L.marker(pos, { icon: trainIcon })
-          .bindPopup(popupHtml).addTo(leafletMap);
+    if(u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1 && Math.abs(u.train_lon) > 0.1){
+      pos = [u.train_lat, u.train_lon];
+      posSource = 'gps';
+    } else {
+      const interp = interpolatePosition(stations, u.next_station);
+      if(interp){ pos = interp; posSource = 'interpolata'; }
+    }
+    if(!pos && u.next_station){
+      const c = getStationCoord(u.next_station);
+      if(c){ pos = [c.lat, c.lon]; posSource = 'next_station'; }
+    }
+    if(!pos){
+      const passed = (stations||[]).filter(s=>s.passed);
+      if(passed.length){
+        const c = getStationCoord(passed[passed.length-1].station_name);
+        if(c){ pos = [c.lat, c.lon]; posSource = 'ultima_fermata'; }
       }
+    }
+    // Fallback: prima stazione del percorso (anche non ancora passata)
+    if(!pos && stations.length){
+      for(const s of stations){
+        const c = getStationCoord(s.station_name);
+        if(c){ pos = [c.lat, c.lon]; posSource = 'prima_stazione_disponibile'; break; }
+      }
+    }
+    // Fallback finale: centro Italia — garantisce che il pin compaia sempre
+    if(!pos){
+      pos = [41.9, 12.5];
+      posSource = 'default_italia';
+      console.warn('[VTV] Posizione non trovata per', u.username,
+        '— stazioni:', (stations||[]).map(s=>s.station_name),
+        '— next_station:', u.next_station);
+    }
+
+    const delayMin = getDelayFromStations(u);
+    const markerColor = delayMin <= 5 ? '#007A3D' : delayMin <= 30 ? '#E07B00' : '#CE1B26';
+    const delayLabel = delayMin <= 0 ? 'in orario' : `+${Math.round(delayMin)} min`;
+    const trainNum = u.activity_name || u.username;
+    const hasGPS = posSource === 'gps';
+
+    let posLabel;
+    if(posSource === 'gps')                         posLabel = '📡 GPS live da OpenRails';
+    else if(posSource === 'interpolata')            posLabel = '⚠ Posizione stimata (interpolata)';
+    else if(posSource === 'next_station')           posLabel = '⚠ Posizione stimata (prossima fermata)';
+    else if(posSource === 'ultima_fermata')         posLabel = '⚠ Posizione stimata (ultima fermata)';
+    else if(posSource === 'prima_stazione_disponibile') posLabel = '⚠ Posizione stimata (inizio percorso)';
+    else                                            posLabel = '⚠ Posizione in attesa di dati';
+
+    const gpsLabelHtml = `<tr style="background:#f8f8f8"><td colspan="2" style="padding:4px 8px;font-size:9px;color:${hasGPS?'#888':'#aaa'};font-family:var(--font);letter-spacing:.06em">${posLabel}</td></tr>`;
+
+    const popupHtml = `<div style="font-family:'Futura',sans-serif;font-size:11px;min-width:220px;background:#fff;border-radius:2px;overflow:hidden">
+      <div style="background:${userColor};height:6px"></div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#E4E4E4">
+            <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Treno</th>
+            <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Ritardo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="background:#fff">
+            <td style="padding:7px 8px;color:#2B2B2B;font-weight:500;white-space:nowrap">${trainNum}</td>
+            <td style="padding:7px 8px;white-space:nowrap">
+              <span style="display:inline-flex;align-items:center;gap:5px">
+                <span style="width:8px;height:8px;border-radius:50%;background:${markerColor};flex-shrink:0;display:inline-block"></span>
+                <span style="color:#2B2B2B">${delayLabel}</span>
+              </span>
+            </td>
+          </tr>
+          ${gpsLabelHtml}
+        </tbody>
+      </table>
+    </div>`;
+
+    // Icona: semitrasparente se posizione di fallback (default_italia)
+    const iconOpacity = posSource === 'default_italia' ? '0.45' : '1';
+    const trainIcon = L.divIcon({
+      className: '',
+      html: `<div style="position:relative;width:20px;height:20px;opacity:${iconOpacity}">
+        <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="10" cy="10" r="9" fill="${markerColor}" stroke="#fff" stroke-width="2"/>
+        </svg>
+      </div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+      popupAnchor: [0, -16],
+    });
+
+    if(trainMarkers[u.username]){
+      trainMarkers[u.username].setLatLng(pos);
+      trainMarkers[u.username].setIcon(trainIcon);
+      trainMarkers[u.username].getPopup().setContent(popupHtml);
+      trainMarkers[u.username].bringToFront();
+    } else {
+      trainMarkers[u.username] = L.marker(pos, { icon: trainIcon })
+        .bindPopup(popupHtml).addTo(leafletMap);
     }
   });
 
