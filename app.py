@@ -24,6 +24,31 @@ import requests
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from datetime import timedelta
+from authlib.integrations.flask_client import OAuth
+
+# ─────────────────────────────────────────────────────────
+#  OAuth2 — Google e Discord
+# ─────────────────────────────────────────────────────────
+
+oauth = OAuth(app)
+
+oauth.register(
+    name='google',
+    client_id=os.environ.get('GOOGLE_CLIENT_ID', ''),
+    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid email profile'}
+)
+
+oauth.register(
+    name='discord',
+    client_id=os.environ.get('DISCORD_CLIENT_ID', ''),
+    client_secret=os.environ.get('DISCORD_CLIENT_SECRET', ''),
+    access_token_url='https://discord.com/api/oauth2/token',
+    authorize_url='https://discord.com/api/oauth2/authorize',
+    api_base_url='https://discord.com/',
+    client_kwargs={'scope': 'identify email'}
+)
 
 # ─────────────────────────────────────────────────────────
 #  App setup
