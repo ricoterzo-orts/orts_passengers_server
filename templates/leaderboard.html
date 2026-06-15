@@ -63,13 +63,6 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* ── TRENI IN CORSA (sezione rimossa) ── */
-.live-section{display:none!important;margin-bottom:24px}
-.live-tabs{display:flex;gap:4px;margin-bottom:0;flex-wrap:wrap}
-.live-tab{padding:5px 14px;background:var(--panel);border:1px solid var(--border);border-bottom:none;color:var(--grey);font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:2px 2px 0 0;transition:all .15s;display:flex;align-items:center;gap:5px}
-.live-tab:hover{background:var(--card);color:var(--white)}
-.live-tab.active{background:var(--card);color:var(--white);border-bottom-color:var(--card)}
-.live-tab .tab-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
 .live-panel-main{background:var(--card);border:1px solid var(--border);border-radius:0 2px 2px 2px;padding:14px}
 .live-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:700px){.live-grid{grid-template-columns:1fr}}
@@ -561,8 +554,6 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
   td.username{font-size:12px}
   .snum{font-size:15px}
   .serv-pill{max-width:140px;font-size:9px}
-  .live-tabs{gap:3px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;padding-bottom:2px}
-  .live-tab{padding:5px 10px;font-size:10px;white-space:nowrap;flex-shrink:0}
   .modal{margin:12px;max-width:calc(100vw - 24px)}
   .stat-grid{grid-template-columns:1fr 1fr 1fr}
 }
@@ -655,18 +646,6 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 </header>
 
 <main>
-  <!-- ── BANNER LANCIO (visibile 18:00–22:00) ── -->
-  <div id="launch-banner" role="dialog" aria-label="Annuncio lancio ViaggiaTreno Virtual">
-    <img src="https://i.postimg.cc/1X4rDtgJ/Gemini-Generated-Image-ruolbkruolbkruol.jpg" alt="ViaggiaTreno Virtual Launch">
-    <div class="popup-body">
-      <div class="popup-date-badge">14 Giugno · 18:00 – 22:00</div>
-      <p>Partecipa al lancio di <strong>ViaggiaTreno Virtual!</strong> Scopri la nuova piattaforma per Open Rails con simulazione in tempo reale e adrenalina pura. Prendi i comandi, la tua prossima avventura comincia ora!</p>
-      <div class="popup-footer">
-        <button class="popup-close" onclick="dismissLaunchBanner()">Chiudi</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Token banner -->
   <div id="user-banner">
     <span><span class="lbl">Token API per il .exe: </span><span class="tv" id="banner-token"></span></span>
@@ -705,8 +684,6 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
       </div>
     </div>
   </div>
-
-
 
   <!-- ══ SEZIONE 3: CLASSIFICA ══ -->
   <div class="lb-section">
@@ -1255,31 +1232,6 @@ function comfortColor(c){
   return c>=70?'var(--green)':c>=40?'var(--amber)':'var(--red)';
 }
 
-function renderLbLiveRow(username,u,lbIdx,panelId,chevId){
-  if(!u) return `<tr class="lb-online-row"><td colspan="6" style="border-left:3px solid var(--accent)">
-    <div class="lb-live-bar" style="cursor:default;padding:6px 14px;color:var(--dimgrey);font-size:10px">
-      <i class="fa-solid fa-circle-notch fa-spin" style="margin-right:6px"></i>In attesa di dati live…
-    </div>
-    <div class="lb-live-panel" id="${panelId}"></div>
-  </td></tr>`;
-  const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
-  const spd=u.speed_kmh?Math.round(u.speed_kmh):'—';
-  const trainNum=vtTrainNumber(u.activity_name||'');
-  const tmLink=trainNum?`<a class="lb-live-treniamo" href="https://www.treniamo.it/treno/${trainNum}" target="_blank" rel="noopener" title="Treniamo.it" onclick="event.stopPropagation()">↗ Treniamo</a>`:'';
-  const simTime=u.sim_time||'';
-  return `<tr class="lb-online-row"><td colspan="6" style="border-left:3px solid var(--accent);padding:0!important">
-    <div class="lb-live-bar" onclick="toggleLbLivePanel('${panelId}','${chevId}','${username}')">
-      <span class="lb-live-act">${u.activity_name||'—'}</span>
-      ${tmLink?`<span class="lb-live-treniamo">${tmLink}</span><span class="lb-live-sep">|</span>`:''}
-      ${simTime?`<span class="lb-live-chip"><i class="fa-regular fa-clock"></i><strong>${simTime}</strong></span><span class="lb-live-sep">|</span>`:''}
-      <span class="lb-live-chip"><i class="fa-solid fa-gauge-high"></i><strong style="color:var(--accent)">${spd}</strong>&nbsp;km/h</span>
-      <span class="lb-live-sep">|</span>
-      <span class="lb-live-chip"><i class="fa-solid fa-person-seat"></i><strong style="color:${comfortColor(cft)}">${cft}</strong>&nbsp;comfort</span>
-    </div>
-    <div class="lb-live-panel" id="${panelId}"></div>
-  </td></tr>`;
-}
-
 function toggleLbLivePanel(panelId,chevId,username){
   const panel=document.getElementById(panelId);
   const chev=document.getElementById(chevId);
@@ -1314,22 +1266,11 @@ function lbFlyToUser(username){
   },400);
 }
 
-
 function renderActivityName(name){
   if(!name) return '—';
   const n = vtTrainNumber(name);
   const link = n ? ` <a class="treno-reale-link" href="https://www.treniamo.it/treno/${n}" target="_blank" rel="noopener">&mdash; treno reale</a>` : '';
   return name + link;
-}
-
-function gradeColorFromLabel(g){
-  if(!g) return 'var(--grey)';
-  const l = g.toLowerCase();
-  if(l.includes('ott')||l.includes('ecc')) return 'var(--green)';
-  if(l.includes('buo'))                    return '#1565C0';
-  if(l.includes('suf'))                    return 'var(--amber)';
-  if(l.includes('sca'))                    return 'var(--amber)';
-  return 'var(--red)';
 }
 
 function renderPanel(u,el){
@@ -1805,44 +1746,6 @@ function drawProfileChart(sessions, platformAvg){
     draw(idx);
   });
   newCanvas.addEventListener('mouseleave',()=>draw(null));
-}
-
-function drawSparkline(idx, history){
-  const canvas=document.getElementById('spark-'+idx);
-  if(!canvas)return;
-  const dpr=window.devicePixelRatio||1;
-  const W=canvas.offsetWidth||90, H=canvas.offsetHeight||24;
-  canvas.width=W*dpr; canvas.height=H*dpr;
-  const ctx=canvas.getContext('2d');
-  ctx.scale(dpr,dpr);
-  const speeds=history.map(h=>h.speed_kmh!=null?h.speed_kmh:(h.speed!=null?h.speed:0));
-  const maxS=Math.max(...speeds,1), minS=Math.min(...speeds);
-  const range=maxS-minS||1;
-  const pad={t:2,r:2,b:2,l:2};
-  const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
-  const toX=i=>pad.l+(i/(speeds.length-1||1))*cw;
-  const toY=v=>pad.t+ch*(1-(v-minS)/range);
-  function catmull(p0,p1,p2,p3,t){
-    const t2=t*t,t3=t2*t;
-    return{
-      x:.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
-      y:.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3)
-    };
-  }
-  const pts=speeds.map((v,i)=>({x:toX(i),y:toY(v)}));
-  ctx.clearRect(0,0,W,H);
-  ctx.beginPath();
-  pts.forEach((p,i)=>{
-    if(i===0){ctx.moveTo(p.x,p.y);return;}
-    const p0=pts[Math.max(0,i-2)],p1=pts[i-1],p2=pts[i],p3=pts[Math.min(pts.length-1,i+1)];
-    for(let t=0;t<=1;t+=.1){const pt=catmull(p0,p1,p2,p3,t);ctx.lineTo(pt.x,pt.y);}
-  });
-  ctx.strokeStyle='rgba(180,180,172,0.7)';
-  ctx.lineWidth=1;
-  ctx.stroke();
-  const last=pts[pts.length-1];
-  ctx.beginPath();ctx.arc(last.x,last.y,1.8,0,Math.PI*2);
-  ctx.fillStyle='#AAAAAA';ctx.fill();
 }
 
 // ── Load live data ──
@@ -2358,8 +2261,6 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeDrawer();closeUsersPopup();}
 });
 
-
-
 // ── Hamburger nav ──
 function toggleNav(){
   const btn=document.getElementById('hamburger-btn');
@@ -2435,7 +2336,6 @@ setInterval(loadStationCoords,300000);
   </div>
 </div>
 
-
 <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()">
   <div class="drawer" onclick="event.stopPropagation()">
     <div class="drawer-hdr">
@@ -2461,248 +2361,5 @@ setInterval(loadStationCoords,300000);
     </div>
   </div>
 </div>
-
-<!-- ── BANNER LANCIO (in pagina, visibile 18:00–22:00) ── -->
-<style>
-#launch-banner {
-  display: flex;
-  align-items: stretch;
-  background: #fff;
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0,0,0,.15);
-  overflow: hidden;
-  border-top: 3px solid var(--accent);
-  margin-bottom: 14px;
-  max-height: 0;
-  opacity: 0;
-  transition: max-height 0.55s cubic-bezier(0.22,1,0.36,1), opacity 0.45s ease, margin-bottom 0.55s ease;
-}
-#launch-banner.popup-visible {
-  max-height: 220px;
-  opacity: 1;
-}
-#launch-banner.popup-hidden {
-  display: none;
-  margin-bottom: 0;
-}
-#launch-banner img {
-  width: 200px;
-  height: 100%;
-  min-height: 140px;
-  object-fit: cover;
-  display: block;
-  flex-shrink: 0;
-}
-#launch-banner .popup-body {
-  padding: 14px 16px 16px;
-  display: flex;
-  flex-direction: column;
-}
-#launch-banner .popup-date-badge {
-  display: inline-block;
-  background: var(--accent);
-  color: #fff;
-  font-family: var(--font-md);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 2px;
-  margin-bottom: 9px;
-  align-self: flex-start;
-}
-#launch-banner .popup-body p {
-  font-family: var(--font);
-  font-size: 12px;
-  color: var(--white);
-  line-height: 1.55;
-  margin: 0 0 12px;
-}
-#launch-banner .popup-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: auto;
-}
-#launch-banner .popup-close {
-  background: none;
-  border: none;
-  font-size: 12px;
-  color: var(--dimgrey);
-  cursor: pointer;
-  font-family: var(--font);
-  padding: 0;
-  text-decoration: underline;
-}
-#launch-banner .popup-close:hover { color: var(--grey); }
-
-@media (max-width: 600px) {
-  #launch-banner { flex-direction: column; }
-  #launch-banner img { width: 100%; height: 140px; min-height: 0; }
-  #launch-banner.popup-visible { max-height: 360px; }
-}
-</style>
-
-<script>
-(function() {
-  var STORAGE_KEY = 'vtv_launch_banner_dismissed';
-  var banner = document.getElementById('launch-banner');
-
-  function inWindow() {
-    var h = new Date().getHours();
-    return h >= 18 && h < 22; // visibile dalle 18:00 alle 22:00
-  }
-
-  function show() {
-    setTimeout(function() {
-      banner.classList.add('popup-visible');
-    }, 400);
-  }
-
-  function dismissLaunchBanner() {
-    banner.classList.remove('popup-visible');
-    banner.classList.add('popup-hidden');
-    try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch(e) {}
-  }
-
-  window.dismissLaunchBanner = dismissLaunchBanner;
-
-  if (!inWindow()) {
-    banner.classList.add('popup-hidden');
-  } else {
-    try {
-      if (!sessionStorage.getItem(STORAGE_KEY)) show();
-      else banner.classList.add('popup-hidden');
-    } catch(e) {
-      show();
-    }
-  }
-})();
-</script>
-
-<!-- ── POPUP LANCIO (flottante, visibile fino alle 17:59) ── -->
-<style>
-#launch-popup {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 320px;
-  background: #fff;
-  border-radius: 6px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.12);
-  overflow: hidden;
-  z-index: 9999;
-  transform: translateX(110%);
-  opacity: 0;
-  transition: transform 0.55s cubic-bezier(0.22,1,0.36,1), opacity 0.45s ease;
-  border-top: 3px solid var(--accent);
-}
-#launch-popup.popup-visible {
-  transform: translateX(0);
-  opacity: 1;
-}
-#launch-popup.popup-hidden {
-  transform: translateX(110%);
-  opacity: 0;
-  display: none;
-}
-#launch-popup img {
-  width: 100%;
-  height: 160px;
-  object-fit: cover;
-  display: block;
-}
-#launch-popup .popup-body {
-  padding: 14px 16px 16px;
-}
-#launch-popup .popup-date-badge {
-  display: inline-block;
-  background: var(--accent);
-  color: #fff;
-  font-family: var(--font-md);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 2px;
-  margin-bottom: 9px;
-}
-#launch-popup .popup-body p {
-  font-family: var(--font);
-  font-size: 12px;
-  color: var(--white);
-  line-height: 1.55;
-  margin: 0 0 12px;
-}
-#launch-popup .popup-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-}
-#launch-popup .popup-close {
-  background: none;
-  border: none;
-  font-size: 12px;
-  color: var(--dimgrey);
-  cursor: pointer;
-  font-family: var(--font);
-  padding: 0;
-  text-decoration: underline;
-}
-#launch-popup .popup-close:hover { color: var(--grey); }
-</style>
-
-<div id="launch-popup" role="dialog" aria-label="Annuncio lancio ViaggiaTreno Virtual">
-  <img src="https://i.postimg.cc/1X4rDtgJ/Gemini-Generated-Image-ruolbkruolbkruol.jpg" alt="ViaggiaTreno Virtual Launch">
-  <div class="popup-body">
-    <div class="popup-date-badge">14 Giugno · 18:00 – 22:00</div>
-    <p>Partecipa al lancio di <strong>ViaggiaTreno Virtual!</strong> Scopri la nuova piattaforma per Open Rails con simulazione in tempo reale e adrenalina pura. Prendi i comandi, la tua prossima avventura comincia ora!</p>
-    <div class="popup-footer">
-      <button class="popup-close" onclick="dismissLaunchPopup()">Chiudi</button>
-    </div>
-  </div>
-</div>
-
-<script>
-(function() {
-  var STORAGE_KEY = 'vtv_launch_popup_dismissed';
-  var popup = document.getElementById('launch-popup');
-
-  function inWindow() {
-    var h = new Date().getHours();
-    return h < 18; // visibile fino alle 17:59
-  }
-
-  function show() {
-    setTimeout(function() {
-      popup.classList.add('popup-visible');
-    }, 1800);
-  }
-
-  function dismissLaunchPopup() {
-    popup.classList.remove('popup-visible');
-    popup.classList.add('popup-hidden');
-    try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch(e) {}
-  }
-
-  window.dismissLaunchPopup = dismissLaunchPopup;
-
-  if (!inWindow()) {
-    popup.classList.add('popup-hidden');
-  } else {
-    try {
-      if (!sessionStorage.getItem(STORAGE_KEY)) show();
-      else popup.classList.add('popup-hidden');
-    } catch(e) {
-      show();
-    }
-  }
-})();
-</script>
-
 </body>
 </html>
