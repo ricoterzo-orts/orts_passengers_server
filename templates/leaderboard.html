@@ -63,17 +63,17 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-.live-panel-main{background:var(--card);border:1px solid var(--border);border-radius:0 2px 2px 2px;padding:14px}
+.live-panel-main{background:var(--card);border:1px solid var(--border);border-radius:0 2px 2px 2px;padding:10px}
 .live-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;align-items:start}
 @media(max-width:900px){.live-grid{grid-template-columns:1fr}}
-.live-run-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.live-run-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)}
 .live-run-name{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white)}
 .live-run-consist{font-family:var(--font);font-size:10px;color:var(--dimgrey);margin-top:2px}
 .live-kpis{display:flex;gap:10px}
 .live-kpi{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:6px 12px;text-align:center;min-width:70px}
 .live-kpi-val{font-family:var(--font-md);font-size:18px;font-weight:500;line-height:1}
 .live-kpi-lbl{font-family:var(--font);font-size:9px;color:var(--dimgrey);margin-top:2px;letter-spacing:.08em;text-transform:uppercase}
-.live-map-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:10px 12px;overflow-x:auto}
+.live-map-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:6px 12px;overflow-x:auto}
 .live-map-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
 .live-map{position:relative;padding:20px 0 8px}
 .live-map-line{position:absolute;top:28px;left:20px;right:20px;height:2px;background:var(--border)}
@@ -89,8 +89,8 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .live-map-name.current{color:var(--green);font-family:var(--font-md);font-weight:500}
 .live-map-time{font-family:var(--font);font-size:7px;color:var(--dimgrey);text-align:center}
 .live-train-icon{position:absolute;top:18px;font-size:16px;transition:left .5s;transform:translateX(-50%)}
-.live-chart-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:10px 12px;height:158px;display:flex;flex-direction:column;box-sizing:border-box}
-.live-chart-hdr{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;flex-shrink:0}
+.live-chart-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:8px 12px;height:130px;display:flex;flex-direction:column;box-sizing:border-box}
+.live-chart-hdr{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:5px;flex-shrink:0}
 .live-chart-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase}
 .live-chart-speed{font-family:var(--font-md);font-size:20px;font-weight:500;color:var(--accent);line-height:1;letter-spacing:-.5px}
 .live-chart-speed-unit{font-size:9px;font-weight:400;color:var(--dimgrey);margin-left:2px;font-family:var(--font)}
@@ -99,7 +99,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .chart-zoom-btn{background:var(--panel);border:1px solid var(--border);color:var(--grey);font-family:var(--font-md);font-size:11px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:2px;line-height:1;padding:0;transition:all .12s;user-select:none;flex-shrink:0}
 .chart-zoom-btn:hover{background:var(--card);border-color:var(--accent);color:var(--accent)}
 .chart-zoom-label{font-family:var(--mono);font-size:9px;color:var(--dimgrey);min-width:28px;text-align:center}
-.live-stops-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden;height:158px;display:flex;flex-direction:column}
+.live-stops-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden;height:130px;display:flex;flex-direction:column}
 .live-stops-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
 .live-stops-scroll{overflow-y:auto;flex:1}
 .live-stops-table{width:100%;border-collapse:collapse}
@@ -1299,7 +1299,7 @@ function renderPanel(u,el){
         </div>`:''}
       </div>
     </div>
-    <div style="margin-bottom:12px">
+    <div style="margin-bottom:8px">
       <div class="live-map-wrap">
         <div class="live-map-title">Percorso</div>
         ${renderStationsMap(u.stations||[])}
@@ -1376,7 +1376,7 @@ function drawSpeedChart(u){
   if(!canvas)return;
   const history=u.speed_history||[];
   const dpr=window.devicePixelRatio||1;
-  const W=canvas.offsetWidth||300, H=100;
+  const W=canvas.offsetWidth||300, H=80;
   canvas.width=W*dpr; canvas.height=H*dpr;
 
   const newCanvas=canvas.cloneNode(false);
