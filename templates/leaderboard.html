@@ -64,7 +64,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 .live-panel-main{background:var(--card);border:1px solid var(--border);border-radius:0 2px 2px 2px;padding:10px}
-.live-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;align-items:start}
+.live-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:10px;align-items:start}
 @media(max-width:900px){.live-grid{grid-template-columns:1fr}}
 .live-run-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)}
 .live-run-name{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white)}
@@ -74,12 +74,12 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .live-kpi-val{font-family:var(--font-md);font-size:18px;font-weight:500;line-height:1}
 .live-kpi-lbl{font-family:var(--font);font-size:9px;color:var(--dimgrey);margin-top:2px;letter-spacing:.08em;text-transform:uppercase}
 .live-map-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:6px 12px;overflow-x:auto}
-.live-map-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.live-map-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
 .live-map{position:relative;padding:20px 0 8px}
-.live-map-line{position:absolute;top:28px;left:20px;right:20px;height:2px;background:var(--border)}
-.live-map-progress{position:absolute;top:28px;left:20px;height:2px;background:var(--accent);transition:width .5s}
-.live-map-stations{display:flex;justify-content:space-between;position:relative;padding:0 20px}
-.live-map-st{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:60px;max-width:80px}
+.live-map-line{position:absolute;top:28px;left:0;right:0;height:2px;background:var(--border)}
+.live-map-progress{position:absolute;top:28px;left:0;height:2px;background:var(--accent);transition:width .5s}
+.live-map-stations{display:flex;justify-content:space-between;position:relative}
+.live-map-st{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;min-width:44px}
 .live-map-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--border);background:var(--panel);transition:all .3s;flex-shrink:0}
 .live-map-dot.passed{background:var(--accent);border-color:var(--accent)}
 .live-map-dot.current{background:var(--green);border-color:var(--green);box-shadow:0 0 8px var(--green);animation:pulse-dot 1.5s infinite}
@@ -99,9 +99,9 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .chart-zoom-btn{background:var(--panel);border:1px solid var(--border);color:var(--grey);font-family:var(--font-md);font-size:11px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:2px;line-height:1;padding:0;transition:all .12s;user-select:none;flex-shrink:0}
 .chart-zoom-btn:hover{background:var(--card);border-color:var(--accent);color:var(--accent)}
 .chart-zoom-label{font-family:var(--mono);font-size:9px;color:var(--dimgrey);min-width:28px;text-align:center}
-.live-stops-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden;height:130px;display:flex;flex-direction:column}
+.live-stops-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden;display:flex;flex-direction:column}
 .live-stops-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
-.live-stops-scroll{overflow-y:auto;flex:1}
+.live-stops-scroll{overflow-y:visible;flex:1}
 .live-stops-table{width:100%;border-collapse:collapse}
 .live-stops-table thead{position:sticky;top:0;background:var(--panel);z-index:1}
 .live-stops-table th{font-family:var(--font);font-size:9px;color:var(--dimgrey);padding:5px 12px!important;text-align:left;border-bottom:1px solid var(--border);letter-spacing:.08em;text-transform:uppercase;box-sizing:border-box}
@@ -1337,6 +1337,8 @@ function renderStationsMap(stations){
   const passedCount=stations.filter(s=>s.passed).length;
   const progress=total>1?(currentIdx>=0?currentIdx/(total-1):passedCount/total)*100:0;
   const trainLeft=Math.max(2,Math.min(98,progress));
+  // 52px per stazione: se molte fermate il wrap (overflow-x:auto) gestisce lo scroll
+  const minW=Math.max(100,total*52);
   const dotsHtml=stations.map(s=>{
     const cls=s.is_current?'current':s.passed?'passed':'';
     return `<div class="live-map-st">
@@ -1345,7 +1347,7 @@ function renderStationsMap(stations){
       <div class="live-map-time">${s.arrival||''}</div>
     </div>`;
   }).join('');
-  return`<div class="live-map">
+  return`<div class="live-map" style="min-width:${minW}px">
     <div class="live-map-line"></div>
     <div class="live-map-progress" style="width:${progress}%"></div>
     <div class="live-train-icon" style="left:${trainLeft}%"><img src="/static/treno_linea.png" style="height:18px;width:auto;vertical-align:middle"></div>
