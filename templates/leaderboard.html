@@ -268,6 +268,20 @@ td.servizio{text-align:center}
 .profile-save-msg.ok{color:var(--green)}.profile-save-msg.err{color:var(--red)}
 .delete-confirm p{font-size:11px;color:var(--white);margin-bottom:8px;font-family:var(--font)}
 .delete-confirm-btns{display:flex;gap:6px}
+
+/* ── Cambio username ── */
+.username-change-wrap{margin:12px 0 4px;padding-top:12px;border-top:1px solid var(--border)}
+.username-change-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
+.username-change-title{font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.1em;text-transform:uppercase;color:var(--grey);margin-bottom:4px}
+.username-change-fields{display:none;margin-top:8px}
+.username-change-fields.open{display:block}
+.username-change-row{display:flex;gap:6px;align-items:flex-start;margin-top:4px}
+.username-change-row .field{flex:1;margin-bottom:0}
+.username-change-btn{padding:6px 12px;background:var(--accent);color:#fff;border:none;font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:1px;transition:background .15s;white-space:nowrap;align-self:flex-end;height:29px}
+.username-change-btn:hover{background:var(--accent2)}
+.username-change-btn:disabled{background:var(--dimgrey);cursor:not-allowed}
+.username-change-msg{font-family:var(--font);font-size:10px;min-height:14px;margin-top:5px}
+.username-change-msg.ok{color:var(--green)}.username-change-msg.err{color:var(--red)}
 .delete-yes{flex:1;padding:5px;background:var(--red);color:#fff;border:none;font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:1px}
 .delete-no{flex:1;padding:5px;background:var(--panel);color:var(--grey);border:1px solid var(--border);font-family:var(--font-md);font-size:11px;cursor:pointer;border-radius:1px}
 
@@ -832,6 +846,24 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
       <div class="sessions-list" id="profile-sessions"><div style="color:var(--dimgrey);padding:8px 0">Caricamento...</div></div>
       <div class="danger-zone">
         <div class="danger-title">⚠ Zona pericolosa</div>
+        <div class="username-change-wrap">
+          <div class="username-change-hdr">
+            <div class="username-change-title">Cambia username</div>
+            <button class="profile-extra-edit-btn" id="username-change-toggle-btn" onclick="toggleUsernameChange()">Modifica</button>
+          </div>
+          <div class="username-change-fields" id="username-change-fields">
+            <div class="field" style="margin-bottom:6px">
+              <label>Nuovo username</label>
+              <input type="text" id="new-username-input" placeholder="nuovo_username" autocomplete="off">
+            </div>
+            <div class="field" style="margin-bottom:6px">
+              <label>Conferma password</label>
+              <input type="password" id="username-change-password" placeholder="••••••••" autocomplete="current-password">
+            </div>
+            <button class="username-change-btn" id="username-change-btn" onclick="doChangeUsername()">Salva nuovo username</button>
+            <div class="username-change-msg" id="username-change-msg"></div>
+          </div>
+        </div>
         <button class="delete-btn" onclick="showDeleteConfirm()">Elimina profilo</button>
         <div class="delete-confirm" id="delete-confirm">
           <p>Sei sicuro? Tutti i tuoi dati e sessioni verranno eliminati definitivamente.</p>
@@ -1781,6 +1813,54 @@ function hideDeleteConfirm(){
   document.getElementById('delete-confirm').style.display='none';
   document.getElementById('delete-msg').textContent='';
   document.getElementById('delete-password').value='';
+}
+
+// ── Cambio username ──
+function toggleUsernameChange(){
+  const fields=document.getElementById('username-change-fields');
+  const btn=document.getElementById('username-change-toggle-btn');
+  const open=fields.classList.toggle('open');
+  btn.textContent=open?'Annulla':'Modifica';
+  if(open){
+    document.getElementById('new-username-input').value='';
+    document.getElementById('username-change-password').value='';
+    document.getElementById('username-change-msg').textContent='';
+    document.getElementById('username-change-msg').className='username-change-msg';
+    setTimeout(()=>document.getElementById('new-username-input').focus(),50);
+  }
+}
+
+async function doChangeUsername(){
+  const msg=document.getElementById('username-change-msg');
+  const newUsername=document.getElementById('new-username-input').value.trim();
+  const password=document.getElementById('username-change-password').value;
+  if(!newUsername){msg.textContent='✗ Inserisci il nuovo username';msg.className='username-change-msg err';return;}
+  if(newUsername===me?.username){msg.textContent='✗ È già il tuo username attuale';msg.className='username-change-msg err';return;}
+  if(!password){msg.textContent='✗ Conferma la password';msg.className='username-change-msg err';return;}
+  const btn=document.getElementById('username-change-btn');
+  btn.disabled=true;msg.textContent='Aggiornamento...';msg.className='username-change-msg';
+  try{
+    const r=await fetch('/api/profile/change_username',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-Token':(me&&me.csrf_token)||''},
+      body:JSON.stringify({new_username:newUsername,password})
+    });
+    const d=await r.json();
+    if(d.ok){
+      if(me){me.username=newUsername;}
+      msg.textContent='✓ Username aggiornato';msg.className='username-change-msg ok';
+      updateNav();
+      loadLeaderboard();
+      setTimeout(()=>{
+        document.getElementById('username-change-fields').classList.remove('open');
+        document.getElementById('username-change-toggle-btn').textContent='Modifica';
+        msg.textContent='';msg.className='username-change-msg';
+      },1800);
+    }else{
+      msg.textContent='✗ '+(d.error||'Errore sconosciuto');msg.className='username-change-msg err';
+    }
+  }catch{msg.textContent='✗ Errore di rete';msg.className='username-change-msg err';}
+  btn.disabled=false;
 }
 async function doDeleteProfile(){
   const msg=document.getElementById('delete-msg');
