@@ -23,8 +23,11 @@ import bcrypt
 import requests
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 from authlib.integrations.flask_client import OAuth
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # ─────────────────────────────────────────────────────────
 #  App setup
@@ -84,6 +87,39 @@ logger = logging.getLogger(__name__)
 
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 DISCORD_CRON_SECRET = os.environ.get("DISCORD_CRON_SECRET", "")
+
+# ─────────────────────────────────────────────────────────
+#  Email SMTP (per reset password)
+# ─────────────────────────────────────────────────────────
+
+SMTP_HOST     = os.environ.get("SMTP_HOST", "")
+SMTP_PORT     = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER     = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+SMTP_FROM     = os.environ.get("SMTP_FROM", SMTP_USER)
+APP_BASE_URL  = os.environ.get("APP_BASE_URL", "https://orts-passengers-server.onrender.com")
+
+def send_email(to_address: str, subject: str, body_html: str) -> bool:
+    """Invia un'email via SMTP. Ritorna True se l'invio ha successo."""
+    if not all([SMTP_HOST, SMTP_USER, SMTP_PASSWORD]):
+        logger.warning("SMTP non configurato: impossibile inviare email a %s", to_address)
+        return False
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"]    = SMTP_FROM
+        msg["To"]      = to_address
+        msg.attach(MIMEText(body_html, "html", "utf-8"))
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.login(SMTP_USER, SMTP_PASSWORD)
+            smtp.sendmail(SMTP_FROM, [to_address], msg.as_string())
+        logger.info("Email inviata a %s — oggetto: %s", to_address, subject)
+        return True
+    except Exception:
+        logger.exception("Errore invio email a %s", to_address)
+        return False
 
 def notify_discord(content=None, embed=None):
     """Invia una notifica al webhook Discord. Non blocca/solleva mai
@@ -294,6 +330,14 @@ def init_db():
                 grade           TEXT    DEFAULT '',
                 registrata_at   TIMESTAMPTZ DEFAULT NOW()
             );
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id          SERIAL PRIMARY KEY,
+                user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                token       TEXT    NOT NULL UNIQUE,
+                expires_at  TIMESTAMPTZ NOT NULL,
+                used        BOOLEAN DEFAULT FALSE,
+                created_at  TIMESTAMPTZ DEFAULT NOW()
+            );
             CREATE TABLE IF NOT EXISTS user_stats_period (
                 user_id      INTEGER NOT NULL REFERENCES users(id),
                 period       TEXT    NOT NULL,
@@ -345,6 +389,14 @@ def migrate_db():
         """ALTER TABLE users ADD COLUMN IF NOT EXISTS discord_id TEXT""",
         # password_hash diventa nullable per utenti OAuth (non hanno password)
         """ALTER TABLE users ALTER COLUMN password_hash SET DEFAULT ''""",
+        """CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            token TEXT NOT NULL UNIQUE,
+            expires_at TIMESTAMPTZ NOT NULL,
+            used BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )""",
         """CREATE TABLE IF NOT EXISTS user_stats_period (
             user_id      INTEGER NOT NULL REFERENCES users(id),
             period       TEXT    NOT NULL,
@@ -1532,6 +1584,131 @@ def api_discord_daily_summary():
         "url": "https://" + request.host + "/leaderboard"
     })
     return jsonify({"ok": True, "count": len(top)})
+
+# ─────────────────────────────────────────────────────────
+#  API recupero password
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/password_reset_request", methods=["POST"])
+@limiter.limit("5 per hour")   # anti-spam: max 5 richieste/ora per IP
+def api_password_reset_request():
+    """Genera un token di reset e invia l'email. Non rivela mai se l'email esiste."""
+    data  = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+
+    if not email:
+        # Risposta generica per non rivelare nulla
+        return jsonify({"ok": True})
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, username FROM users WHERE LOWER(email)=%s", (email,))
+            user = fetchone(cur)
+
+    if user:
+        token      = secrets.token_urlsafe(48)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=2)
+
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                # Invalida eventuali token precedenti non ancora usati
+                cur.execute(
+                    "UPDATE password_reset_tokens SET used=TRUE WHERE user_id=%s AND used=FALSE",
+                    (user["id"],)
+                )
+                cur.execute(
+                    """INSERT INTO password_reset_tokens (user_id, token, expires_at)
+                       VALUES (%s, %s, %s)""",
+                    (user["id"], token, expires_at)
+                )
+            conn.commit()
+
+        reset_url = f"{APP_BASE_URL}/reset-password?token={token}"
+        body = f"""
+        <html><body style="font-family:'Trebuchet MS',sans-serif;color:#2B2B2B;max-width:480px;margin:auto;padding:24px">
+          <img src="{APP_BASE_URL}/static/VTV_logo.jpg" alt="ViaggiaTreno Virtual" style="max-width:140px;margin-bottom:20px">
+          <h2 style="font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#CE1B26;margin-bottom:12px">
+            Recupero Password
+          </h2>
+          <p style="font-size:13px;line-height:1.7;margin-bottom:16px">
+            Ciao <strong>{user["username"]}</strong>,<br>
+            hai richiesto il reset della password per il tuo account ViaggiaTreno Virtual.<br>
+            Clicca il pulsante qui sotto per impostare una nuova password.
+            Il link è valido per <strong>2 ore</strong>.
+          </p>
+          <a href="{reset_url}"
+             style="display:inline-block;background:#CE1B26;color:#fff;text-decoration:none;
+                    padding:12px 28px;border-radius:2px;font-size:12px;font-weight:500;
+                    letter-spacing:.08em;text-transform:uppercase">
+            Reimposta password
+          </a>
+          <p style="font-size:11px;color:#888;margin-top:20px;line-height:1.6">
+            Se non hai richiesto questo reset, ignora questa email: il tuo account è al sicuro.<br>
+            Link diretto: <a href="{reset_url}" style="color:#CE1B26">{reset_url}</a>
+          </p>
+          <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+          <p style="font-size:10px;color:#aaa">ViaggiaTreno Virtual — TSH Studio Repaint</p>
+        </body></html>
+        """
+        send_email(email, "ViaggiaTreno Virtual — Recupero password", body)
+        logger.info("Reset password richiesto per user_id=%s", user["id"])
+
+    # Risposta sempre identica (non rivela se l'email è registrata)
+    return jsonify({"ok": True})
+
+
+@app.route("/reset-password")
+def reset_password_page():
+    """Pagina di reset password (token via query string)."""
+    token = request.args.get("token", "").strip()
+    # Verifica subito che il token esista e non sia scaduto/usato
+    valid = False
+    if token:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id FROM password_reset_tokens
+                    WHERE token=%s AND used=FALSE AND expires_at > NOW()
+                """, (token,))
+                valid = bool(fetchone(cur))
+    return render_template("reset_password.html", token=token, valid=valid)
+
+
+@app.route("/api/password_reset_confirm", methods=["POST"])
+@limiter.limit("10 per hour")
+def api_password_reset_confirm():
+    """Imposta la nuova password tramite token di reset."""
+    data         = request.get_json(silent=True) or {}
+    token        = (data.get("token") or "").strip()
+    new_password = data.get("password", "") or ""
+
+    if not token or not new_password:
+        return jsonify({"ok": False, "error": "Dati mancanti"}), 400
+    if len(new_password) < 6:
+        return jsonify({"ok": False, "error": "La password deve essere di almeno 6 caratteri"}), 400
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT prt.id AS token_id, prt.user_id
+                FROM password_reset_tokens prt
+                WHERE prt.token=%s AND prt.used=FALSE AND prt.expires_at > NOW()
+            """, (token,))
+            row = fetchone(cur)
+
+    if not row:
+        return jsonify({"ok": False, "error": "Link non valido o scaduto. Richiedi un nuovo reset."}), 400
+
+    new_hash = hash_password(new_password)
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_hash, row["user_id"]))
+            cur.execute("UPDATE password_reset_tokens SET used=TRUE WHERE id=%s", (row["token_id"],))
+        conn.commit()
+
+    logger.info("Password reimpostata per user_id=%s", row["user_id"])
+    return jsonify({"ok": True, "message": "Password aggiornata con successo. Ora puoi accedere."})
+
 
 # ─────────────────────────────────────────────────────────
 
