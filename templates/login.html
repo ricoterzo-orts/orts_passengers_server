@@ -268,6 +268,46 @@ footer span{color:var(--accent);font-weight:500}
         <label>Password (min. 6 caratteri) <span class="required-mark">*</span></label>
         <input type="password" id="r-pass" placeholder="••••••••">
       </div>
+      <div class="field">
+        <label>Azienda ferroviaria <span class="required-mark">*</span></label>
+        <select id="r-azienda">
+          <option value="">— Seleziona —</option>
+          <option value="Trenitalia">Trenitalia</option>
+          <option value="Trenitalia DPR">Trenitalia DPR</option>
+          <option value="Trenitalia TPER">Trenitalia TPER</option>
+          <option value="TrenoNord">TrenoNord</option>
+          <option value="ITALO - Nuovo Trasporto Viaggiatori">ITALO – Nuovo Trasporto Viaggiatori</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Compartimento <span class="required-mark">*</span></label>
+        <select id="r-compartimento">
+          <option value="">— Seleziona —</option>
+          <option value="Torino">Torino</option>
+          <option value="Milano">Milano</option>
+          <option value="Verona">Verona</option>
+          <option value="Venezia">Venezia</option>
+          <option value="Trieste">Trieste</option>
+          <option value="Genova">Genova</option>
+          <option value="Bologna">Bologna</option>
+          <option value="Firenze">Firenze</option>
+          <option value="Ancona">Ancona</option>
+          <option value="Roma">Roma</option>
+          <option value="Napoli">Napoli</option>
+          <option value="Bari">Bari</option>
+          <option value="Reggio Calabria">Reggio Calabria</option>
+          <option value="Palermo">Palermo</option>
+          <option value="Cagliari">Cagliari</option>
+        </select>
+      </div>
+      <!-- Honeypot anti-bot: campo invisibile, NON rimuovere. Gli utenti reali non lo vedono e non lo compilano. -->
+      <div class="field hp-field" aria-hidden="true">
+        <label for="r-website">Sito web</label>
+        <input type="text" id="r-website" name="website" tabindex="-1" autocomplete="off">
+      </div>
+      <div class="captcha-wrap">
+        <div class="g-recaptcha" data-sitekey="6Ldq4f0sAAAAALqcps2lVYgOqMtRifq7uI6J96Zf"></div>
+      </div>
       <button class="btn" id="r-btn" onclick="doRegister()">Crea account</button>
       <div class="msg" id="r-msg"></div>
     </div>
@@ -334,7 +374,7 @@ async function doLogin() {
     const d = await r.json();
     if(d.ok) {
       msg.textContent = '✓ Benvenuto!'; msg.className = 'msg ok';
-      setTimeout(() => window.location.href = '/leaderboard', 600);
+      setTimeout(() => window.location.href = d.redirect_to || '/leaderboard', 600);
     } else {
       msg.textContent = '✗ ' + d.error; msg.className = 'msg err';
     }
@@ -352,10 +392,12 @@ async function doRegister() {
   const user    = document.getElementById('r-user').value.trim();
   const email   = document.getElementById('r-email').value.trim();
   const pass    = document.getElementById('r-pass').value;
+  const azienda = document.getElementById('r-azienda').value;
+  const compartimento = document.getElementById('r-compartimento').value;
   const website = document.getElementById('r-website').value;
   const captcha = grecaptcha.getResponse();
 
-  if(!nome||!cognome||!user||!email||!pass) {
+  if(!nome||!cognome||!user||!email||!pass||!azienda||!compartimento) {
     msg.textContent = '✗ Compila tutti i campi'; msg.className = 'msg err'; return;
   }
   if(!captcha) {
@@ -367,13 +409,13 @@ async function doRegister() {
     const r = await fetch('/api/register', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({nome, cognome, username: user, email, password: pass, website, captcha})
+      body: JSON.stringify({nome, cognome, username: user, email, password: pass, azienda, compartimento, website, captcha})
     });
     const d = await r.json();
     if(d.ok) {
-      msg.textContent = '✓ ' + (d.message || 'Registrazione completata! Ora puoi accedere.'); msg.className = 'msg ok';
+      msg.textContent = '✓ Registrazione completata! Reindirizzamento...'; msg.className = 'msg ok';
       grecaptcha.reset();
-      setTimeout(() => showTab('login'), 2500);
+      setTimeout(() => window.location.href = d.redirect_to || '/complete-profile', 1200);
     } else {
       msg.textContent = '✗ ' + d.error; msg.className = 'msg err';
       grecaptcha.reset();
@@ -406,7 +448,7 @@ async function doRecovery() {
     });
     const d = await r.json();
     // Risposta sempre positiva per non rivelare se l'email è registrata
-    msg.textContent = "\u2713 Se l'indirizzo \u00e8 registrato, riceverai una email con il link di recupero.";
+    msg.textContent = '✓ Se l'indirizzo è registrato, riceverai una email con il link di recupero.';
     msg.className = 'msg ok';
     document.getElementById('rec-email').value = '';
   } catch(e) {
