@@ -448,7 +448,7 @@ async function doRecovery() {
     });
     const d = await r.json();
     // Risposta sempre positiva per non rivelare se l'email è registrata
-    msg.textContent = '✓ Se l'indirizzo è registrato, riceverai una email con il link di recupero.';
+    msg.textContent = "\u2713 Se l'indirizzo \u00e8 registrato, riceverai una email con il link di recupero.";
     msg.className = 'msg ok';
     document.getElementById('rec-email').value = '';
   } catch(e) {
