@@ -688,8 +688,6 @@ def api_register():
         return jsonify({"ok": False, "error": "Indirizzi email temporanei/usa-e-getta non sono ammessi"}), 400
     if not validate_username(username):
         return jsonify({"ok": False, "error": "Username non valido (solo lettere, numeri, _, ., - ; 3-30 caratteri)"}), 400
-    if not azienda or not compartimento:
-        return jsonify({"ok": False, "error": "Azienda e Compartimento sono obbligatori"}), 400
 
     token = secrets.token_hex(32)
     try:
@@ -698,11 +696,11 @@ def api_register():
                 cur.execute(
                     "INSERT INTO users (nome, cognome, username, email, password_hash, api_token, azienda, compartimento) "
                     "VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
-                    (nome, cognome, username, email, hash_password(password), token, azienda, compartimento)
+                    (nome, cognome, username, email, hash_password(password), token, '', '')
                 )
             conn.commit()
         logger.info("Nuovo utente registrato: %s", username)
-        return jsonify({"ok": True, "message": "Registrazione completata! Ora puoi accedere."})
+        return jsonify({"ok": True, "redirect_to": "/complete-profile"})
     except psycopg2.errors.UniqueViolation as e:
         msg = str(e)
         if "username" in msg:
@@ -744,7 +742,9 @@ def api_login():
     csrf = generate_csrf_token()
 
     logger.info("Login utente: %s da IP %s", user["username"], request.remote_addr)
-    return jsonify({"ok": True, "username": user["username"], "csrf_token": csrf})
+    profile_complete = bool(user.get("azienda") and user.get("compartimento"))
+    redirect_to = "/leaderboard" if profile_complete else "/complete-profile"
+    return jsonify({"ok": True, "username": user["username"], "csrf_token": csrf, "redirect_to": redirect_to})
 
 @app.route("/api/logout", methods=["POST"])
 def api_logout():
