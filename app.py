@@ -698,7 +698,7 @@ def api_register():
                 )
             conn.commit()
         logger.info("Nuovo utente registrato: %s", username)
-        return jsonify({"ok": True, "redirect_to": "/complete-profile"})
+        return jsonify({"ok": True, "redirect_to": "/completa-profilo"})
     except psycopg2.errors.UniqueViolation as e:
         msg = str(e)
         if "username" in msg:
@@ -741,7 +741,7 @@ def api_login():
 
     logger.info("Login utente: %s da IP %s", user["username"], request.remote_addr)
     profile_complete = bool(user.get("azienda") and user.get("compartimento"))
-    redirect_to = "/leaderboard" if profile_complete else "/complete-profile"
+    redirect_to = "/leaderboard" if profile_complete else "/completa-profilo"
     return jsonify({"ok": True, "username": user["username"], "csrf_token": csrf, "redirect_to": redirect_to})
 
 @app.route("/api/logout", methods=["POST"])
