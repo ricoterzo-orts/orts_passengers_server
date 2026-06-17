@@ -25,9 +25,6 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from datetime import timedelta, datetime, timezone
 from authlib.integrations.flask_client import OAuth
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 # ─────────────────────────────────────────────────────────
 #  App setup
@@ -89,34 +86,47 @@ DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 DISCORD_CRON_SECRET = os.environ.get("DISCORD_CRON_SECRET", "")
 
 # ─────────────────────────────────────────────────────────
-#  Email SMTP (per reset password)
+#  Email via Brevo API HTTP (per reset password)
 # ─────────────────────────────────────────────────────────
 
-SMTP_HOST     = os.environ.get("SMTP_HOST", "")
-SMTP_PORT     = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER     = os.environ.get("SMTP_USER", "")
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-SMTP_FROM     = os.environ.get("SMTP_FROM", SMTP_USER)
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
+SMTP_FROM     = os.environ.get("SMTP_FROM", "ViaggaTreno_Virtual <ricoterzo@gmail.com>")
 APP_BASE_URL  = os.environ.get("APP_BASE_URL", "https://orts-passengers-server.onrender.com")
 
 def send_email(to_address: str, subject: str, body_html: str) -> bool:
-    """Invia un'email via SMTP. Ritorna True se l'invio ha successo."""
-    if not all([SMTP_HOST, SMTP_USER, SMTP_PASSWORD]):
-        logger.warning("SMTP non configurato: impossibile inviare email a %s", to_address)
+    """Invia un'email tramite Brevo API HTTP. Ritorna True se l'invio ha successo."""
+    if not BREVO_API_KEY:
+        logger.warning("BREVO_API_KEY non configurata: impossibile inviare email a %s", to_address)
         return False
+    # Estrai nome e indirizzo da SMTP_FROM (es. "Nome <email@x.it>")
+    import re as _re
+    m = _re.match(r'^(.+?)\s*<(.+?)>$', SMTP_FROM.strip())
+    if m:
+        from_name, from_email = m.group(1).strip(), m.group(2).strip()
+    else:
+        from_name, from_email = "ViaggaTreno Virtual", SMTP_FROM.strip()
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"]    = SMTP_FROM
-        msg["To"]      = to_address
-        msg.attach(MIMEText(body_html, "html", "utf-8"))
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
-            smtp.ehlo()
-            smtp.starttls()
-            smtp.login(SMTP_USER, SMTP_PASSWORD)
-            smtp.sendmail(SMTP_FROM, [to_address], msg.as_string())
-        logger.info("Email inviata a %s — oggetto: %s", to_address, subject)
-        return True
+        resp = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={
+                "api-key": BREVO_API_KEY,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json={
+                "sender":      {"name": from_name, "email": from_email},
+                "to":          [{"email": to_address}],
+                "subject":     subject,
+                "htmlContent": body_html,
+            },
+            timeout=15,
+        )
+        if resp.status_code in (200, 201):
+            logger.info("Email inviata a %s — oggetto: %s", to_address, subject)
+            return True
+        else:
+            logger.error("Brevo API errore %s: %s", resp.status_code, resp.text)
+            return False
     except Exception:
         logger.exception("Errore invio email a %s", to_address)
         return False
