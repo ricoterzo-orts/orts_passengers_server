@@ -166,6 +166,30 @@ h2 {
   overflow: hidden;
 }
 
+/* Forgot password link */
+.forgot-link {
+  display: inline-block; margin-top: 10px;
+  font-size: 10px; color: #aaa; letter-spacing: .06em;
+  cursor: pointer; background: none; border: none;
+  font-family: var(--font); text-decoration: underline;
+  transition: color .15s;
+}
+.forgot-link:hover { color: var(--accent); }
+
+/* Recovery panel */
+.back-link {
+  display: inline-block; margin-top: 12px;
+  font-size: 10px; color: #aaa; letter-spacing: .06em;
+  cursor: pointer; background: none; border: none;
+  font-family: var(--font); text-decoration: underline;
+  transition: color .15s;
+}
+.back-link:hover { color: var(--accent); }
+.recovery-intro {
+  font-size: 11px; color: #666; margin-bottom: 16px;
+  line-height: 1.6; letter-spacing: .02em;
+}
+
 /* Footer */
 footer{position:relative;z-index:1;text-align:center;padding:18px 20px;font-family:var(--font);font-size:10px;color:#ddd;letter-spacing:.06em;border-top:2px solid var(--accent)}
 footer span{color:var(--accent);font-weight:500}
@@ -198,6 +222,25 @@ footer span{color:var(--accent);font-weight:500}
       </div>
       <button class="btn" id="l-btn" onclick="doLogin()">Entra</button>
       <div class="msg" id="l-msg"></div>
+      <div style="text-align:center">
+        <button class="forgot-link" onclick="showTab('recovery')">Password dimenticata?</button>
+      </div>
+    </div>
+
+    <!-- RECUPERO PASSWORD -->
+    <div class="panel" id="panel-recovery">
+      <p class="recovery-intro">
+        Inserisci la tua email: riceverai un link per reimpostare la password.
+      </p>
+      <div class="field">
+        <label>Email <span class="required-mark">*</span></label>
+        <input type="email" id="rec-email" placeholder="mario@ferrovie.it" autocomplete="email">
+      </div>
+      <button class="btn" id="rec-btn" onclick="doRecovery()">Invia link di recupero</button>
+      <div class="msg" id="rec-msg"></div>
+      <div style="text-align:center">
+        <button class="back-link" onclick="showTab('login')">← Torna al login</button>
+      </div>
     </div>
 
     <!-- REGISTER -->
@@ -304,11 +347,15 @@ footer span{color:var(--accent);font-weight:500}
 
 <script>
 function showTab(name) {
+  // Le tab visibili solo per login/register
   document.querySelectorAll('.tab').forEach((t,i) => {
     t.classList.toggle('active', (i===0&&name==='login')||(i===1&&name==='register'));
   });
   document.getElementById('panel-login').classList.toggle('active', name==='login');
   document.getElementById('panel-register').classList.toggle('active', name==='register');
+  document.getElementById('panel-recovery').classList.toggle('active', name==='recovery');
+  // Nel pannello recupero nascondi le tab per non confondere
+  document.querySelector('.tabs').style.display = name==='recovery' ? 'none' : '';
 }
 
 async function doLogin() {
@@ -379,7 +426,36 @@ async function doRegister() {
   btn.disabled = false;
 }
 
-document.addEventListener('keypress', e => { if(e.key==='Enter') doLogin(); });
+document.addEventListener('keypress', e => {
+  const active = document.querySelector('.panel.active');
+  if(e.key === 'Enter'){
+    if(active && active.id === 'panel-recovery') doRecovery();
+    else doLogin();
+  }
+});
+
+async function doRecovery() {
+  const btn = document.getElementById('rec-btn');
+  const msg = document.getElementById('rec-msg');
+  const email = document.getElementById('rec-email').value.trim();
+  if(!email) { msg.textContent = '✗ Inserisci la tua email'; msg.className = 'msg err'; return; }
+  btn.disabled = true; msg.textContent = 'Invio in corso...'; msg.className = 'msg';
+  try {
+    const r = await fetch('/api/password_reset_request', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email})
+    });
+    const d = await r.json();
+    // Risposta sempre positiva per non rivelare se l'email è registrata
+    msg.textContent = '✓ Se l'indirizzo è registrato, riceverai una email con il link di recupero.';
+    msg.className = 'msg ok';
+    document.getElementById('rec-email').value = '';
+  } catch(e) {
+    msg.textContent = '✗ Errore di connessione. Riprova.'; msg.className = 'msg err';
+  }
+  btn.disabled = false;
+}
 
 // Mostra errore se si torna da un tentativo OAuth fallito
 (function() {
