@@ -647,8 +647,6 @@ def api_register():
     username = (data.get("username", "") or "").strip()
     email    = (data.get("email",    "") or "").strip().lower()
     password = data.get("password", "") or ""
-    azienda       = (data.get("azienda",       "") or "").strip()
-    compartimento = (data.get("compartimento", "") or "").strip()
 
     # Honeypot anti-bot: campo nascosto che solo i bot compilano
     honeypot = (data.get("website", "") or "").strip()
