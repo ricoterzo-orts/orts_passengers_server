@@ -381,7 +381,7 @@ async function doRegister() {
     if(d.ok) {
       msg.textContent = '✓ Registrazione completata! Reindirizzamento...'; msg.className = 'msg ok';
       grecaptcha.reset();
-      setTimeout(() => window.location.href = d.redirect_to || '/complete-profile', 1200);
+      setTimeout(() => window.location.href = d.redirect_to || '/completa-profilo', 1200);
     } else {
       msg.textContent = '✗ ' + d.error; msg.className = 'msg err';
       grecaptcha.reset();
