@@ -1812,23 +1812,27 @@ function startDeadReckoningLoop(){
 async function loadLive(){
   try{
     const r=await fetch('/api/live');
+    if(!r.ok) return;
     const fresh=await r.json();
     const now = Date.now();
 
+    // Aggiorna l'ordine: aggiungi nuovi, rimuovi chi non è più online
     fresh.forEach(u=>{
       if(!liveOrder.includes(u.username)) liveOrder.push(u.username);
     });
+    const onlineNow = new Set(fresh.map(u=>u.username));
+    liveOrder = liveOrder.filter(name => onlineNow.has(name));
+    liveData  = liveOrder.map(name=>fresh.find(u=>u.username===name)).filter(Boolean);
 
-    const onlineNow=fresh.map(u=>u.username);
-    liveOrder=liveOrder.filter(name=>onlineNow.includes(name));
-
-    liveData=liveOrder.map(name=>fresh.find(u=>u.username===name)).filter(Boolean);
-
+    // Chiama SEMPRE updateMap — anche con array vuoto, così rimuove i marker offline
     updateMap(liveData, now);
+
     // Aggiorna la classifica per sincronizzare lo stato online/offline dei pin
     if(lbRows.length) renderLbPage();
-    else if(liveData.length) loadLeaderboard(); // forza carico se arriva un giocatore prima del primo poll lb
-  }catch(e){}
+    else if(liveData.length) loadLeaderboard();
+  }catch(e){
+    console.warn('[VTV] loadLive error:', e);
+  }
 }
 
 // ── Delete profile ──
@@ -2116,29 +2120,17 @@ function updateMap(users, pollTimestamp){
       popupAnchor: [0, -16],
     });
 
-    if(trainMarkers[u.username]){
-      trainMarkers[u.username].setLatLng(pos);
-      trainMarkers[u.username].setIcon(trainIcon);
-      trainMarkers[u.username].getPopup().setContent(popupHtml);
-      trainMarkers[u.username].bringToFront();
-    } else {
-      trainMarkers[u.username] = L.marker(pos, { icon: trainIcon })
-        .bindPopup(popupHtml).addTo(leafletMap);
-    }
-
-    // ── Dead-reckoning: calcola la prossima posizione stimata ──
-    // La "toPos" è la posizione che il treno raggiungerebbe se continuasse
-    // linearmente verso la prossima stazione per un intero intervallo di poll.
+    // ── Dead-reckoning: aggiorna lo stato PRIMA di posizionare il marker ──
+    // Il loop rAF legge drState ogni frame: aggiornandolo prima di setLatLng
+    // evitiamo che sovrascriva la posizione appena ricevuta dal poll.
     const prevDr = drState[u.username];
     let toPos = pos; // default: rimane fermo (posizione di fallback o GPS statico)
     if(posSource !== 'default_italia'){
       const nextCoord = u.next_station ? getStationCoord(u.next_station) : null;
       if(nextCoord){
-        // Vettore verso la prossima stazione, scalato per un intervallo di poll
         const distLat = nextCoord.lat - pos[0];
         const distLon = nextCoord.lon - pos[1];
         const distDeg = Math.sqrt(distLat*distLat + distLon*distLon);
-        // Stima km tra le stazioni (1° ≈ 111 km); velocità in km/h dal backend
         const speedKmh = u.speed_kmh || 0;
         const intervalH = POLL_INTERVAL_MS / 3600000;
         const travelDeg = speedKmh > 0 ? Math.min(distDeg, (speedKmh * intervalH) / 111) : 0;
@@ -2148,15 +2140,26 @@ function updateMap(users, pollTimestamp){
         }
       }
     }
-    // fromPos: se avevamo già un drState, parte dalla posizione corrente interpolata
-    // (evita salti bruschi se il poll arriva leggermente in ritardo)
+    // fromPos: parte dalla posizione interpolata corrente (evita salti bruschi)
     const fromPos = prevDr
       ? [
           prevDr.fromPos[0] + (prevDr.toPos[0] - prevDr.fromPos[0]) * Math.min(1, (now - prevDr.fetchedAt) / prevDr.pollInterval),
           prevDr.fromPos[1] + (prevDr.toPos[1] - prevDr.fromPos[1]) * Math.min(1, (now - prevDr.fetchedAt) / prevDr.pollInterval),
         ]
       : pos;
+    // Scrivi drState PRIMA di creare/aggiornare il marker, così il loop rAF
+    // legge subito il nuovo stato e non sovrascrive la posizione del poll
     drState[u.username] = { fromPos, toPos, fetchedAt: now, pollInterval: POLL_INTERVAL_MS };
+
+    if(trainMarkers[u.username]){
+      trainMarkers[u.username].setLatLng(fromPos);
+      trainMarkers[u.username].setIcon(trainIcon);
+      trainMarkers[u.username].getPopup().setContent(popupHtml);
+      trainMarkers[u.username].bringToFront();
+    } else {
+      trainMarkers[u.username] = L.marker(fromPos, { icon: trainIcon })
+        .bindPopup(popupHtml).addTo(leafletMap);
+    }
   });
 
   // Rimuovi marker utenti offline
@@ -2176,7 +2179,9 @@ async function loadStationCoords(){
     const r = await fetch('/api/station_coords');
     stationCoords = await r.json();
     // Se ci sono già dati live in memoria, aggiorna la mappa con le coordinate appena caricate
-    if(liveData.length) updateMap(liveData);
+    // Nota: non aggiorniamo drState qui (nessun timestamp fresco), la mappa si aggiornerà
+    // al prossimo poll di loadLive()
+    if(liveData.length) updateMap(liveData, Date.now());
   }catch(e){}
 }
 
