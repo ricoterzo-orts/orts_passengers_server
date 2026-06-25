@@ -1054,13 +1054,14 @@ def api_my_history():
         return jsonify({"ok": False, "error": "Non autenticato"}), 401
     with get_db() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
-                SELECT punteggio, ultimo_servizio, grade,
-                       registrata_at::text AS registrata_at
-                FROM sessions WHERE user_id=%s
-                ORDER BY registrata_at ASC LIMIT 50
-            """, (session["user_id"],))
-            rows = fetchall(cur)
+           cur.execute("""
+    SELECT punteggio, ultimo_servizio, grade,
+           registrata_at::text AS registrata_at
+    FROM sessions WHERE user_id=%s
+    ORDER BY registrata_at DESC LIMIT 50
+""", (session["user_id"],))
+rows = fetchall(cur)
+rows.reverse()
 
             cur.execute("SELECT AVG(punteggio) AS avg FROM sessions")
             platform = fetchone(cur)
