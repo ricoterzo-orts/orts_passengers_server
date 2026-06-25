@@ -1795,15 +1795,17 @@ function startDeadReckoningLoop(){
   function tick(){
     drAnimFrame = requestAnimationFrame(tick);
     const now = Date.now();
-    Object.entries(drState).forEach(([username, dr]) => {
-      if(!trainMarkers[username]) return;
+    for(const username in drState){
+      const marker = trainMarkers[username];
+      if(!marker) continue;
+      const dr = drState[username];
       const elapsed = now - dr.fetchedAt;
       // t in [0,1]: 0 = posizione al momento del poll, 1 = posizione stimata al prossimo poll
       const t = Math.min(1, elapsed / dr.pollInterval);
       const lat = dr.fromPos[0] + (dr.toPos[0] - dr.fromPos[0]) * t;
       const lon = dr.fromPos[1] + (dr.toPos[1] - dr.fromPos[1]) * t;
-      trainMarkers[username].setLatLng([lat, lon]);
-    });
+      marker.setLatLng([lat, lon]);
+    }
   }
   tick();
 }
@@ -2152,11 +2154,16 @@ function updateMap(users, pollTimestamp){
     drState[u.username] = { fromPos, toPos, fetchedAt: now, pollInterval: POLL_INTERVAL_MS };
 
     if(trainMarkers[u.username]){
-      trainMarkers[u.username].setLatLng(fromPos);
+      // Non chiamiamo setLatLng qui: la posizione è gestita esclusivamente
+      // dal loop rAF (dead-reckoning), che legge drState aggiornato sopra.
+      // Chiamare setLatLng qui creerebbe una race condition con il loop rAF
+      // che — per il secondo utente — sovrascrive la posizione nel frame successivo.
       trainMarkers[u.username].setIcon(trainIcon);
-      trainMarkers[u.username].getPopup().setContent(popupHtml);
+      const popup = trainMarkers[u.username].getPopup();
+      if(popup) popup.setContent(popupHtml);
       trainMarkers[u.username].bringToFront();
     } else {
+      // Prima creazione: posiziona subito a fromPos (il loop rAF la aggiornerà da subito)
       trainMarkers[u.username] = L.marker(fromPos, { icon: trainIcon })
         .bindPopup(popupHtml).addTo(leafletMap);
     }
