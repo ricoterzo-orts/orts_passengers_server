@@ -2154,18 +2154,26 @@ function updateMap(users, pollTimestamp){
     drState[u.username] = { fromPos, toPos, fetchedAt: now, pollInterval: POLL_INTERVAL_MS };
 
     if(trainMarkers[u.username]){
-      // Non chiamiamo setLatLng qui: la posizione è gestita esclusivamente
-      // dal loop rAF (dead-reckoning), che legge drState aggiornato sopra.
-      // Chiamare setLatLng qui creerebbe una race condition con il loop rAF
-      // che — per il secondo utente — sovrascrive la posizione nel frame successivo.
-      trainMarkers[u.username].setIcon(trainIcon);
-      const popup = trainMarkers[u.username].getPopup();
+      const m = trainMarkers[u.username];
+      // setIcon in Leaflet rimuove e riattacca internamente il DOM del marker,
+      // resettando la posizione all'ultimo valore noto da Leaflet (non quella del loop rAF).
+      // Chiamiamo setIcon solo se il colore/opacità è cambiato per evitare reset inutili,
+      // e subito dopo forziamo la posizione corrente con setLatLng.
+      const newIconKey = markerColor + '|' + iconOpacity;
+      if(m._vtvIconKey !== newIconKey){
+        m.setIcon(trainIcon);
+        m._vtvIconKey = newIconKey;
+      }
+      // Forza sempre la posizione interpolata corrente: il loop rAF continuerà da qui.
+      m.setLatLng(fromPos);
+      const popup = m.getPopup();
       if(popup) popup.setContent(popupHtml);
-      trainMarkers[u.username].bringToFront();
+      m.bringToFront();
     } else {
-      // Prima creazione: posiziona subito a fromPos (il loop rAF la aggiornerà da subito)
-      trainMarkers[u.username] = L.marker(fromPos, { icon: trainIcon })
+      const m = L.marker(fromPos, { icon: trainIcon })
         .bindPopup(popupHtml).addTo(leafletMap);
+      m._vtvIconKey = markerColor + '|' + iconOpacity;
+      trainMarkers[u.username] = m;
     }
   });
 
