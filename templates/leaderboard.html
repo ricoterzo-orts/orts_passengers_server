@@ -2168,7 +2168,6 @@ function updateMap(users, pollTimestamp){
       m.setLatLng(fromPos);
       const popup = m.getPopup();
       if(popup) popup.setContent(popupHtml);
-      m.bringToFront();
     } else {
       const m = L.marker(fromPos, { icon: trainIcon })
         .bindPopup(popupHtml).addTo(leafletMap);
@@ -2186,7 +2185,6 @@ function updateMap(users, pollTimestamp){
     }
   });
 
-  Object.values(trainMarkers).forEach(m => m.bringToFront());
 }
 
 async function loadStationCoords(){
