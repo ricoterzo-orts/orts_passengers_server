@@ -1,2619 +1,1726 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ViaggiaTreno Virtual</title>
-<link rel="icon" href="/static/favicon.png" type="image/png">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-<style>
-@font-face {
-  font-family: 'Futura';
-  src: url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicBook.woff2') format('woff2'),
-       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicBook.woff') format('woff');
-  font-weight: normal;
-}
-@font-face {
-  font-family: 'Futura';
-  src: url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicMedium.woff2') format('woff2'),
-       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicMedium.woff') format('woff');
-  font-weight: 500;
-}
-:root {
-  --bg:      #F2F2F2;
-  --panel:   #E4E4E4;
-  --card:    #FFFFFF;
-  --border:  #CCCCCC;
-  --accent:  #CE1B26;
-  --accent2: #A8141D;
-  --white:   #2B2B2B;
-  --grey:    #5A5A5A;
-  --dimgrey: #AAAAAA;
-  --green:   #007A3D;
-  --amber:   #E07B00;
-  --red:     #CE1B26;
-  --font:    'Futura',sans-serif;
-  --font-md: 'Futura',sans-serif;
-  --mono:    'Courier New',monospace;
-}
-.leaflet-marker-icon,.leaflet-marker-shadow{transition:transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94)!important}
-body{background:var(--bg);color:var(--white);font-family:var(--font);font-size:13px;min-height:100vh}
-
-/* ── HEADER ── */
-header{background:#fff;border-bottom:2px solid var(--accent);padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
-.logo{display:flex;align-items:center;gap:10px}
-.logo h1{font-size:13px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:#fff;font-family:var(--font-md)}
-.logo h1 span{opacity:.8;font-weight:normal}
-nav{display:flex;gap:6px;align-items:center}
-#nav-username{font-family:var(--font-md);font-size:11px;color:var(--accent);margin-right:4px;font-weight:500}
-.nav-btn{padding:4px 14px;background:var(--accent);border:1px solid var(--accent);color:#fff;font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all .15s;line-height:22px}
-.nav-btn:hover{background:var(--accent2);border-color:var(--accent2)}
-.nav-btn.sec{background:#fff;color:var(--accent);border:1px solid var(--accent)}
-
-/* ── LAYOUT ── */
-main{max-width:1100px;margin:0 auto;padding:20px 16px}
-
-/* ── SECTION HEADERS ── */
-.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.sec-title{font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-family:var(--font-md);display:flex;align-items:center;gap:6px}
-.sec-title::before{content:'';display:inline-block;width:3px;height:14px;background:var(--accent);border-radius:1px}
-.sec-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(0,122,61,.1);border:1px solid rgba(0,122,61,.25);color:var(--green);font-family:var(--font-md);font-size:10px;font-weight:500;padding:2px 8px;border-radius:2px;letter-spacing:.06em}
-.pulse{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-
-.live-panel-main{background:var(--card);border:1px solid var(--border);border-radius:0 2px 2px 2px;padding:10px}
-.live-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:10px;align-items:stretch}
-@media(max-width:900px){.live-grid{grid-template-columns:1fr}}
-.live-run-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)}
-.live-run-name{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white)}
-.live-run-consist{font-family:var(--font);font-size:10px;color:var(--dimgrey);margin-top:2px}
-.live-kpis{display:flex;gap:10px}
-.live-kpi{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:6px 12px;text-align:center;min-width:70px}
-.live-kpi-val{font-family:var(--font-md);font-size:18px;font-weight:500;line-height:1}
-.live-kpi-lbl{font-family:var(--font);font-size:9px;color:var(--dimgrey);margin-top:2px;letter-spacing:.08em;text-transform:uppercase}
-.live-map-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:6px 12px;overflow-x:auto}
-.live-map-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
-.live-map{position:relative;padding:20px 0 8px}
-.live-map-line{position:absolute;top:28px;left:20px;right:20px;height:2px;background:var(--border)}
-.live-map-progress{position:absolute;top:28px;left:20px;height:2px;background:var(--accent);transition:width .5s}
-.live-map-stations{display:flex;justify-content:space-between;position:relative;padding:0 20px}
-.live-map-st{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;min-width:44px}
-.live-map-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--border);background:var(--panel);transition:all .3s;flex-shrink:0}
-.live-map-dot.passed{background:var(--accent);border-color:var(--accent)}
-.live-map-dot.current{background:var(--green);border-color:var(--green);box-shadow:0 0 8px var(--green);animation:pulse-dot 1.5s infinite}
-@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(.85)}}
-.live-map-name{font-family:var(--font);font-size:8px;color:var(--dimgrey);text-align:center;line-height:1.2;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.live-map-name.passed{color:var(--grey)}
-.live-map-name.current{color:var(--green);font-family:var(--font-md);font-weight:500}
-.live-map-time{font-family:var(--font);font-size:7px;color:var(--dimgrey);text-align:center}
-.live-train-icon{position:absolute;top:18px;font-size:16px;transition:left .5s;transform:translateX(-50%)}
-.live-chart-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:8px 12px;display:flex;flex-direction:column;box-sizing:border-box}
-.live-chart-hdr{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:5px;flex-shrink:0}
-.live-chart-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase}
-.live-chart-speed{font-family:var(--font-md);font-size:20px;font-weight:500;color:var(--accent);line-height:1;letter-spacing:-.5px}
-.live-chart-speed-unit{font-size:9px;font-weight:400;color:var(--dimgrey);margin-left:2px;font-family:var(--font)}
-.live-chart-canvas{width:100%;flex:1;display:block;min-height:80px}
-.chart-zoom-btns{display:flex;gap:3px;align-items:center}
-.chart-zoom-btn{background:var(--panel);border:1px solid var(--border);color:var(--grey);font-family:var(--font-md);font-size:11px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:2px;line-height:1;padding:0;transition:all .12s;user-select:none;flex-shrink:0}
-.chart-zoom-btn:hover{background:var(--card);border-color:var(--accent);color:var(--accent)}
-.chart-zoom-label{font-family:var(--mono);font-size:9px;color:var(--dimgrey);min-width:28px;text-align:center}
-.live-stops-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden;display:flex;flex-direction:column}
-.live-stops-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
-.live-stops-scroll{flex:1}
-.live-stops-table{width:100%;border-collapse:collapse}
-.live-stops-table thead{position:sticky;top:0;background:var(--panel);z-index:1}
-.live-stops-table th{font-family:var(--font);font-size:9px;color:var(--dimgrey);padding:5px 12px!important;text-align:left;border-bottom:1px solid var(--border);letter-spacing:.08em;text-transform:uppercase;box-sizing:border-box}
-.live-stops-table td{font-family:var(--font);font-size:10px;padding:6px 12px;border-bottom:1px solid rgba(204,204,204,.3);vertical-align:middle;box-sizing:border-box}
-.live-stops-wrap .live-stops-table tbody td{padding:5px 12px!important}
-.live-stops-table tr:last-child td{border-bottom:none}
-.live-stops-table tr.passed td{color:var(--dimgrey)}
-.live-stops-table tr.current td{background:rgba(0,122,61,.06);color:var(--white);font-family:var(--font-md);font-weight:500}
-.live-stops-table tr.current td:first-child::before{content:'→ ';color:var(--green)}
-.dly-ok{color:var(--green)}.dly-bad{color:var(--red)}.dly-amber{color:var(--amber)}
-
-/* ── CLASSIFICA AFFIDABILITÀ ── */
-.lb-section{margin-bottom:24px}
-.lb-tabs{display:flex;gap:4px;margin-bottom:0;flex-wrap:wrap}
-.lb-tab{padding:5px 14px;background:var(--panel);border:1px solid var(--border);border-bottom:none;color:var(--grey);font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:2px 2px 0 0;transition:all .15s}
-.lb-tab:hover{background:var(--card);color:var(--white)}
-.lb-tab.active{background:var(--card);color:var(--accent);border-bottom-color:var(--card)}
-.lb-table-wrap-active{border-top-left-radius:0}
-.lb-period-range{font-family:var(--font);font-size:10px;color:var(--dimgrey);padding:4px 12px 6px;letter-spacing:.03em}
-.lb-period-range strong{font-family:var(--font-md);color:var(--grey);font-weight:500}
-
-.lb-pag-info{white-space:nowrap}
-.lb-pag-perpage{display:flex;align-items:center;gap:8px;white-space:nowrap}
-.lb-pag-perpage select{background:var(--card);border:1px solid var(--border);color:var(--white);font-family:var(--font-md);font-size:11px;font-weight:500;padding:4px 8px;border-radius:2px;cursor:pointer}
-.lb-pag-perpage select:hover{border-color:var(--accent)}
-.lb-pag-pages{display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end}
-.lb-page-btn{min-width:28px;height:28px;padding:0 6px;background:var(--card);border:1px solid var(--border);color:var(--grey);font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:2px;transition:all .15s;line-height:26px}
-.lb-page-btn:hover:not(:disabled):not(.active){background:var(--bg);color:var(--accent);border-color:var(--accent)}
-.lb-page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);cursor:default}
-.lb-page-btn:disabled{opacity:.35;cursor:default}
-.lb-page-ellipsis{color:var(--dimgrey);font-size:11px;padding:0 4px}
-@media(max-width:640px){.lb-pagination{justify-content:center;text-align:center}.lb-pag-pages{justify-content:center}}
-.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:2px;overflow:hidden}
-table{width:100%;border-collapse:collapse}
-thead{background:var(--panel)}
-thead th{font-family:var(--font);font-size:10px;font-weight:normal;letter-spacing:.1em;text-transform:uppercase;color:var(--grey);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
-th.c{text-align:center}th.r{text-align:right}
-tbody tr{border-bottom:1px solid rgba(204,204,204,.4);transition:background .1s}
-tbody tr:hover{background:rgba(206,27,38,.04)}
-tbody tr:last-child{border-bottom:none}
-tbody td{padding:9px 12px;vertical-align:middle}
-td.rank{font-family:var(--font-md);font-size:11px;color:var(--grey);font-weight:500;text-align:center}
-td.rank .username-btn{font-size:15px;color:var(--grey)}
-td.rank .username-btn:hover{color:var(--accent)}
-.map-loc-btn{font-size:13px;color:var(--green);background:none;border:none;cursor:pointer;padding:0 0 0 4px;vertical-align:middle;line-height:1;transition:color .15s;opacity:.85}
-.map-loc-btn:hover{color:var(--accent);opacity:1}
-/* ── INLINE LIVE ROW / ACCORDION ── */
-tr.lb-online-row td{padding:0!important;border-bottom:none!important}
-/* Main data row for online users */
-tr.lb-user-online td:first-child{border-left:3px solid var(--accent)!important}
-tr.lb-user-online td{background:rgba(206,27,38,.02)}
-tr.lb-user-online{cursor:pointer}
-tr.lb-user-online:hover td{background:rgba(206,27,38,.05)!important}
-.lb-live-bar{display:flex;align-items:center;gap:0;background:rgba(0,122,61,.04);border-top:1px solid rgba(0,122,61,.12);cursor:pointer;transition:background .12s;font-family:var(--font);font-size:11px;user-select:none}
-.lb-live-bar:hover{background:rgba(0,122,61,.09)}
-.lb-live-act{flex:1;font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--white);padding:7px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lb-live-sep{color:var(--border);padding:0 2px;font-size:13px}
-.lb-live-chip{display:flex;align-items:center;gap:4px;padding:6px 10px;white-space:nowrap;color:var(--grey)}
-.lb-live-chip i{font-size:10px;opacity:.7}
-.lb-live-chip strong{font-family:var(--font-md);color:var(--white)}
-.lb-live-treniamo{padding:6px 10px}
-.lb-live-treniamo a{color:var(--accent);font-size:10px;font-family:var(--font-md);text-decoration:none}
-.lb-live-treniamo a:hover{text-decoration:underline}
-.lb-live-chevron{padding:6px 12px;color:var(--dimgrey);font-size:10px;transition:transform .2s}
-.lb-live-chevron.open{transform:rotate(180deg)}
-/* panel expanded */
-.lb-live-panel{display:none;background:var(--card);border-top:1px solid rgba(0,122,61,.15)}
-.lb-live-panel.open{display:block}
-/* Location pin icon in rank cell for online users */
-.online-map-btn{background:none;border:none;padding:0;color:var(--green);font-size:13px;cursor:pointer;line-height:1;transition:color .15s;vertical-align:middle;opacity:.9}
-.online-map-btn:hover{color:var(--accent);opacity:1}
-/* GPS column — hidden when no one is online */
-.lb-col-gps{display:none}
-.lb-has-online .lb-col-gps{display:table-cell}
-@media(max-width:600px){.lb-live-chip{padding:5px 6px}.lb-live-act{padding:6px 8px}}
-@media(max-width:600px){.lb-col-corse{display:none}}
-td.username{font-weight:500;font-size:13px;color:var(--white);font-family:var(--font-md)}
-.sub{font-family:var(--font);font-size:10px;color:var(--dimgrey);margin-top:1px}
-td.score{text-align:center}
-.snum{font-family:var(--font-md);font-size:18px;font-weight:500;line-height:1}
-.sgrade{font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
-.g-ecc{color:#007A3D}.g-buo{color:#1565C0}.g-suf{color:#E07B00}.g-ins{color:#CE1B26}
-td.servizio{text-align:center}
-.serv-pill{display:inline-block;background:rgba(206,27,38,.08);border:1px solid rgba(206,27,38,.2);color:var(--accent2);font-family:var(--font);font-size:10px;padding:2px 8px;border-radius:2px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.empty-state{text-align:center;padding:40px;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
-
-/* ── STATUSBAR ── */
-.statusbar{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-bottom:2px solid var(--accent2);padding:5px 12px;margin-bottom:20px;border-radius:2px}
-.statusbar-left{display:flex;align-items:center;gap:14px;font-family:var(--font);font-size:11px;color:var(--grey)}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 2s infinite;display:inline-block;margin-right:3px}
-.statusbar-right{font-family:var(--font);font-size:10px;color:var(--grey)}
-
-/* ── TOKEN BANNER ── */
-#user-banner{display:none;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);padding:8px 12px;margin-bottom:14px;border-radius:2px;font-family:var(--font);font-size:11px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-#user-banner .lbl{color:var(--grey)}
-#user-banner .tv{color:var(--accent2);font-weight:500;font-family:var(--font-md);letter-spacing:.04em}
-#user-banner .tv.masked{color:var(--dimgrey);letter-spacing:.18em;font-size:13px;vertical-align:middle}
-#user-banner .token-actions{display:flex;gap:4px;align-items:center;flex-shrink:0}
-.copy-btn{background:var(--bg);border:1px solid var(--border);color:var(--grey);font-family:var(--font);font-size:10px;padding:2px 8px;cursor:pointer;border-radius:2px}
-.copy-btn:hover{border-color:var(--accent);color:var(--white)}
-.token-toggle-btn{background:var(--bg);border:1px solid var(--border);color:var(--grey);font-family:var(--font);font-size:10px;padding:2px 8px;cursor:pointer;border-radius:2px;display:flex;align-items:center;gap:4px}
-.token-toggle-btn:hover{border-color:var(--accent);color:var(--white)}
-
-/* ── MODALI ── */
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
-.overlay.open{display:flex}
-.modal{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--accent);border-radius:2px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,.2);animation:fi .15s ease}
-@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.modal-title{background:var(--accent2);padding:7px 12px;display:flex;align-items:center;justify-content:space-between}
-.modal-title span{font-size:12px;font-weight:500;font-family:var(--font-md);letter-spacing:.06em;text-transform:uppercase;color:#fff}
-.modal-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer}
-.modal-close:hover{color:#fff}
-.modal-body{padding:16px}
-.field{margin-bottom:10px}
-.field label{display:block;font-size:10px;font-weight:500;font-family:var(--font-md);letter-spacing:.1em;text-transform:uppercase;color:var(--grey);margin-bottom:4px}
-.field input{width:100%;padding:5px 8px;background:var(--bg);border:1px solid var(--border);color:var(--white);font-family:var(--font);font-size:12px;border-radius:1px;outline:none;transition:border-color .15s}
-.field input:focus{border-color:var(--accent)}
-.frow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.modal-btn{width:100%;margin-top:4px;padding:7px;background:var(--accent);color:#fff;border:none;font-family:var(--font-md);font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:1px;transition:background .15s}
-.modal-btn:hover{background:var(--accent2)}
-.modal-btn:disabled{background:var(--dimgrey);cursor:not-allowed}
-.msg{font-family:var(--font);font-size:10px;text-align:center;margin-top:8px;min-height:14px}
-.msg.ok{color:var(--green)}.msg.err{color:var(--red)}
-.modal-switch{text-align:center;margin-top:10px;font-family:var(--font);font-size:10px;color:var(--grey)}
-.modal-switch a{color:var(--accent);cursor:pointer}
-.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:10px 0}
-.stat-box{background:var(--bg);border:1px solid var(--border);border-radius:1px;padding:8px 6px;text-align:center}
-.stat-num{font-family:var(--font-md);font-size:20px;font-weight:500;line-height:1}
-.stat-lbl{font-size:9px;font-family:var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--dimgrey);margin-top:2px}
-.token-display{background:var(--bg);border:1px solid var(--border);font-family:var(--font);font-size:10px;color:var(--accent2);padding:6px 8px;border-radius:1px;word-break:break-all;margin:6px 0 12px}
-.slbl{font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.1em;text-transform:uppercase;color:var(--dimgrey);margin-bottom:4px}
-.sessions-list{max-height:160px;overflow-y:auto;font-family:var(--font);font-size:10px;color:var(--white)}
-.sess-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)}
-.sess-row:last-child{border-bottom:none}
-.sess-score{color:var(--white);font-weight:500;font-family:var(--font-md);min-width:50px}
-.sess-serv{color:var(--accent2);font-family:var(--font);flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
-.sess-date{color:var(--grey);font-family:var(--font)}
-
-/* ── Grafico andamento profilo ── */
-.profile-chart-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:10px 12px;margin:10px 0}
-.profile-chart-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px}
-.profile-chart-title{font-family:var(--font-md);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.1em;text-transform:uppercase}
-.profile-chart-legend{display:flex;gap:10px;font-size:9px;color:var(--grey);font-family:var(--font)}
-.profile-chart-legend-item{display:flex;align-items:center;gap:4px}
-.profile-chart-dot{display:inline-block;width:8px;height:8px;border-radius:50%}
-.profile-chart-dot.line{background:var(--accent)}
-.profile-chart-dot.avg{background:var(--dimgrey)}
-.profile-chart-canvas{width:100%;height:130px;display:block}
-.profile-chart-hover{font-size:9px;color:var(--grey);font-family:var(--font);text-align:center;margin-top:4px;min-height:12px}
-.profile-chart-empty{font-size:11px;color:var(--dimgrey);text-align:center;padding:24px 0}
-.danger-zone{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
-.danger-title{font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:8px}
-.delete-btn{width:100%;padding:6px;background:transparent;color:var(--red);border:1px solid var(--red);font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:1px;transition:all .15s}
-.delete-btn:hover{background:var(--red);color:#fff}
-.delete-confirm{display:none;margin-top:8px;background:rgba(206,27,38,.06);border:1px solid rgba(206,27,38,.2);border-radius:2px;padding:10px;text-align:center}
-/* ── PROFILE SELECT FIELDS ── */
-.field select{width:100%;padding:5px 8px;background:var(--bg);border:1px solid var(--border);color:var(--white);font-family:var(--font);font-size:12px;border-radius:1px;outline:none;transition:border-color .15s;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23AAAAAA'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px}
-.field select:focus{border-color:var(--accent)}
-.field select option{background:#fff;color:var(--white)}
-.profile-extra{background:var(--bg);border:1px solid var(--border);border-radius:1px;padding:6px 8px;margin:6px 0 12px;box-sizing:border-box;display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-.profile-extra-chip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--font);font-size:10px;color:var(--grey)}
-.profile-extra-edit-btn{background:transparent;border:1px solid var(--border);color:var(--accent);font-family:var(--font-md);font-size:9px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;cursor:pointer;border-radius:1px;transition:background .15s,color .15s;flex-shrink:0}
-.profile-extra-edit-btn:hover{background:var(--accent);color:#fff}
-.profile-extra-chip strong{font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--white)}
-.profile-save-row{display:flex;gap:6px;align-items:center;margin-top:6px;margin-bottom:10px}
-.profile-save-btn{flex:1;padding:6px;background:var(--accent);color:#fff;border:none;font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:1px;transition:background .15s}
-.profile-save-btn:hover{background:var(--accent2)}
-.profile-save-btn:disabled{background:var(--dimgrey);cursor:not-allowed}
-.profile-save-msg{font-family:var(--font);font-size:10px;min-height:14px}
-.profile-save-msg.ok{color:var(--green)}.profile-save-msg.err{color:var(--red)}
-.delete-confirm p{font-size:11px;color:var(--white);margin-bottom:8px;font-family:var(--font)}
-.delete-confirm-btns{display:flex;gap:6px}
-
-/* ── Cambio username ── */
-.username-change-wrap{margin:12px 0 4px;padding-top:12px;border-top:1px solid var(--border)}
-.username-change-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
-.username-change-title{font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.1em;text-transform:uppercase;color:var(--grey);margin-bottom:4px}
-.username-change-fields{display:none;margin-top:8px}
-.username-change-fields.open{display:block}
-.username-change-row{display:flex;gap:6px;align-items:flex-start;margin-top:4px}
-.username-change-row .field{flex:1;margin-bottom:0}
-.username-change-btn{padding:6px 12px;background:var(--accent);color:#fff;border:none;font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:1px;transition:background .15s;white-space:nowrap;align-self:flex-end;height:29px}
-.username-change-btn:hover{background:var(--accent2)}
-.username-change-btn:disabled{background:var(--dimgrey);cursor:not-allowed}
-.username-change-msg{font-family:var(--font);font-size:10px;min-height:14px;margin-top:5px}
-.username-change-msg.ok{color:var(--green)}.username-change-msg.err{color:var(--red)}
-.delete-yes{flex:1;padding:5px;background:var(--red);color:#fff;border:none;font-family:var(--font-md);font-size:11px;font-weight:500;cursor:pointer;border-radius:1px}
-.delete-no{flex:1;padding:5px;background:var(--panel);color:var(--grey);border:1px solid var(--border);font-family:var(--font-md);font-size:11px;cursor:pointer;border-radius:1px}
-
-/* ── POPUP UTENTI REGISTRATI ── */
-#lb-registered{cursor:pointer;transition:color .15s;text-decoration:none;color:inherit}
-#lb-registered:hover{color:var(--accent)}
-.users-modal{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--accent);border-radius:2px;width:100%;max-width:460px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.2);animation:fi .15s ease}
-.users-modal-hdr{padding:8px 14px;background:var(--accent2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.users-modal-title{font-size:12px;font-weight:500;font-family:var(--font-md);letter-spacing:.06em;text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:8px}
-.users-modal-count{background:rgba(255,255,255,.2);border-radius:2px;padding:1px 7px;font-size:10px}
-.users-modal-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;line-height:1}
-.users-modal-close:hover{color:#fff}
-.users-modal-search{padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
-.users-modal-search input{width:100%;box-sizing:border-box;padding:5px 9px;background:var(--bg);border:1px solid var(--border);color:var(--white);font-family:var(--font);font-size:12px;border-radius:1px;outline:none;transition:border-color .15s}
-.users-modal-search input:focus{border-color:var(--accent)}
-.users-modal-toolbar{display:flex;align-items:center;gap:6px;padding:7px 14px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0}
-.users-sort-lbl{font-family:var(--font);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dimgrey);flex-shrink:0}
-.users-sort-btn{padding:3px 9px;background:var(--panel);border:1px solid var(--border);color:var(--grey);font-family:var(--font-md);font-size:10px;font-weight:500;letter-spacing:.05em;cursor:pointer;border-radius:2px;transition:all .12s;display:flex;align-items:center;gap:3px;white-space:nowrap}
-.users-sort-btn:hover{border-color:var(--accent);color:var(--accent)}
-.users-sort-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
-.users-sort-arrow{font-size:9px;opacity:.8}
-.users-filter-online{padding:3px 9px;background:var(--panel);border:1px solid var(--border);color:var(--grey);font-family:var(--font-md);font-size:10px;font-weight:500;letter-spacing:.05em;cursor:pointer;border-radius:2px;transition:all .12s;display:none;align-items:center;gap:5px;white-space:nowrap;margin-left:auto}
-.users-filter-online.visible{display:flex}
-.users-filter-online.active{background:var(--green);border-color:var(--green);color:#fff}
-.users-filter-online:hover:not(.active){border-color:var(--green);color:var(--green)}
-.users-filter-online .filter-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 1.5s infinite}
-.users-modal-body{overflow-y:auto;flex:1;padding:4px 0}
-.users-modal-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid rgba(204,204,204,.3);transition:background .1s;cursor:default}
-.users-modal-row:last-child{border-bottom:none}
-.users-modal-row:hover{background:rgba(206,27,38,.04)}
-.users-modal-row-left{display:flex;align-items:center;gap:8px}
-.users-modal-avatar{width:26px;height:26px;border-radius:50%;background:var(--panel);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--grey);flex-shrink:0;text-transform:uppercase}
-.users-modal-name{font-family:var(--font-md);font-size:12px;font-weight:500;color:var(--white)}
-.users-modal-grade{font-size:9px;font-family:var(--font);color:var(--dimgrey);margin-top:1px}
-.users-modal-right{display:flex;align-items:center;gap:8px}
-.users-modal-score{font-family:var(--font-md);font-size:13px;font-weight:500;line-height:1}
-.users-modal-corse{font-family:var(--font);font-size:9px;color:var(--dimgrey);text-align:right;margin-top:1px}
-.users-online-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite;flex-shrink:0}
-.users-modal-empty{text-align:center;padding:30px;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
-.users-modal-loading{display:flex;align-items:center;justify-content:center;padding:30px;gap:8px;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
-
-/* ── MAPPA HERO (ispirata a Treniamo) ── */
-.map-section{margin-bottom:24px;position:relative}
-.map-hero{position:relative;width:100%;height:620px;border-radius:6px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.18);border:1px solid var(--border)}
-#live-map{width:100%;height:100%;background:var(--panel);z-index:1}
-.map-empty{height:620px;background:var(--card);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--dimgrey);font-family:var(--font);font-size:11px}
-.map-empty .icon{font-size:32px;opacity:.3}
-
-/* Selettore stile ORM in basso a destra — a scomparsa */
-.map-style-panel{
-  position:absolute;bottom:12px;left:12px;z-index:10;
-  display:flex;flex-direction:column;align-items:flex-start;
-  gap:6px;
-  pointer-events:none;
-}
-.map-style-toggle{
-  pointer-events:all;
-  background:#fff;
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  border:1px solid rgba(204,204,204,.5);
-  border-left:3px solid var(--accent);
-  border-radius:4px;
-  padding:8px 13px;
-  font-family:var(--font-md);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--white);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.1);
-  transition:all .15s;display:flex;align-items:center;justify-content:flex-start;gap:5px;
-  user-select:none;
-}
-.map-style-toggle:hover,.map-style-toggle.active{border-color:rgba(204,204,204,.5);border-left-color:var(--accent2);color:var(--accent);background:#fff;box-shadow:0 3px 12px rgba(0,0,0,.15)}
-.map-style-dropdown{
-  pointer-events:all;
-  background:rgba(255,255,255,0.97);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  border:1px solid rgba(204,204,204,.5);
-  border-radius:6px;
-  box-shadow:0 2px 16px rgba(0,0,0,.15);
-  overflow:hidden;
-  min-width:210px;
-  /* Fade-in dal basso */
-  opacity:0;
-  transform:translateY(10px);
-  pointer-events:none;
-  transition:opacity .2s ease, transform .2s ease;
-}
-.map-style-dropdown.open{
-  opacity:1;
-  transform:translateY(0);
-  pointer-events:all;
-}
-.map-style-hdr{
-  padding:7px 12px;
-  background:var(--panel);
-  border-bottom:1px solid var(--border);
-  font-family:var(--font-md);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--grey);font-weight:500;
-}
-.map-style-options{padding:6px 0}
-.map-style-opt{
-  display:flex;align-items:center;gap:8px;
-  padding:5px 12px;
-  font-family:var(--font);font-size:10px;color:var(--white);
-  cursor:pointer;transition:background .1s;
-  user-select:none;
-}
-.map-style-opt:hover{background:rgba(206,27,38,.05)}
-.map-style-opt.active{background:rgba(206,27,38,.07);font-family:var(--font-md);font-weight:500;color:var(--accent)}
-.map-style-radio{
-  width:11px;height:11px;border-radius:50%;
-  border:2px solid var(--border);
-  background:#fff;flex-shrink:0;
-  transition:all .12s;position:relative;
-}
-.map-style-opt.active .map-style-radio{
-  border-color:var(--accent);
-}
-.map-style-opt.active .map-style-radio::after{
-  content:'';position:absolute;inset:2px;border-radius:50%;background:var(--accent);
-}
-
-/* Media queries mappa */
-@media(max-width:768px){
-  .map-hero{height:400px}
-  .map-style-panel{bottom:8px;left:8px}
-}
-@media(max-width:480px){
-  .map-hero{height:300px;border-radius:4px}
-  .map-style-panel{bottom:6px;left:6px}
-}
-
-/* ── FOOTER ── */
-footer{background:var(--card);border-top:2px solid var(--accent);padding:14px 20px;text-align:center;font-family:var(--font);font-size:10px;color:var(--dimgrey);letter-spacing:.06em}
-footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
-.footer-disclaimer{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:8.5px;color:var(--dimgrey);line-height:1.6;letter-spacing:.02em;max-width:860px;margin-left:auto;margin-right:auto;opacity:.75}
-
-/* ── VT LINK ── */
-.vt-link{display:inline-flex;align-items:center;gap:3px;color:var(--accent);font-family:var(--font);font-size:9px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;border:1px solid rgba(206,27,38,.25);border-radius:2px;padding:1px 5px;transition:all .15s;white-space:nowrap}
-.vt-link:hover{background:rgba(206,27,38,.07);border-color:var(--accent)}
-
-/* ── DRAWER STORICO UTENTE ── */
-.drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300}
-.drawer-overlay.open{display:block}
-.drawer{position:fixed;top:0;right:-420px;width:420px;max-width:100vw;height:100%;background:var(--card);border-left:2px solid var(--accent);box-shadow:-4px 0 24px rgba(0,0,0,.18);z-index:301;display:flex;flex-direction:column;transition:right .25s cubic-bezier(.4,0,.2,1)}
-.drawer-overlay.open .drawer{right:0}
-.drawer-hdr{background:var(--accent2);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.drawer-hdr-left{display:flex;flex-direction:column;gap:2px}
-.drawer-title{font-family:var(--font-md);font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#fff}
-.drawer-sub{font-family:var(--font);font-size:10px;color:rgba(255,255,255,.65)}
-.drawer-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:16px;cursor:pointer;line-height:1;padding:2px 4px}
-.drawer-close:hover{color:#fff}
-.drawer-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--border);flex-shrink:0}
-.drawer-stat{padding:10px 8px;text-align:center;border-right:1px solid var(--border)}
-.drawer-stat:last-child{border-right:none}
-.drawer-stat-val{font-family:var(--font-md);font-size:18px;font-weight:500;line-height:1;color:var(--white)}
-.drawer-stat-lbl{font-family:var(--font);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dimgrey);margin-top:3px}
-.drawer-list-hdr{display:grid;grid-template-columns:1fr 80px 70px 36px;gap:0;padding:6px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0}
-.drawer-list-hdr span{font-family:var(--font);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--grey)}
-.drawer-list-hdr span.r{text-align:right}
-.drawer-body{overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
-.drawer-row{display:grid;grid-template-columns:1fr 80px 70px 36px;gap:0;padding:9px 14px;border-bottom:1px solid rgba(204,204,204,.35);align-items:center;transition:background .1s}
-.drawer-row:last-child{border-bottom:none}
-.drawer-row:hover{background:rgba(206,27,38,.03)}
-.drawer-row-serv{font-family:var(--font-md);font-size:11px;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.drawer-row-date{font-family:var(--font);font-size:10px;color:var(--dimgrey);text-align:right}
-.drawer-row-score{font-family:var(--font-md);font-size:13px;font-weight:500;text-align:right}
-.drawer-row-vt{text-align:right}
-.drawer-empty{padding:32px 14px;text-align:center;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
-.drawer-loading{padding:32px 14px;text-align:center;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
-
-.username-btn{background:none;border:none;padding:0;font:inherit;color:inherit;cursor:pointer;font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white);text-align:left;text-decoration:none;transition:color .15s}
-.username-btn:hover{color:var(--accent)}
-.username-profile-hint{font-family:var(--font);font-size:11px;font-weight:normal;color:var(--dimgrey);letter-spacing:.04em;text-transform:none;text-decoration:none;opacity:.7;margin-left:6px}
-.username-extra{font-family:var(--font);font-size:9px;color:var(--dimgrey);letter-spacing:.03em}
-.username-btn:hover .username-profile-hint{color:var(--accent);opacity:1}
-.treno-reale-link{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--dimgrey);text-decoration:none;transition:color .15s}
-.treno-reale-link:hover{color:var(--accent)}
-@media(max-width:480px){
-  .drawer{width:100vw;right:-100vw}
-  .drawer-list-hdr,.drawer-row{grid-template-columns:1fr 70px 60px 30px;padding:8px 10px}
-}
-::-webkit-scrollbar-track{background:var(--card)}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-::-webkit-scrollbar-thumb:hover{background:var(--dimgrey)}
-
-/* ══ MENU DROPDOWN ══ */
-.menu-wrap{position:relative}
-.menu-toggle-btn{display:flex;align-items:center;gap:5px}
-.menu-dropdown{
-  display:none;position:absolute;top:calc(100% + 6px);right:0;
-  background:#fff;border:1px solid var(--border);border-top:2px solid var(--accent);
-  border-radius:2px;box-shadow:0 4px 18px rgba(0,0,0,.14);
-  min-width:180px;z-index:200;
-  animation:fi .13s ease;
-}
-.menu-dropdown.open{display:block}
-.menu-item{
-  display:flex;align-items:center;gap:8px;
-  width:100%;padding:9px 14px;
-  background:none;border:none;
-  font-family:var(--font-md);font-size:11px;font-weight:500;
-  letter-spacing:.06em;text-transform:uppercase;
-  color:var(--white);text-decoration:none;
-  cursor:pointer;text-align:left;
-  transition:background .1s,color .1s;
-  position:relative;
-}
-.menu-item:hover{background:rgba(206,27,38,.06);color:var(--accent)}
-.menu-item-sub{
-  margin-left:auto;font-size:8px;font-weight:400;
-  font-family:var(--font);letter-spacing:.08em;
-  color:var(--dimgrey);text-transform:uppercase;
-}
-.menu-item:hover .menu-item-sub{color:var(--accent);opacity:.8}
-.menu-item-danger{color:var(--grey)}
-.menu-item-danger:hover{background:rgba(206,27,38,.06);color:var(--red)}
-.menu-divider{height:1px;background:var(--border);margin:3px 0}
-
-/* ══ HAMBURGER MENU ══ */
-.hamburger{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:6px;border-radius:2px;flex-shrink:0}
-.hamburger span{display:block;width:22px;height:2px;background:var(--accent);border-radius:1px;transition:all .22s}
-.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
-.hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}
-.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
-#nav-drawer{display:flex;gap:6px;align-items:center}
-
-/* ══ RESPONSIVE MOBILE / TABLET ══ */
-
-/* ── Tablet (≤900px) ── */
-@media(max-width:900px){
-  .live-grid{grid-template-columns:1fr}
-}
-
-/* ── Tablet (≤768px) ── */
-@media(max-width:768px){
-  header{padding:0 14px;height:52px}
-  .logo img{height:32px}
-  .hamburger{display:flex}
-  #nav-drawer{
-    display:none;
-    position:fixed;top:52px;right:0;
-    width:220px;
-    background:#fff;
-    border:1px solid var(--border);
-    border-top:2px solid var(--accent);
-    box-shadow:-2px 4px 16px rgba(0,0,0,.15);
-    flex-direction:column;
-    align-items:stretch;
-    gap:0;
-    z-index:99;
-    padding:8px;
-  }
-  #nav-drawer.open{display:flex}
-  #nav-username{
-    font-size:11px;width:100%;text-align:left;
-    margin:0 0 4px 0;padding:4px 6px;
-    border-bottom:1px solid var(--border);
-    display:block;
-  }
-  .nav-btn{
-    width:100%;text-align:center;
-    padding:7px 10px;font-size:11px;
-    border-radius:2px;margin-bottom:4px;
-    line-height:1.4;
-  }
-  /* Su mobile il menu-wrap è inline nel drawer: il dropdown si apre sotto */
-  #menu-wrap{width:100%}
-  .menu-toggle-btn{width:100%;justify-content:center}
-  .menu-dropdown{
-    position:static;box-shadow:none;border:1px solid var(--border);
-    border-top:2px solid var(--accent);margin-top:4px;border-radius:2px;
-  }
-  main{padding:12px 10px}
-  .statusbar{flex-direction:column;align-items:flex-start;gap:4px;padding:8px 10px}
-  .statusbar-left{flex-wrap:wrap;gap:8px;font-size:10px}
-  .statusbar-right{font-size:9px}
-  #user-banner{flex-direction:column;align-items:flex-start;gap:6px;font-size:10px}
-  #user-banner .tv{word-break:break-all;font-size:9px}
-  .live-kpis{gap:6px}
-  .live-kpi{padding:5px 8px;min-width:56px}
-  .live-kpi-val{font-size:15px}
-  .map-empty{height:320px}
-  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  table{min-width:480px}
-  thead th,tbody td{padding:7px 8px;font-size:10px}
-  td.username{font-size:12px}
-  .snum{font-size:15px}
-  .serv-pill{max-width:140px;font-size:9px}
-  .modal{margin:12px;max-width:calc(100vw - 24px)}
-  .stat-grid{grid-template-columns:1fr 1fr 1fr}
-}
-
-/* ── Smartphone (≤480px) ── */
-@media(max-width:480px){
-  header{padding:0 10px;height:50px}
-  .logo img{height:28px}
-  #nav-drawer{
-    width:calc(100vw - 20px);
-    right:10px;
-    top:50px;
-  }
-  main{padding:10px 8px}
-  .statusbar-left{gap:6px;font-size:9px}
-  #lb-registered{display:none}
-  .sec-title{font-size:10px}
-  .sec-badge{font-size:9px;padding:2px 6px}
-  .live-kpis{gap:4px;flex-wrap:wrap}
-  .live-kpi{padding:4px 7px;min-width:50px}
-  .live-kpi-val{font-size:14px}
-  .live-kpi-lbl{font-size:8px}
-  .live-panel-main{padding:10px}
-  .live-run-name{font-size:12px}
-  .live-run-consist{font-size:9px}
-  .map-empty{height:260px}
-  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  table{min-width:400px}
-  thead th,tbody td{padding:6px 6px;font-size:9px}
-  td.username{font-size:11px}
-  .snum{font-size:13px}
-  .serv-pill{max-width:100px;font-size:8px}
-  .sub{font-size:9px}
-  td.rank{font-size:10px}
-  .overlay{align-items:flex-end}
-  .modal{margin:0;border-radius:4px 4px 0 0;max-width:100vw;max-height:92vh}
-  .modal-body{padding:14px}
-  .stat-grid{gap:4px}
-  .stat-num{font-size:17px}
-  .sessions-list{max-height:140px}
-  footer{padding:10px 12px;font-size:9px}
-  .footer-disclaimer{font-size:7.5px}
-  .vt-link{font-size:8px;padding:1px 4px}
-  .live-map-wrap{padding:8px 10px}
-  .live-map{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .live-map-stations{min-width:380px}
-  .live-map-line,.live-map-progress{min-width:calc(380px - 40px)}
-}
-
-/* ── Extra small (≤360px) ── */
-@media(max-width:360px){
-  table{min-width:360px}
-  .live-kpi{min-width:44px;padding:4px 5px}
-  .live-kpi-val{font-size:13px}
-}
-</style>
-</head>
-<body>
-
-<header>
-  <div class="logo">
-    <img src="/static/VTV_logo.jpg" alt="ViaggaTreno Virtual" style="height:40px;width:auto;display:block;object-fit:contain">
-  </div>
-  <button class="hamburger" id="hamburger-btn" onclick="toggleNav()" aria-label="Menu" aria-expanded="false">
-    <span></span><span></span><span></span>
-  </button>
-  <nav id="nav-drawer">
-    <span id="nav-username"></span>
-    <button class="nav-btn" id="btn-login" onclick="openModal('login');closeNav()">Accedi</button>
-    <button class="nav-btn sec" id="btn-register" onclick="openModal('register');closeNav()">Registrati</button>
-    <div class="menu-wrap" id="menu-wrap" style="display:none;position:relative">
-      <button class="nav-btn menu-toggle-btn" id="btn-menu" onclick="toggleMenu(event)" aria-expanded="false" aria-haspopup="true">Menù ▾</button>
-      <div class="menu-dropdown" id="menu-dropdown" role="menu">
-        <a class="menu-item" href="https://download1584.mediafire.com/v34o7e0e1h1gAv3wEooeKyyw_AsTjiuggB7jh5295ARTRHCLIPHw5qGgDmtCPcRl_ByLhz2XyHh995dttf-IlfdHv5ArhiodifGPrUaX8F3nzVlEwX5P0D6E5sg1hS2Tm8ieFYh1sSLdUlFPD11mAL4B7eZGBfIFERWdgyI3Obc/8ncp5v5bw9azw9b/ORTS+Passengers+V3.4.zip" download onclick="closeMenu()">
-          <i class="fa-solid fa-download" style="flex-shrink:0;width:13px;text-align:center"></i>
-          ORTS Passengers
-        </a>
-        <a class="menu-item" href="https://www.interazioni-educative.it/Downloads/getfile.php?name=OR_NewYear_MG.zip" download onclick="closeMenu()">
-          <i class="fa-solid fa-download" style="flex-shrink:0;width:13px;text-align:center"></i>
-          Open Rails MGNY
-        </a>
-        <div class="menu-divider"></div>
-        <button class="menu-item" id="menu-profile" onclick="loadProfile();closeMenu();closeNav()">
-          <i class="fa-solid fa-user" style="flex-shrink:0;width:13px;text-align:center"></i>
-          Profilo
-        </button>
-        <button class="menu-item menu-item-danger" id="menu-logout" onclick="doLogout();closeMenu()">
-          <i class="fa-solid fa-arrow-right-from-bracket" style="flex-shrink:0;width:13px;text-align:center"></i>
-          Esci
-        </button>
-      </div>
-    </div>
-  </nav>
-</header>
-
-<main>
-  <!-- Token banner -->
-  <div id="user-banner">
-    <span><span class="lbl">Token API per il .exe: </span><span class="tv masked" id="banner-token">••••••••••••••••</span></span>
-    <div class="token-actions">
-      <button class="token-toggle-btn" id="token-toggle-btn" onclick="toggleToken()">Mostra</button>
-      <button class="copy-btn" onclick="copyToken()">Copia</button>
-    </div>
-  </div>
-
-  <!-- Statusbar -->
-  <div class="statusbar">
-    <div class="statusbar-left">
-      <span><span class="dot"></span>SISTEMA ONLINE</span>
-      <span id="lb-count">—</span>
-      <span id="lb-registered" style="opacity:.6" onclick="openUsersPopup()" title="Clicca per vedere tutti gli utenti">—</span>
-    </div>
-    <div class="statusbar-right" id="lb-updated">aggiornamento ogni 15s</div>
-  </div>
-
-  <!-- ══ SEZIONE 0: MAPPA LIVE (stile Treniamo) ══ -->
-  <div class="map-section" id="map-section">
-    <div class="sec-hdr">
-      <div class="sec-title">Mappa Treni in Tempo Reale</div>
-      <div class="sec-badge"><span class="pulse"></span><span id="map-count">0 treni</span></div>
-    </div>
-
-    <div class="map-hero">
-      <!-- Mappa Leaflet -->
-      <div id="live-map"></div>
-
-      <!-- Selettore stile ORM in basso a destra (a scomparsa) -->
-      <div class="map-style-panel" id="map-style-panel">
-        <div class="map-style-dropdown" id="map-style-dropdown">
-          <div class="map-style-options" id="map-style-options"></div>
-        </div>
-        <button class="map-style-toggle" id="map-style-toggle" onclick="toggleStylePanel()" title="Stile mappa ferroviaria">
-          Stile mappa
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ SEZIONE 3: CLASSIFICA ══ -->
-  <div class="lb-section">
-    <div class="sec-hdr">
-      <div class="sec-title" id="lb-section-title">Classifica Generale</div>
-    </div>
-    <div class="lb-tabs" id="lb-tabs">
-      <div class="lb-tab active" data-period="all" onclick="switchLbPeriod('all')">Generale</div>
-      <div class="lb-tab" data-period="month" onclick="switchLbPeriod('month')">Mensile</div>
-      <div class="lb-tab" data-period="week" onclick="switchLbPeriod('week')">Settimanale</div>
-    </div>
-    <div class="table-wrap lb-table-wrap-active">
-      <div class="lb-period-range" id="lb-period-range" style="display:none"></div>
-      <table>
-        <thead>
-          <tr>
-            <th style="text-align:center;width:40px"><i class="fa-solid fa-user"></i></th>
-            <th class="lb-col-gps" style="text-align:center;width:40px;font-size:9px;letter-spacing:.08em">GPS</th>
-            <th>Username</th>
-            <th class="c" id="lb-score-col">Affidabilità</th>
-            <th class="c">Ultima Tratta</th>
-            <th class="c lb-col-corse">Corse</th>
-          </tr>
-        </thead>
-        <tbody id="lb-body">
-          <tr><td colspan="6"><div class="empty-state">Caricamento...</div></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="lb-pagination" id="lb-pagination" style="display:none"></div>
-  </div>
-</main>
-
-<footer>
-  <span>ViaggiaTreno Virtual</span> &mdash; by TSH Studio Repaint &copy; <span id="footer-year"></span>
-  <div class="footer-disclaimer">
-    <strong>Nota informativa importante:</strong> Il presente sito web è una piattaforma indipendente e non è in alcun modo affiliato, associato, autorizzato, patrocinato o ufficialmente collegato a Trenitalia S.p.A. o a qualsiasi sua controllata o filiale.
-    Tutti i contenuti, i marchi registrati, i loghi e i nomi di servizi citati appartengono ai legittimi proprietari e sono utilizzati esclusivamente a scopo illustrativo, informativo o descrittivo.
-    Si declina ogni responsabilità per eventuali inesattezze, omissioni o per l'uso improprio delle informazioni qui riportate.
-    Per consultare i canali ufficiali e acquistare titoli di viaggio, si invita a fare riferimento esclusivamente al sito istituzionale di Trenitalia.
-  </div>
-</footer>
-<script>document.getElementById('footer-year').textContent=new Date().getFullYear();</script>
-
-<!-- LOGIN -->
-<div class="overlay" id="overlay-login">
-  <div class="modal">
-    <div class="modal-title"><span>Accedi</span><button class="modal-close" onclick="closeModal('login')">✕</button></div>
-    <div class="modal-body">
-      <div class="field"><label>Username o Email</label><input type="text" id="l-user" placeholder="macchinista42" autocomplete="username"></div>
-      <div class="field"><label>Password</label><input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"></div>
-      <button class="modal-btn" id="l-btn" onclick="doLogin()">Accedi</button>
-      <div class="msg" id="l-msg"></div>
-      <div class="modal-switch">Non hai un account? <a onclick="switchModal('login','register')">Registrati</a></div>
-    </div>
-  </div>
-</div>
-
-<!-- REGISTER -->
-<div class="overlay" id="overlay-register">
-  <div class="modal">
-    <div class="modal-title"><span>Registrazione</span><button class="modal-close" onclick="closeModal('register')">✕</button></div>
-    <div class="modal-body">
-      <div class="frow">
-        <div class="field"><label>Nome</label><input type="text" id="r-nome" placeholder="Mario"></div>
-        <div class="field"><label>Cognome</label><input type="text" id="r-cognome" placeholder="Rossi"></div>
-      </div>
-      <div class="field"><label>Username</label><input type="text" id="r-user" placeholder="macchinista42"></div>
-      <div class="field"><label>Email</label><input type="email" id="r-email" placeholder="mario@ferrovie.it"></div>
-      <div class="field"><label>Password (min. 6 caratteri)</label><input type="password" id="r-pass" placeholder="••••••••"></div>
-      <button class="modal-btn" id="r-btn" onclick="doRegister()">Crea account</button>
-      <div class="msg" id="r-msg"></div>
-      <div class="modal-switch">Hai già un account? <a onclick="switchModal('register','login')">Accedi</a></div>
-    </div>
-  </div>
-</div>
-
-<!-- PROFILE -->
-<div class="overlay" id="overlay-profile">
-  <div class="modal" style="max-width:440px;max-height:90vh;display:flex;flex-direction:column">
-    <div class="modal-title"><span id="profile-title">Profilo</span><button class="modal-close" onclick="closeModal('profile')">✕</button></div>
-    <div class="modal-body" style="overflow-y:auto;flex:1">
-      <div class="stat-grid" id="profile-stats"></div>
-
-      <div class="profile-chart-wrap">
-        <div class="profile-chart-hdr">
-          <div class="profile-chart-title">Andamento punteggio</div>
-          <div class="profile-chart-legend">
-            <span class="profile-chart-legend-item"><span class="profile-chart-dot line"></span>Tu</span>
-            <span class="profile-chart-legend-item"><span class="profile-chart-dot avg"></span>Media piattaforma</span>
-          </div>
-        </div>
-        <canvas class="profile-chart-canvas" id="profile-chart-canvas"></canvas>
-        <div class="profile-chart-hover" id="profile-chart-hover">&nbsp;</div>
-      </div>
-
-      <div class="slbl">Token API (da incollare nel .exe → Impostazioni)</div>
-      <div class="token-display" id="profile-token">—</div>
-      <!-- Azienda & Compartimento -->
-      <div id="profile-extra-display" style="display:none">
-        <div class="profile-extra" id="profile-extra-chips">
-          <span class="profile-extra-chip" id="profile-extra-chips-text"></span>
-          <button class="profile-extra-edit-btn" id="profile-extra-edit-btn" onclick="toggleProfileExtraEdit()">Modifica</button>
-        </div>
-      </div>
-      <div id="profile-extra-fields">
-      <div class="slbl">Azienda ferroviaria</div>
-      <div class="field">
-        <select id="profile-azienda">
-          <option value="">— Non specificata —</option>
-          <option value="Trenitalia">Trenitalia</option>
-          <option value="Trenitalia DPR">Trenitalia DPR</option>
-          <option value="Trenitalia TPER">Trenitalia TPER</option>
-          <option value="TrenoNord">TrenoNord</option>
-          <option value="ITALO - Nuovo Trasporto Viaggiatori">ITALO – Nuovo Trasporto Viaggiatori</option>
-        </select>
-      </div>
-      <div class="slbl">Compartimento</div>
-      <div class="field">
-        <select id="profile-compartimento">
-          <option value="">— Non specificato —</option>
-          <option value="Torino">Torino</option>
-          <option value="Milano">Milano</option>
-          <option value="Verona">Verona</option>
-          <option value="Venezia">Venezia</option>
-          <option value="Trieste">Trieste</option>
-          <option value="Genova">Genova</option>
-          <option value="Bologna">Bologna</option>
-          <option value="Firenze">Firenze</option>
-          <option value="Ancona">Ancona</option>
-          <option value="Roma">Roma</option>
-          <option value="Napoli">Napoli</option>
-          <option value="Bari">Bari</option>
-          <option value="Reggio Calabria">Reggio Calabria</option>
-          <option value="Palermo">Palermo</option>
-          <option value="Cagliari">Cagliari</option>
-        </select>
-      </div>
-      <div class="profile-save-row">
-        <button class="profile-save-btn" id="profile-save-btn" onclick="saveProfileExtra()">Salva modifiche</button>
-        <span class="profile-save-msg" id="profile-save-msg"></span>
-      </div>
-      </div>
-      <div class="slbl">Ultime sessioni</div>
-      <div class="sessions-list" id="profile-sessions"><div style="color:var(--dimgrey);padding:8px 0">Caricamento...</div></div>
-      <div class="danger-zone">
-        <div class="danger-title">⚠ Zona pericolosa</div>
-        <div class="username-change-wrap">
-          <div class="username-change-hdr">
-            <div class="username-change-title">Cambia username</div>
-            <button class="profile-extra-edit-btn" id="username-change-toggle-btn" onclick="toggleUsernameChange()">Modifica</button>
-          </div>
-          <div class="username-change-fields" id="username-change-fields">
-            <div class="field" style="margin-bottom:6px">
-              <label>Nuovo username</label>
-              <input type="text" id="new-username-input" placeholder="nuovo_username" autocomplete="off">
-            </div>
-            <div class="field" style="margin-bottom:6px">
-              <label>Conferma password</label>
-              <input type="password" id="username-change-password" placeholder="••••••••" autocomplete="current-password">
-            </div>
-            <button class="username-change-btn" id="username-change-btn" onclick="doChangeUsername()">Salva nuovo username</button>
-            <div class="username-change-msg" id="username-change-msg"></div>
-          </div>
-        </div>
-        <button class="delete-btn" onclick="showDeleteConfirm()">Elimina profilo</button>
-        <div class="delete-confirm" id="delete-confirm">
-          <p>Sei sicuro? Tutti i tuoi dati e sessioni verranno eliminati definitivamente.</p>
-          <input type="password" id="delete-password" placeholder="Conferma la tua password"
-            style="width:100%;box-sizing:border-box;margin-bottom:8px;padding:6px 8px;
-                   background:var(--bg);border:1px solid var(--border);color:var(--white);
-                   font-family:var(--font);font-size:12px;border-radius:1px;outline:none">
-          <div class="delete-confirm-btns">
-            <button class="delete-yes" onclick="doDeleteProfile()">Sì, elimina</button>
-            <button class="delete-no" onclick="hideDeleteConfirm()">Annulla</button>
-          </div>
-          <div class="msg" id="delete-msg" style="margin-top:6px"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-let me = null;
-let liveData = [];
-let liveOrder = [];
-let lbRows = [];
-let lbPeriod = 'all';
-let lbPage = 1;
-let lbPerPage = 10;
-let lbOpenPanels = new Set();
-const LB_PERPAGE_OPTIONS = [10, 25, 50, 100];
-const LB_TITLES = {all:'Classifica Generale', month:'Classifica Mensile', week:'Classifica Settimanale'};
-const LB_SCORE_LABELS = {all:'Affidabilità', month:'Punteggio', week:'Punteggio'};
-
-function getLbPeriodRange(period){
-  const now = new Date();
-  const fmt = d => d.toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'});
-  if(period==='week'){
-    // Lunedì–domenica della settimana corrente
-    const day = now.getDay(); // 0=dom
-    const diffToMon = (day===0)?-6:(1-day);
-    const mon = new Date(now); mon.setDate(now.getDate()+diffToMon); mon.setHours(0,0,0,0);
-    const sun = new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
-    return `<strong>Settimana</strong> ${fmt(mon)} – ${fmt(sun)}`;
-  }
-  if(period==='month'){
-    const first = new Date(now.getFullYear(), now.getMonth(), 1);
-    const last  = new Date(now.getFullYear(), now.getMonth()+1, 0);
-    return `<strong>Mese</strong> ${fmt(first)} – ${fmt(last)}`;
-  }
-  return null;
-}
-
-function switchLbPeriod(period){
-  if(lbPeriod===period) return;
-  lbPeriod = period;
-  lbPage = 1;
-  document.querySelectorAll('#lb-tabs .lb-tab').forEach(el=>{
-    el.classList.toggle('active', el.dataset.period===period);
-  });
-  document.getElementById('lb-section-title').textContent = LB_TITLES[period] || 'Classifica';
-  document.getElementById('lb-score-col').textContent = LB_SCORE_LABELS[period] || 'Punteggio';
-  document.getElementById('lb-body').innerHTML='<tr><td colspan="6"><div class="empty-state">Caricamento...</div></td></tr>';
-  const rangeEl = document.getElementById('lb-period-range');
-  const range = getLbPeriodRange(period);
-  if(range){rangeEl.innerHTML=range;rangeEl.style.display='';}
-  else{rangeEl.style.display='none';}
-  loadLeaderboard();
-}
-let activeTab = 0;
-let lockedUsername = null;
-const chartZoomState = {}; // persistenza zoom/pan per username
-
-// ── Palette colori per utente (multi-utente) ──
-const USER_COLORS = [
-  '#0047FF', // blu
-  '#E07B00', // arancio
-  '#8B00CC', // viola
-  '#00909E', // teal
-  '#D4001A', // rosso scuro
-  '#007A3D', // verde
-  '#C47A00', // ocra
-  '#004E8C', // blu navy
-];
-const _userColorMap = {};
-function getUserColor(username) {
-  if (!_userColorMap[username]) {
-    const idx = Object.keys(_userColorMap).length % USER_COLORS.length;
-    _userColorMap[username] = USER_COLORS[idx];
-  }
-  return _userColorMap[username];
-}
-
-// ── Modal helpers ──
-function openModal(n){document.getElementById('overlay-'+n).classList.add('open')}
-function closeModal(n){document.getElementById('overlay-'+n).classList.remove('open')}
-function switchModal(a,b){closeModal(a);openModal(b)}
-document.querySelectorAll('.overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open')}));
-
-// ── Auth ──
-async function doRegister(){
-  const btn=document.getElementById('r-btn'),msg=document.getElementById('r-msg');
-  btn.disabled=true;msg.textContent='Registrazione...';msg.className='msg';
-  try{
-    const r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      nome:document.getElementById('r-nome').value.trim(),
-      cognome:document.getElementById('r-cognome').value.trim(),
-      username:document.getElementById('r-user').value.trim(),
-      email:document.getElementById('r-email').value.trim(),
-      password:document.getElementById('r-pass').value})});
-    const d=await r.json();
-    if(d.ok){msg.textContent='✓ Registrazione completata!';msg.className='msg ok';setTimeout(()=>switchModal('register','login'),1200);}
-    else{msg.textContent='✗ '+d.error;msg.className='msg err';}
-  }catch{msg.textContent='✗ Errore di rete';msg.className='msg err';}
-  btn.disabled=false;
-}
-
-async function doLogin(){
-  const btn=document.getElementById('l-btn'),msg=document.getElementById('l-msg');
-  btn.disabled=true;msg.textContent='Accesso...';msg.className='msg';
-  try{
-    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      username:document.getElementById('l-user').value.trim(),
-      password:document.getElementById('l-pass').value})});
-    const d=await r.json();
-    if(d.ok){msg.textContent='✓ Benvenuto!';msg.className='msg ok';setTimeout(()=>{closeModal('login');checkMe();loadLeaderboard();loadLive();},700);}
-    else{msg.textContent='✗ '+d.error;msg.className='msg err';}
-  }catch{msg.textContent='✗ Errore di rete';msg.className='msg err';}
-  btn.disabled=false;
-}
-
-async function doLogout(){await fetch('/api/logout',{method:'POST'});window.location.href='/login';}
-
-async function checkMe(){
-  try{const r=await fetch('/api/me');const d=await r.json();me=d.logged_in?d:null;}
-  catch{me=null;}
-  updateNav();
-}
-
-function updateNav(){
-  const li=!!me;
-  document.getElementById('btn-login').style.display=li?'none':'';
-  document.getElementById('btn-register').style.display=li?'none':'';
-  document.getElementById('menu-wrap').style.display=li?'':'none';
-  let _navExtra='';
-  if(li && (me.azienda || me.compartimento)){
-    _navExtra=' (' + [me.azienda, me.compartimento].filter(Boolean).join(' – ') + ')';
-  }
-  document.getElementById('nav-username').textContent=li?('● '+me.username+_navExtra+'  '):'';
-  const b=document.getElementById('user-banner');
-  if(li){
-    b.style.display='flex';
-    // Reset token to masked state on every login/refresh
-    const el=document.getElementById('banner-token');
-    el.textContent='••••••••••••••••';
-    el.classList.add('masked');
-    el.dataset.revealed='0';
-    const tbtn=document.getElementById('token-toggle-btn');
-    if(tbtn){tbtn.innerHTML='Mostra';}
-  }
-  else{b.style.display='none';}
-}
-
-function toggleToken(){
-  if(!me)return;
-  const el=document.getElementById('banner-token');
-  const btn=document.getElementById('token-toggle-btn');
-  const revealed=el.dataset.revealed==='1';
-  if(revealed){
-    el.textContent='••••••••••••••••';
-    el.classList.add('masked');
-    el.dataset.revealed='0';
-    btn.innerHTML='Mostra';
-  } else {
-    el.textContent=me.api_token;
-    el.classList.remove('masked');
-    el.dataset.revealed='1';
-    btn.innerHTML='Nascondi';
-  }
-}
-
-function copyToken(){
-  if(!me)return;
-  navigator.clipboard.writeText(me.api_token).then(()=>{
-    const btn=document.querySelector('#user-banner .copy-btn');
-    btn.textContent='✓ Copiato!';setTimeout(()=>btn.textContent='Copia',1500);
-  });
-}
-
-async function loadProfile(){
-  openModal('profile');
-  if(!me)return;
-  document.getElementById('profile-title').textContent=me.nome+' '+me.cognome+' — Profilo';
-  document.getElementById('profile-token').textContent=me.api_token;
-  const sc=me.best_score;
-  const col=sc>=85?'var(--green)':sc>=65?'#1565C0':sc>=45?'var(--amber)':'var(--red)';
-  document.getElementById('profile-stats').innerHTML=`
-    <div class="stat-box"><div class="stat-num">${me.runs}</div><div class="stat-lbl">Corse</div></div>
-    <div class="stat-box"><div class="stat-num" style="color:${col}">${me.best_score}</div><div class="stat-lbl">Best</div></div>
-    <div class="stat-box"><div class="stat-num" style="color:var(--grey)">${me.avg_score}</div><div class="stat-lbl">Media</div></div>`;
-
-  // Legge azienda/compartimento dal profilo utente (backend)
-  const azienda = me.azienda || '';
-  const compartimento = me.compartimento || '';
-  document.getElementById('profile-azienda').value = azienda;
-  document.getElementById('profile-compartimento').value = compartimento;
-  // Reset save message
-  const saveMsg = document.getElementById('profile-save-msg');
-  saveMsg.textContent = '';
-  saveMsg.className = 'profile-save-msg';
-  // Show chips if values are set; collapse the select fields if already configured
-  renderProfileExtraChips(azienda, compartimento);
-  document.getElementById('profile-extra-fields').style.display = (azienda || compartimento) ? 'none' : '';
-
-  loadProfileChart();
-
-  const sl=document.getElementById('profile-sessions');
-  sl.innerHTML='<div style="color:var(--dimgrey)">Caricamento...</div>';
-  try{
-    const r=await fetch('/api/my_sessions');
-    const d=await r.json();
-    const sessions=Array.isArray(d)?d:[];
-    if(!sessions.length){
-      sl.innerHTML='<div style="color:var(--dimgrey);padding:8px 0">Nessuna sessione ancora.</div>';
-      return;
-    }
-    sl.innerHTML=sessions.map(s=>`
-      <div class="sess-row">
-        <span class="sess-score">${parseFloat(s.punteggio||0).toFixed(1)}/100</span>
-        <span class="sess-serv">${s.ultimo_servizio||'—'}</span>
-        <span class="sess-date">${fmtDate(s.registrata_at)}</span>
-      </div>`).join('');
-  }catch{sl.innerHTML='<div style="color:var(--red)">Errore.</div>';}
-}
-
-function renderProfileExtraChips(azienda, compartimento){
-  const wrap = document.getElementById('profile-extra-display');
-  const text = document.getElementById('profile-extra-chips-text');
-  if(!azienda && !compartimento){ wrap.style.display='none'; return; }
-  wrap.style.display='flex';
-  text.innerHTML =
-    (azienda ? `Azienda: <strong>${azienda}</strong>` : '') +
-    (azienda && compartimento ? '&nbsp;&nbsp;' : '') +
-    (compartimento ? `Compartimento: <strong>${compartimento}</strong>` : '');
-}
-
-function toggleProfileExtraEdit(){
-  const fields = document.getElementById('profile-extra-fields');
-  fields.style.display = (fields.style.display === 'none') ? '' : 'none';
-}
-
-async function saveProfileExtra(){
-  const msg = document.getElementById('profile-save-msg');
-  const azienda = document.getElementById('profile-azienda').value;
-  const compartimento = document.getElementById('profile-compartimento').value;
-  try {
-    const r = await fetch('/api/profile/extra', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': (me && me.csrf_token) || ''},
-      body: JSON.stringify({azienda, compartimento})
-    });
-    const d = await r.json();
-    if(d.ok){
-      if(me){ me.azienda = azienda; me.compartimento = compartimento; }
-      msg.textContent = '\u2713 Salvato';
-      msg.className = 'profile-save-msg ok';
-      renderProfileExtraChips(azienda, compartimento);
-      updateNav();
-      document.getElementById('profile-extra-fields').style.display = 'none';
-    } else {
-      msg.textContent = '\u2717 ' + (d.error || 'Errore salvataggio');
-      msg.className = 'profile-save-msg err';
-    }
-  } catch(e) {
-    msg.textContent = '\u2717 Errore di rete';
-    msg.className = 'profile-save-msg err';
-  }
-  setTimeout(()=>{ msg.textContent=''; msg.className='profile-save-msg'; }, 2500);
-}
-
-// ── Leaderboard ──
-function scoreColor(sc){return sc>=85?'var(--green)':sc>=65?'#1565C0':sc>=45?'var(--amber)':'var(--red)';}
-function gradeClass(g){if(!g)return'';const l=g.toLowerCase();if(l.includes('ott')||l.includes('ecc'))return'g-ecc';if(l.includes('buo'))return'g-buo';if(l.includes('suf')||l.includes('med'))return'g-suf';return'g-ins';}
-
-// ── ViaggiaTreno link helper ──
-function vtTrainNumber(servizio){
-  if(!servizio||servizio==='—') return null;
-  const m = servizio.match(/\d{2,6}/);
-  return m ? m[0] : null;
-}
-function vtLink(servizio){
-  const n = vtTrainNumber(servizio);
-  if(!n) return '';
-  const tmUrl = 'https://www.treniamo.it/treno/'+n;
-  return ` <a class="vt-link" href="${tmUrl}" target="_blank" rel="noopener" title="Treno ${n} su Treniamo">↗ Treniamo</a>`;
-}
-
-async function loadLeaderboard(){
-  try{
-    const r=await fetch('/api/leaderboard?period='+lbPeriod);
-    const rows=await r.json();
-    const now=new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-    document.getElementById('lb-count').textContent=rows.length+' utenti in classifica';
-    document.getElementById('lb-updated').textContent='Aggiornato alle '+now;
-    fetch('/api/users/count').then(r=>r.json()).then(d=>{
-      document.getElementById('lb-registered').textContent='· '+d.count+' registrati';
-    }).catch(()=>{});
-    const body=document.getElementById('lb-body');
-    const pag=document.getElementById('lb-pagination');
-    if(!rows.length){
-      const emptyMsg = lbPeriod==='all'
-        ? 'Nessuna sessione ancora. Completa una corsa con il monitor attivo!'
-        : 'Nessuna corsa registrata in questo periodo. Sii il primo a scalare la classifica!';
-      body.innerHTML='<tr><td colspan="6"><div class="empty-state">'+emptyMsg+'</div></td></tr>';
-      pag.style.display='none';
-      pag.innerHTML='';
-      return;
-    }
-    lbRows = rows;
-    const maxPage=Math.max(1,Math.ceil(lbRows.length/lbPerPage));
-    if(lbPage>maxPage) lbPage=maxPage;
-    renderLbPage();
-  }catch(e){
-    document.getElementById('lb-body').innerHTML='<tr><td colspan="6"><div class="empty-state">Errore caricamento.</div></td></tr>';
-    document.getElementById('lb-pagination').style.display='none';
-  }
-}
-
-function renderLbPage(){
-  const body=document.getElementById('lb-body');
-  const start=(lbPage-1)*lbPerPage;
-  const pageRows=lbRows.slice(start,start+lbPerPage);
-  // Mostra/nascondi colonna GPS in base alla presenza di utenti online
-  const hasOnline=lbRows.some(r=>r.online);
-  const tbl=body.closest('table');
-  if(tbl) tbl.classList.toggle('lb-has-online',hasOnline);
-  body.innerHTML=pageRows.map((row,j)=>{
-    const i=start+j;
-    if(!row.online){
-      return `<tr>
-        <td class="rank">
-          <button class="username-btn" onclick="openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
-        </td>
-        <td class="rank lb-col-gps"></td>
-        <td class="username"><span class="username-text">${row.username}${(row.azienda||row.compartimento)?` <span class="username-extra">(${[row.azienda,row.compartimento].filter(Boolean).join(' – ')})</span>`:''}</span></td>
-        <td class="score">
-          <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
-          <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
-        </td>
-        <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
-        <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
-      </tr>`;
-    }
-    // Online user: riga con accordion dettaglio
-    const panelId='lb-panel-'+row.username.replace(/\W/g,'_');
-    const chevId ='lb-chev-'+row.username.replace(/\W/g,'_');
-    return `<tr class="lb-user-online" onclick="toggleLbLivePanel('${panelId}','${chevId}','${row.username}')">
-        <td class="rank">
-          <button class="username-btn" onclick="event.stopPropagation();openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
-        </td>
-        <td class="rank lb-col-gps" style="text-align:center">
-          <button class="online-map-btn" onclick="event.stopPropagation();lbFlyToUser('${row.username}')" title="Mostra sulla mappa"><i class="fa-solid fa-location-pin"></i></button>
-        </td>
-        <td class="username">
-          <span class="username-text">${row.username}${(row.azienda||row.compartimento)?` <span class="username-extra">(${[row.azienda,row.compartimento].filter(Boolean).join(' – ')})</span>`:''}</span>
-        </td>
-        <td class="score">
-          <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
-          <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
-        </td>
-        <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
-        <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">
-          ${row.corse}
-          <span class="lb-live-chevron" id="${chevId}" style="display:inline-block;margin-left:4px"><i class="fa-solid fa-chevron-down"></i></span>
-        </td>
-      </tr>
-      <tr class="lb-online-row"><td colspan="6" style="border-left:3px solid var(--accent);padding:0!important">
-        <div class="lb-live-panel" id="${panelId}"></div>
-      </td></tr>`;
-  }).join('');
-  renderLbPagination();
-  restoreLbOpenPanels();
-}
-
-function restoreLbOpenPanels(){
-  if(!lbOpenPanels.size) return;
-  const start=(lbPage-1)*lbPerPage;
-  const pageRows=lbRows.slice(start,start+lbPerPage);
-  pageRows.forEach(row=>{
-    if(!row.online || !lbOpenPanels.has(row.username)) return;
-    const panelId='lb-panel-'+row.username.replace(/\W/g,'_');
-    const chevId ='lb-chev-'+row.username.replace(/\W/g,'_');
-    const panel=document.getElementById(panelId);
-    const chev=document.getElementById(chevId);
-    if(!panel) return;
-    panel.classList.add('open');
-    if(chev) chev.classList.add('open');
-    const u=liveData.find(u=>u.username===row.username);
-    if(u) renderPanel(u,panel);
-    else panel.innerHTML='<div style="padding:14px;font-size:11px;color:var(--dimgrey)">Dati live non disponibili.</div>';
-  });
-}
-
-function goLbPage(p){
-  const maxPage=Math.max(1,Math.ceil(lbRows.length/lbPerPage));
-  if(p<1||p>maxPage||p===lbPage) return;
-  lbPage=p;
-  renderLbPage();
-  document.querySelector('.lb-section')?.scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-
-function setLbPerPage(val){
-  lbPerPage=parseInt(val,10)||10;
-  lbPage=1;
-  renderLbPage();
-}
-
-function renderLbPagination(){
-  const pag=document.getElementById('lb-pagination');
-  const total=lbRows.length;
-  if(!total){ pag.style.display='none'; pag.innerHTML=''; return; }
-  const maxPage=Math.max(1,Math.ceil(total/lbPerPage));
-  const start=(lbPage-1)*lbPerPage+1;
-  const end=Math.min(lbPage*lbPerPage,total);
-  pag.style.display='flex';
-
-  let html=`<div class="lb-pag-info">Visualizzazione da ${start} a ${end} di ${total} risultati</div>`;
-
-  html+=`<div class="lb-pag-perpage"><span>Per pagina</span><select onchange="setLbPerPage(this.value)">`;
-  LB_PERPAGE_OPTIONS.forEach(opt=>{
-    html+=`<option value="${opt}" ${opt===lbPerPage?'selected':''}>${opt}</option>`;
-  });
-  html+=`</select></div>`;
-
-  html+=`<div class="lb-pag-pages">`;
-  html+=`<button class="lb-page-btn" onclick="goLbPage(${lbPage-1})" ${lbPage===1?'disabled':''} title="Precedente"><i class="fa-solid fa-chevron-left"></i></button>`;
-  const pages=new Set([1,maxPage,lbPage,lbPage-1,lbPage+1]);
-  let prev=0;
-  for(let p=1;p<=maxPage;p++){
-    if(!pages.has(p)) continue;
-    if(p-prev>1) html+='<span class="lb-page-ellipsis">…</span>';
-    html+=`<button class="lb-page-btn${p===lbPage?' active':''}" onclick="goLbPage(${p})" ${p===lbPage?'disabled':''}>${p}</button>`;
-    prev=p;
-  }
-  html+=`<button class="lb-page-btn" onclick="goLbPage(${lbPage+1})" ${lbPage===maxPage?'disabled':''} title="Successiva"><i class="fa-solid fa-chevron-right"></i></button>`;
-  html+=`</div>`;
-
-  pag.innerHTML=html;
-}
-
-function comfortColor(c){
-  if(c===null||c===undefined||c===100) return 'var(--grey)';
-  return c>=70?'var(--green)':c>=40?'var(--amber)':'var(--red)';
-}
-
-function toggleLbLivePanel(panelId,chevId,username){
-  const panel=document.getElementById(panelId);
-  const chev=document.getElementById(chevId);
-  if(!panel) return;
-  const isOpen=panel.classList.contains('open');
-  panel.classList.toggle('open',!isOpen);
-  if(chev) chev.classList.toggle('open',!isOpen);
-  if(!isOpen){
-    lbOpenPanels.add(username);
-    const u=liveData.find(u=>u.username===username);
-    if(u){
-      renderPanel(u,panel);
-      setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}),80);
-    } else {
-      panel.innerHTML='<div style="padding:14px;font-size:11px;color:var(--dimgrey)">Dati live non disponibili.</div>';
-    }
-  } else {
-    lbOpenPanels.delete(username);
-  }
-}
-
-function lbFlyToUser(username){
-  const mapSection=document.querySelector('.map-section');
-  if(mapSection) mapSection.scrollIntoView({behavior:'smooth',block:'start'});
-  setTimeout(()=>{
-    if(!leafletMap) return;
-    const m=trainMarkers[username];
-    if(m){
-      leafletMap.flyTo(m.getLatLng(),11,{animate:true,duration:.8});
-      m.openPopup();
-    }
-  },400);
-}
-
-function renderActivityName(name){
-  if(!name) return '—';
-  const n = vtTrainNumber(name);
-  const link = n ? ` <a class="treno-reale-link" href="https://www.treniamo.it/treno/${n}" target="_blank" rel="noopener">&mdash; treno reale</a>` : '';
-  return name + link;
-}
-
-function renderPanel(u,el){
-  const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
-  el.innerHTML=`
-  <div class="live-panel-main">
-    <div class="live-run-hdr">
-      <div>
-        <div class="live-run-name">${renderActivityName(u.activity_name)}</div>
-        <div class="live-run-consist">${u.consist?'🚂 '+u.consist:''}${u.sim_time?' · ⏰ '+u.sim_time:''}</div>
-      </div>
-      <div class="live-kpis">
-        <div class="live-kpi">
-          <div class="live-kpi-val" style="color:var(--accent)">${u.speed_kmh?Math.round(u.speed_kmh):'—'}</div>
-          <div class="live-kpi-lbl">km/h</div>
-        </div>
-        <div class="live-kpi">
-          <div class="live-kpi-val" style="color:${comfortColor(cft)}">${cft}</div>
-          <div class="live-kpi-lbl">Comfort</div>
-        </div>
-        ${u.next_station?`<div class="live-kpi" style="min-width:100px">
-          <div style="font-family:var(--font-md);font-size:11px;font-weight:500;color:var(--white);line-height:1.2">${u.next_station}</div>
-          <div class="live-kpi-lbl">Prossima</div>
-        </div>`:''}
-      </div>
-    </div>
-    <div style="margin-bottom:8px">
-      <div class="live-map-wrap">
-        <div class="live-map-title">Percorso</div>
-        ${renderStationsMap(u.stations||[])}
-      </div>
-    </div>
-    <div class="live-grid">
-      <div class="live-chart-wrap">
-        <div class="live-chart-hdr">
-          <div class="live-chart-title">Velocità</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div class="chart-zoom-btns">
-              <button class="chart-zoom-btn" id="zoom-out-${u.username}" title="Zoom out (−)">−</button>
-              <span class="chart-zoom-label" id="zoom-lbl-${u.username}">1×</span>
-              <button class="chart-zoom-btn" id="zoom-in-${u.username}" title="Zoom in (+)">+</button>
-              <button class="chart-zoom-btn" id="zoom-rst-${u.username}" title="Reset zoom">⟳</button>
-            </div>
-            <div><span class="live-chart-speed" id="speed-val-${u.username}">—</span><span class="live-chart-speed-unit">km/h</span></div>
-          </div>
-        </div>
-        <canvas class="live-chart-canvas" id="speed-chart-${u.username}"></canvas>
-      </div>
-      <div class="live-stops-wrap">
-        <div class="live-stops-title">Fermate</div>
-        <div class="live-stops-scroll">${renderStopsTable(u.stations||[])}</div>
-      </div>
-    </div>
-  </div>`;
-  requestAnimationFrame(()=>drawSpeedChart(u));
-}
-
-function renderStationsMap(stations){
-  if(!stations.length)return'<div style="color:var(--dimgrey);font-size:10px;text-align:center;padding:8px">Nessuna fermata</div>';
-  const total=stations.length;
-  const currentIdx=stations.findIndex(s=>s.is_current);
-  const passedCount=stations.filter(s=>s.passed).length;
-  const progress=total>1?(currentIdx>=0?currentIdx/(total-1):passedCount/total)*100:0;
-  const trainLeft=Math.max(2,Math.min(98,progress));
-  const minW=Math.max(100,total*52);
-  const dotsHtml=stations.map(s=>{
-    const cls=s.is_current?'current':s.passed?'passed':'';
-    return `<div class="live-map-st">
-      <div class="live-map-dot ${cls}"></div>
-      <div class="live-map-name ${cls}" title="${s.station_name}">${s.station_name}</div>
-      <div class="live-map-time">${s.arrival||''}</div>
-    </div>`;
-  }).join('');
-  return`<div class="live-map" style="min-width:${minW}px">
-    <div class="live-map-line"></div>
-    <div class="live-map-progress" style="width:${progress}%"></div>
-    <div class="live-train-icon" style="left:${trainLeft}%"><img src="/static/treno_linea.png" style="height:18px;width:auto;vertical-align:middle"></div>
-    <div class="live-map-stations">${dotsHtml}</div>
-  </div>`;
-}
-
-function renderStopsTable(stations){
-  if(!stations.length)return'<div style="padding:12px;font-size:10px;color:var(--dimgrey);text-align:center">Nessuna fermata</div>';
-  const rows=stations.map(s=>{
-    const cls=s.is_current?'current':s.passed?'passed':'';
-    let dlyHtml;
-    if(!s.passed || s.sort_order===0){
-      dlyHtml='<span style="color:var(--dimgrey)">—</span>';
-    } else if(s.delay_min===0||s.delay_min===null){
-      dlyHtml='<span class="dly-ok">In orario</span>';
-    } else {
-      const dc=Math.abs(s.delay_min)>=2?'dly-bad':'dly-amber';
-      dlyHtml=`<span class="${dc}">+${Math.round(s.delay_min)} min</span>`;
-    }
-    return`<tr class="${cls}"><td>${s.station_name}</td><td>${s.arrival||'—'}</td><td>${s.departure||'—'}</td><td>${dlyHtml}</td></tr>`;
-  }).join('');
-  return`<table class="live-stops-table"><thead><tr><th>Stazione</th><th>Arr.</th><th>Par.</th><th>Rit.</th></tr></thead><tbody>${rows}</tbody></table>`;
-}
-
-function drawSpeedChart(u){
-  const canvas=document.getElementById('speed-chart-'+u.username);
-  if(!canvas)return;
-  const history=u.speed_history||[];
-  const dpr=window.devicePixelRatio||1;
-  const W=canvas.offsetWidth||300, H=Math.max(60,canvas.offsetHeight||120);
-  canvas.width=W*dpr; canvas.height=H*dpr;
-
-  const newCanvas=canvas.cloneNode(false);
-  newCanvas.width=W*dpr; newCanvas.height=H*dpr;
-  canvas.parentNode.replaceChild(newCanvas,canvas);
-  newCanvas.style.width=W+'px'; newCanvas.style.height=H+'px';
-
-  const ctx2=newCanvas.getContext('2d');
-  ctx2.scale(dpr,dpr);
-
-  const pad={t:8,r:8,b:20,l:32};
-  const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
-
-  // ── Zoom/pan state: persistente tra re-render ──
-  const MAX_ZOOM=8, ZOOM_STEP=1.5;
-  if(!chartZoomState[u.username]) chartZoomState[u.username]={zoomLevel:1,panOffset:0};
-  const zs = chartZoomState[u.username];
-
-  function clampPan(){
-    const maxPan=1-1/zs.zoomLevel;
-    zs.panOffset=Math.max(0,Math.min(maxPan,zs.panOffset));
-  }
-  function updateZoomLabel(){
-    const lbl=document.getElementById('zoom-lbl-'+u.username);
-    if(lbl) lbl.textContent=(zs.zoomLevel===1?'1':zs.zoomLevel%1===0?zs.zoomLevel+'':'×')+( zs.zoomLevel===1?'×':'');
-  }
-
-  let isDragging=false;
-  let dragStartX=0, dragStartPan=0;
-  let crosshairX=null;
-
-  function catmull(p0,p1,p2,p3,t){
-    const t2=t*t,t3=t2*t;
-    return{
-      x:.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
-      y:.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3)
-    };
-  }
-
-  function drawBase2(cxhair){
-    ctx2.clearRect(0,0,W,H);
-    if(!history.length){
-      ctx2.fillStyle='#AAAAAA';ctx2.font='10px Futura,sans-serif';ctx2.textAlign='center';
-      ctx2.fillText('Dati non ancora disponibili',W/2,50);return;
-    }
-    const n=history.length;
-    // visible window in data-index space
-    const winSize=n/zs.zoomLevel;
-    const iStart=zs.panOffset*(n-1);
-    const iEnd=iStart+winSize;
-    const visStart=Math.max(0,Math.floor(iStart));
-    const visEnd=Math.min(n-1,Math.ceil(iEnd));
-
-    const visHistory=history.slice(visStart,visEnd+1);
-    if(!visHistory.length) return;
-
-    const speeds=visHistory.map(h=>h.speed_kmh);
-    const maxSpd=Math.max(...speeds,10);
-    const minSpd=Math.max(0,Math.min(...speeds)-5);
-    const range=maxSpd-minSpd||1;
-
-    // Map data-index (within visible slice) to canvas X
-    const toX=i=>pad.l+(i/(visHistory.length-1||1))*cw;
-    const toY=v=>pad.t+ch*(1-(v-minSpd)/range);
-
-    // Clip to chart area
-    ctx2.save();
-    ctx2.beginPath();
-    ctx2.rect(pad.l,pad.t,cw,ch+1);
-    ctx2.clip();
-
-    // 3 grid lines
-    ctx2.strokeStyle='rgba(170,170,170,0.18)';ctx2.lineWidth=1;
-    [0,.5,1].forEach(f=>{
-      const v=minSpd+f*range;
-      const y=toY(v);
-      ctx2.beginPath();ctx2.moveTo(pad.l,y);ctx2.lineTo(pad.l+cw,y);ctx2.stroke();
-    });
-    ctx2.restore();
-
-    // Y labels (outside clip)
-    ctx2.fillStyle='#AAAAAA';ctx2.font='8px Futura,sans-serif';ctx2.textAlign='right';
-    [0,.5,1].forEach(f=>{
-      const v=minSpd+f*range;
-      ctx2.fillText(Math.round(v),pad.l-4,toY(v)+3);
-    });
-
-    ctx2.save();
-    ctx2.beginPath();
-    ctx2.rect(pad.l,0,cw,H);
-    ctx2.clip();
-
-    // Catmull-Rom smooth curve
-    const pts=visHistory.map((h,i)=>({x:toX(i),y:toY(h.speed_kmh)}));
-    ctx2.beginPath();
-    pts.forEach((p,i)=>{
-      if(i===0){ctx2.moveTo(p.x,p.y);return;}
-      const p0=pts[Math.max(0,i-2)],p1=pts[i-1],p2=pts[i],p3=pts[Math.min(pts.length-1,i+1)];
-      for(let t=0;t<=1;t+=.08){const pt=catmull(p0,p1,p2,p3,t);ctx2.lineTo(pt.x,pt.y);}
-    });
-    ctx2.strokeStyle='#CE1B26';ctx2.lineWidth=1.5;ctx2.setLineDash([]);ctx2.stroke();
-
-    // gradient fill
-    ctx2.lineTo(toX(visHistory.length-1),pad.t+ch);
-    ctx2.lineTo(pad.l,pad.t+ch);ctx2.closePath();
-    const grad=ctx2.createLinearGradient(0,pad.t,0,pad.t+ch);
-    grad.addColorStop(0,'rgba(206,27,38,0.12)');
-    grad.addColorStop(1,'rgba(206,27,38,0.01)');
-    ctx2.fillStyle=grad;ctx2.fill();
-
-    // dot on last visible point
-    const last=pts[pts.length-1];
-    ctx2.beginPath();ctx2.arc(last.x,last.y,3,0,Math.PI*2);
-    ctx2.fillStyle='#CE1B26';ctx2.fill();
-
-    // x-axis time labels
-    ctx2.fillStyle='#AAAAAA';ctx2.font='8px Futura,sans-serif';ctx2.textAlign='center';
-    [0,Math.floor(visHistory.length/2),visHistory.length-1].forEach(i=>{
-      if(visHistory[i]&&visHistory[i].sim_time)
-        ctx2.fillText(visHistory[i].sim_time,toX(i),H-4);
-    });
-
-    // Pan hint when zoomed
-    if(zs.zoomLevel>1){
-      const barH=3, barY=H-3;
-      ctx2.fillStyle='rgba(170,170,170,0.2)';
-      ctx2.fillRect(pad.l,barY,cw,barH);
-      const thumbW=cw/zs.zoomLevel;
-      const maxPan=1-1/zs.zoomLevel;
-      const tX=pad.l+(maxPan>0?zs.panOffset/maxPan*(cw-thumbW):0);
-      ctx2.fillStyle='rgba(206,27,38,0.35)';
-      ctx2.fillRect(tX,barY,thumbW,barH);
-    }
-
-    // hover crosshair
-    const speedEl=document.getElementById('speed-val-'+u.username);
-    if(cxhair!==null&&cxhair>=pad.l&&cxhair<=pad.l+cw){
-      const ratio=(cxhair-pad.l)/cw;
-      const idx=Math.max(0,Math.min(visHistory.length-1,Math.round(ratio*(visHistory.length-1))));
-      const ptX=toX(idx), ptY=toY(visHistory[idx].speed_kmh);
-      if(speedEl) speedEl.textContent=Math.round(visHistory[idx].speed_kmh);
-      ctx2.strokeStyle='rgba(170,170,170,0.4)';ctx2.lineWidth=1;ctx2.setLineDash([3,4]);
-      ctx2.beginPath();ctx2.moveTo(ptX,pad.t);ctx2.lineTo(ptX,pad.t+ch);ctx2.stroke();
-      ctx2.setLineDash([]);
-      ctx2.beginPath();ctx2.arc(ptX,ptY,4,0,Math.PI*2);
-      ctx2.fillStyle='#CE1B26';ctx2.strokeStyle='#ffffff';ctx2.lineWidth=1.5;
-      ctx2.fill();ctx2.stroke();
-    } else {
-      if(speedEl) speedEl.textContent='—';
-    }
-
-    ctx2.restore();
-    updateZoomLabel();
-    // cursor
-    newCanvas.style.cursor= zs.zoomLevel>1 ? (isDragging?'grabbing':'grab') : 'crosshair';
-  }
-
-  drawBase2(null);
-
-  // ── Mouse events ──
-  newCanvas.addEventListener('mousemove',e=>{
-    const rect=newCanvas.getBoundingClientRect();
-    crosshairX=e.clientX-rect.left;
-    if(isDragging){
-      const dx=(crosshairX-dragStartX)/cw;
-      const maxPan=1-1/zs.zoomLevel;
-      zs.panOffset=Math.max(0,Math.min(maxPan, dragStartPan - dx));
-    }
-    drawBase2(isDragging?null:crosshairX);
-  });
-  newCanvas.addEventListener('mouseleave',()=>{crosshairX=null;isDragging=false;drawBase2(null);});
-  newCanvas.addEventListener('mousedown',e=>{
-    if(zs.zoomLevel>1){isDragging=true;dragStartX=e.clientX-newCanvas.getBoundingClientRect().left;dragStartPan=zs.panOffset;}
-  });
-  newCanvas.addEventListener('mouseup',()=>{isDragging=false;});
-
-  // ── Wheel zoom ──
-  newCanvas.addEventListener('wheel',e=>{
-    e.preventDefault();
-    const rect=newCanvas.getBoundingClientRect();
-    const mx=(e.clientX-rect.left-pad.l)/cw;
-    const oldZoom=zs.zoomLevel;
-    if(e.deltaY<0) zs.zoomLevel=Math.min(MAX_ZOOM,zs.zoomLevel*ZOOM_STEP);
-    else            zs.zoomLevel=Math.max(1,zs.zoomLevel/ZOOM_STEP);
-    zs.zoomLevel=Math.round(zs.zoomLevel*100)/100;
-    const dataFrac=mx/oldZoom+zs.panOffset;
-    zs.panOffset=dataFrac-mx/zs.zoomLevel;
-    clampPan();
-    drawBase2(crosshairX);
-  },{passive:false});
-
-  // ── Double-click reset ──
-  newCanvas.addEventListener('dblclick',()=>{
-    zs.zoomLevel=1;zs.panOffset=0;drawBase2(null);
-  });
-
-  // ── Button wiring ──
-  const btnIn =document.getElementById('zoom-in-' +u.username);
-  const btnOut=document.getElementById('zoom-out-'+u.username);
-  const btnRst=document.getElementById('zoom-rst-'+u.username);
-  if(btnIn)  btnIn.addEventListener('click',()=>{
-    const cx=0.5;
-    const old=zs.zoomLevel;
-    zs.zoomLevel=Math.min(MAX_ZOOM,Math.round(zs.zoomLevel*ZOOM_STEP*100)/100);
-    zs.panOffset+=(cx/old-cx/zs.zoomLevel);
-    clampPan();drawBase2(null);
-  });
-  if(btnOut) btnOut.addEventListener('click',()=>{
-    const cx=0.5;
-    const old=zs.zoomLevel;
-    zs.zoomLevel=Math.max(1,Math.round(zs.zoomLevel/ZOOM_STEP*100)/100);
-    zs.panOffset+=(cx/old-cx/zs.zoomLevel);
-    clampPan();drawBase2(null);
-  });
-  if(btnRst) btnRst.addEventListener('click',()=>{zs.zoomLevel=1;zs.panOffset=0;drawBase2(null);});
-}
-
-// ── Grafico andamento punteggio (profilo personale) ──
-async function loadProfileChart(){
-  const canvas=document.getElementById('profile-chart-canvas');
-  if(!canvas) return;
-  try{
-    const r=await fetch('/api/my_history');
-    const d=await r.json();
-    if(!d.ok) return;
-    drawProfileChart(d.sessions||[], d.platform_avg);
-  }catch{
-    drawProfileChart([], null);
-  }
-}
-
-function drawProfileChart(sessions, platformAvg){
-  const canvas=document.getElementById('profile-chart-canvas');
-  if(!canvas) return;
-  const hoverEl=document.getElementById('profile-chart-hover');
-  const dpr=window.devicePixelRatio||1;
-  const W=canvas.offsetWidth||300, H=130;
-
-  const newCanvas=canvas.cloneNode(false);
-  newCanvas.width=W*dpr; newCanvas.height=H*dpr;
-  canvas.parentNode.replaceChild(newCanvas,canvas);
-  newCanvas.style.width=W+'px'; newCanvas.style.height=H+'px';
-
-  const ctx=newCanvas.getContext('2d');
-  ctx.scale(dpr,dpr);
-
-  if(hoverEl) hoverEl.innerHTML='&nbsp;';
-
-  if(!sessions.length){
-    ctx.fillStyle='#AAAAAA';ctx.font='10px Futura,sans-serif';ctx.textAlign='center';
-    ctx.fillText('Nessuna sessione registrata',W/2,H/2);
-    return;
-  }
-
-  const pad={t:8,r:8,b:20,l:32};
-  const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
-  const n=sessions.length;
-  const scores=sessions.map(s=>parseFloat(s.punteggio)||0);
-
-  let maxV=Math.max(...scores,platformAvg||0);
-  let minV=Math.min(...scores,platformAvg!=null?platformAvg:100);
-  maxV=Math.min(100,Math.ceil((maxV+5)/10)*10);
-  minV=Math.max(0,Math.floor((minV-5)/10)*10);
-  if(maxV===minV) maxV=minV+10;
-  const range=maxV-minV;
-
-  const toX=i=> n===1 ? pad.l+cw/2 : pad.l+(i/(n-1))*cw;
-  const toY=v=> pad.t+ch*(1-(v-minV)/range);
-
-  function catmull(p0,p1,p2,p3,t){
-    const t2=t*t,t3=t2*t;
-    return{
-      x:.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
-      y:.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3)
-    };
-  }
-
-  const pts=scores.map((sc,i)=>({x:toX(i),y:toY(sc)}));
-
-  function draw(hoverIdx){
-    ctx.clearRect(0,0,W,H);
-
-    // grid lines + y labels
-    ctx.strokeStyle='rgba(170,170,170,0.18)';ctx.lineWidth=1;
-    [0,.5,1].forEach(f=>{
-      const v=minV+f*range, y=toY(v);
-      ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();
-    });
-    ctx.fillStyle='#AAAAAA';ctx.font='8px Futura,sans-serif';ctx.textAlign='right';
-    [0,.5,1].forEach(f=>{
-      const v=minV+f*range;
-      ctx.fillText(Math.round(v),pad.l-4,toY(v)+3);
-    });
-
-    // platform average (dashed)
-    if(platformAvg!=null){
-      const y=toY(platformAvg);
-      ctx.strokeStyle='rgba(170,170,170,0.7)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
-      ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    ctx.save();
-    ctx.beginPath();ctx.rect(pad.l,0,cw,H);ctx.clip();
-
-    // curva punteggio
-    ctx.beginPath();
-    pts.forEach((p,i)=>{
-      if(i===0){ctx.moveTo(p.x,p.y);return;}
-      if(pts.length<3){ctx.lineTo(p.x,p.y);return;}
-      const p0=pts[Math.max(0,i-2)],p1=pts[i-1],p2=pts[i],p3=pts[Math.min(pts.length-1,i+1)];
-      for(let t=0;t<=1;t+=.08){const pt=catmull(p0,p1,p2,p3,t);ctx.lineTo(pt.x,pt.y);}
-    });
-    ctx.strokeStyle='#CE1B26';ctx.lineWidth=1.5;ctx.stroke();
-
-    // gradient fill
-    ctx.lineTo(toX(n-1),pad.t+ch);
-    ctx.lineTo(pad.l,pad.t+ch);ctx.closePath();
-    const grad=ctx.createLinearGradient(0,pad.t,0,pad.t+ch);
-    grad.addColorStop(0,'rgba(206,27,38,0.12)');
-    grad.addColorStop(1,'rgba(206,27,38,0.01)');
-    ctx.fillStyle=grad;ctx.fill();
-
-    // punti
-    pts.forEach((p,i)=>{
-      ctx.beginPath();ctx.arc(p.x,p.y,i===hoverIdx?4:2.5,0,Math.PI*2);
-      ctx.fillStyle='#CE1B26';
-      if(i===hoverIdx){ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.fill();ctx.stroke();}
-      else ctx.fill();
-    });
-
-    // crosshair
-    if(hoverIdx!=null){
-      const p=pts[hoverIdx];
-      ctx.strokeStyle='rgba(170,170,170,0.4)';ctx.lineWidth=1;ctx.setLineDash([3,4]);
-      ctx.beginPath();ctx.moveTo(p.x,pad.t);ctx.lineTo(p.x,pad.t+ch);ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    ctx.restore();
-
-    // etichette asse X: prima, centrale, ultima data
-    ctx.fillStyle='#AAAAAA';ctx.font='8px Futura,sans-serif';ctx.textAlign='center';
-    const idxs=[...new Set([0,Math.floor((n-1)/2),n-1])];
-    idxs.forEach(i=>{
-      const dt=fmtDate(sessions[i].registrata_at||'');
-      ctx.fillText((dt.split(' ')[0]||dt),toX(i),H-4);
-    });
-
-    // info hover sotto al grafico
-    if(hoverEl){
-      if(hoverIdx!=null){
-        const s=sessions[hoverIdx];
-        hoverEl.innerHTML=`${fmtDate(s.registrata_at||'')} — <strong>${s.ultimo_servizio||'—'}</strong> · ${parseFloat(s.punteggio||0).toFixed(1)}/100`;
-      } else {
-        hoverEl.innerHTML='&nbsp;';
-      }
-    }
-  }
-
-  draw(null);
-
-  newCanvas.addEventListener('mousemove',e=>{
-    const rect=newCanvas.getBoundingClientRect();
-    const mx=e.clientX-rect.left;
-    if(mx<pad.l||mx>pad.l+cw){draw(null);return;}
-    const ratio=(mx-pad.l)/cw;
-    const idx=Math.max(0,Math.min(n-1,Math.round(ratio*(n-1))));
-    draw(idx);
-  });
-  newCanvas.addEventListener('mouseleave',()=>draw(null));
-}
-
-// ── Dead-reckoning: stato per ogni utente ──
-// { username: { fromPos:[lat,lon], toPos:[lat,lon], fetchedAt:ms, pollInterval:ms } }
-const drState = {};
-const POLL_INTERVAL_MS = 7000; // intervallo polling (ms) — deve combaciare con setInterval sotto
-let drAnimFrame = null;
-
-// Avvia il loop di animazione dead-reckoning (una sola istanza)
-function startDeadReckoningLoop(){
-  if(drAnimFrame !== null) return;
-  function tick(){
-    drAnimFrame = requestAnimationFrame(tick);
-    const now = Date.now();
-    for(const username in drState){
-      const marker = trainMarkers[username];
-      if(!marker) continue;
-      const dr = drState[username];
-      const elapsed = now - dr.fetchedAt;
-      // t in [0,1]: 0 = posizione al momento del poll, 1 = posizione stimata al prossimo poll
-      const t = Math.min(1, elapsed / dr.pollInterval);
-      const lat = dr.fromPos[0] + (dr.toPos[0] - dr.fromPos[0]) * t;
-      const lon = dr.fromPos[1] + (dr.toPos[1] - dr.fromPos[1]) * t;
-      marker.setLatLng([lat, lon]);
-    }
-  }
-  tick();
-}
-
-// ── Load live data ──
-async function loadLive(){
-  try{
-    const r=await fetch('/api/live');
-    if(!r.ok) return;
-    const fresh=await r.json();
-    const now = Date.now();
-
-    // Aggiorna l'ordine: aggiungi nuovi, rimuovi chi non è più online
-    fresh.forEach(u=>{
-      if(!liveOrder.includes(u.username)) liveOrder.push(u.username);
-    });
-    const onlineNow = new Set(fresh.map(u=>u.username));
-    liveOrder = liveOrder.filter(name => onlineNow.has(name));
-    liveData  = liveOrder.map(name=>fresh.find(u=>u.username===name)).filter(Boolean);
-
-    // Chiama SEMPRE updateMap — anche con array vuoto, così rimuove i marker offline
-    updateMap(liveData, now);
-
-    // Aggiorna la classifica per sincronizzare lo stato online/offline dei pin
-    if(lbRows.length) renderLbPage();
-    else if(liveData.length) loadLeaderboard();
-  }catch(e){
-    console.warn('[VTV] loadLive error:', e);
-  }
-}
-
-// ── Delete profile ──
-function showDeleteConfirm(){
-  document.getElementById('delete-confirm').style.display='block';
-}
-function hideDeleteConfirm(){
-  document.getElementById('delete-confirm').style.display='none';
-  document.getElementById('delete-msg').textContent='';
-  document.getElementById('delete-password').value='';
-}
-
-// ── Cambio username ──
-function toggleUsernameChange(){
-  const fields=document.getElementById('username-change-fields');
-  const btn=document.getElementById('username-change-toggle-btn');
-  const open=fields.classList.toggle('open');
-  btn.textContent=open?'Annulla':'Modifica';
-  if(open){
-    document.getElementById('new-username-input').value='';
-    document.getElementById('username-change-password').value='';
-    document.getElementById('username-change-msg').textContent='';
-    document.getElementById('username-change-msg').className='username-change-msg';
-    setTimeout(()=>document.getElementById('new-username-input').focus(),50);
-  }
-}
-
-async function doChangeUsername(){
-  const msg=document.getElementById('username-change-msg');
-  const newUsername=document.getElementById('new-username-input').value.trim();
-  const password=document.getElementById('username-change-password').value;
-  if(!newUsername){msg.textContent='✗ Inserisci il nuovo username';msg.className='username-change-msg err';return;}
-  if(newUsername===me?.username){msg.textContent='✗ È già il tuo username attuale';msg.className='username-change-msg err';return;}
-  if(!password){msg.textContent='✗ Conferma la password';msg.className='username-change-msg err';return;}
-  const btn=document.getElementById('username-change-btn');
-  btn.disabled=true;msg.textContent='Aggiornamento...';msg.className='username-change-msg';
-  try{
-    const r=await fetch('/api/profile/change_username',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-CSRF-Token':(me&&me.csrf_token)||''},
-      body:JSON.stringify({new_username:newUsername,password})
-    });
-    const d=await r.json();
-    if(d.ok){
-      if(me){me.username=newUsername;}
-      msg.textContent='✓ Username aggiornato';msg.className='username-change-msg ok';
-      updateNav();
-      loadLeaderboard();
-      setTimeout(()=>{
-        document.getElementById('username-change-fields').classList.remove('open');
-        document.getElementById('username-change-toggle-btn').textContent='Modifica';
-        msg.textContent='';msg.className='username-change-msg';
-      },1800);
-    }else{
-      msg.textContent='✗ '+(d.error||'Errore sconosciuto');msg.className='username-change-msg err';
-    }
-  }catch{msg.textContent='✗ Errore di rete';msg.className='username-change-msg err';}
-  btn.disabled=false;
-}
-async function doDeleteProfile(){
-  const msg=document.getElementById('delete-msg');
-  const pwd=document.getElementById('delete-password').value||'';
-  if(!pwd){msg.textContent='✗ Inserisci la password per confermare';msg.className='msg err';return;}
-  msg.textContent='Eliminazione in corso...';msg.className='msg';
-  try{
-    const r=await fetch('/api/delete_account',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-CSRF-Token':(me && me.csrf_token) || ''},
-      body:JSON.stringify({password:pwd})
-    });
-    const d=await r.json();
-    if(d.ok){
-      msg.textContent='✓ Profilo eliminato.';msg.className='msg ok';
-      setTimeout(()=>{closeModal('profile');me=null;updateNav();loadLeaderboard();},1500);
-    }else{
-      msg.textContent='✗ '+(d.error||'Errore sconosciuto');msg.className='msg err';
-    }
-  }catch{msg.textContent='✗ Errore di rete';msg.className='msg err';}
-}
-
-// ── Mappa Leaflet ──
-let leafletMap = null;
-let trainMarkers = {};
-let stationMarkers = [];
-let stationCoords = {};
-let routeLines = {};
-
-let railwayLayer = null;
-let railwayVisible = false;
-let stationLabelsVisible = true;
-let stationLabelMarkers = [];
-
-function initMap(){
-  if(leafletMap) return;
-  const italyBounds = L.latLngBounds(
-    L.latLng(35.2, 6.0),
-    L.latLng(47.5, 19.0)
-  );
-  leafletMap = L.map('live-map', {
-    center: [41.9, 12.5],
-    zoom: 6,
-    minZoom: 6,
-    maxZoom: 18,
-    maxBounds: italyBounds,
-    maxBoundsViscosity: 1.0,
-    zoomControl: false,
-    dragging: true,
-    scrollWheelZoom: true,
-    doubleClickZoom: true,
-    touchZoom: true,
-    boxZoom: false,
-    keyboard: false,
-  });
-  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
-    attribution: '\u00a9 <a href="https://stadiamaps.com/">Stadia Maps</a> \u00a9 <a href="https://openstreetmap.org">OpenStreetMap</a>',
-    maxZoom: 18,
-  }).addTo(leafletMap);
-
-  // Layer ferroviario OpenRailwayMap (sempre attivo)
-  railwayLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
-    attribution: '\u00a9 <a href="https://openrailwaymap.org">OpenRailwayMap</a>',
-    maxZoom: 18,
-    opacity: 0.7,
-    subdomains: ['a','b','c'],
-  }).addTo(leafletMap);
-  railwayVisible = true;
-
-  // ── Selettore stile ORM ──
-  const ORM_STYLES = [
-    { id: 'standard',    label: 'Infrastruttura',                  url: 'https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png' },
-    { id: 'maxspeed',    label: 'Velocità massima',                url: 'https://{s}.tiles.openrailwaymap.org/maxspeed/{z}/{x}/{y}.png' },
-    { id: 'signals',     label: 'Segnalamento',                    url: 'https://{s}.tiles.openrailwaymap.org/signals/{z}/{x}/{y}.png' },
-    { id: 'electrified', label: 'Elettrificazione',                url: 'https://{s}.tiles.openrailwaymap.org/electrified/{z}/{x}/{y}.png' },
-    { id: 'gauge',       label: 'Scartamento',                     url: 'https://{s}.tiles.openrailwaymap.org/gauge/{z}/{x}/{y}.png' },
-  ];
-  let activeOrmStyle = 'standard';
-
-  function renderOrmStylePanel() {
-    const container = document.getElementById('map-style-options');
-    if (!container) return;
-    container.innerHTML = ORM_STYLES.map(s => `
-      <div class="map-style-opt${s.id === activeOrmStyle ? ' active' : ''}" onclick="setOrmStyle('${s.id}')">
-        <div class="map-style-radio"></div>
-        <span>${s.label}</span>
-      </div>`).join('');
-  }
-
-  window.setOrmStyle = function(id) {
-    const style = ORM_STYLES.find(s => s.id === id);
-    if (!style || !leafletMap) return;
-    activeOrmStyle = id;
-    leafletMap.removeLayer(railwayLayer);
-    railwayLayer = L.tileLayer(style.url, {
-      attribution: '© <a href="https://openrailwaymap.org">OpenRailwayMap</a>',
-      maxZoom: 18,
-      opacity: 0.7,
-      subdomains: ['a','b','c'],
-    });
-    if (railwayVisible) railwayLayer.addTo(leafletMap);
-    renderOrmStylePanel();
-  };
-
-  renderOrmStylePanel();
-}
-
-function toggleStylePanel(){
-  const dd = document.getElementById('map-style-dropdown');
-  const btn = document.getElementById('map-style-toggle');
-  const open = dd.classList.toggle('open');
-  btn.classList.toggle('active', open);
-}
-
-// Chiudi pannello stile se click fuori
-document.addEventListener('click', e => {
-  const panel = document.getElementById('map-style-panel');
-  if(panel && !panel.contains(e.target)){
-    const dd = document.getElementById('map-style-dropdown');
-    const btn = document.getElementById('map-style-toggle');
-    if(dd) dd.classList.remove('open');
-    if(btn) btn.classList.remove('active');
-  }
-});
-
-function updateMap(users, pollTimestamp){
-  if(!leafletMap) initMap();
-  const now = pollTimestamp || Date.now();
-  document.getElementById('map-count').textContent = users.length + ' treni';
-
-  stationMarkers.forEach(m => leafletMap.removeLayer(m));
-  stationMarkers = [];
-
-  users.forEach(u => {
-    const stations = u.stations || [];
-    const userColor = getUserColor(u.username);
-
-    // Cerca la posizione con tutti i fallback disponibili
-    let pos = null;
-    let posSource = 'nessuna';
-
-    if(u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1 && Math.abs(u.train_lon) > 0.1){
-      pos = [u.train_lat, u.train_lon];
-      posSource = 'gps';
-    } else {
-      const interp = interpolatePosition(stations, u.next_station, u.speed_kmh || 0);
-      if(interp){ pos = interp; posSource = 'interpolata'; }
-    }
-    if(!pos && u.next_station){
-      const c = getStationCoord(u.next_station);
-      if(c){ pos = [c.lat, c.lon]; posSource = 'next_station'; }
-    }
-    if(!pos){
-      const passed = (stations||[]).filter(s=>s.passed);
-      if(passed.length){
-        const c = getStationCoord(passed[passed.length-1].station_name);
-        if(c){ pos = [c.lat, c.lon]; posSource = 'ultima_fermata'; }
-      }
-    }
-    // Fallback: prima stazione del percorso (anche non ancora passata)
-    if(!pos && stations.length){
-      for(const s of stations){
-        const c = getStationCoord(s.station_name);
-        if(c){ pos = [c.lat, c.lon]; posSource = 'prima_stazione_disponibile'; break; }
-      }
-    }
-    // Fallback finale: centro Italia — garantisce che il pin compaia sempre
-    if(!pos){
-      pos = [41.9, 12.5];
-      posSource = 'default_italia';
-      console.warn('[VTV] Posizione non trovata per', u.username,
-        '— stazioni:', (stations||[]).map(s=>s.station_name),
-        '— next_station:', u.next_station);
-    }
-
-    const delayMin = getDelayFromStations(u);
-    const markerColor = delayMin <= 5 ? '#007A3D' : delayMin <= 30 ? '#E07B00' : '#CE1B26';
-    const delayLabel = delayMin <= 0 ? 'in orario' : `+${Math.round(delayMin)} min`;
-    const trainNum = u.activity_name || u.username;
-    const hasGPS = posSource === 'gps';
-
-    let posLabel;
-    if(posSource === 'gps')                         posLabel = '📡 GPS live da OpenRails';
-    else if(posSource === 'interpolata')            posLabel = '⚠ Posizione stimata (interpolata)';
-    else if(posSource === 'next_station')           posLabel = '⚠ Posizione stimata (prossima fermata)';
-    else if(posSource === 'ultima_fermata')         posLabel = '⚠ Posizione stimata (ultima fermata)';
-    else if(posSource === 'prima_stazione_disponibile') posLabel = '⚠ Posizione stimata (inizio percorso)';
-    else                                            posLabel = '⚠ Posizione in attesa di dati';
-
-    const gpsLabelHtml = `<tr style="background:#f8f8f8"><td colspan="2" style="padding:4px 8px;font-size:9px;color:${hasGPS?'#888':'#aaa'};font-family:var(--font);letter-spacing:.06em">${posLabel}</td></tr>`;
-
-    const popupHtml = `<div style="font-family:'Futura',sans-serif;font-size:11px;min-width:220px;background:#fff;border-radius:2px;overflow:hidden">
-      <div style="background:${userColor};height:6px"></div>
-      <table style="width:100%;border-collapse:collapse">
-        <thead>
-          <tr style="background:#E4E4E4">
-            <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Treno</th>
-            <th style="padding:5px 8px;text-align:left;font-weight:500;color:#5A5A5A;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Ritardo</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr style="background:#fff">
-            <td style="padding:7px 8px;color:#2B2B2B;font-weight:500;white-space:nowrap">${trainNum}</td>
-            <td style="padding:7px 8px;white-space:nowrap">
-              <span style="display:inline-flex;align-items:center;gap:5px">
-                <span style="width:8px;height:8px;border-radius:50%;background:${markerColor};flex-shrink:0;display:inline-block"></span>
-                <span style="color:#2B2B2B">${delayLabel}</span>
-              </span>
-            </td>
-          </tr>
-          ${gpsLabelHtml}
-        </tbody>
-      </table>
-    </div>`;
-
-    // Icona: semitrasparente se posizione di fallback (default_italia)
-    const iconOpacity = posSource === 'default_italia' ? '0.45' : '1';
-    const trainIcon = L.divIcon({
-      className: '',
-      html: `<div style="position:relative;width:20px;height:20px;opacity:${iconOpacity}">
-        <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="10" cy="10" r="9" fill="${markerColor}" stroke="#fff" stroke-width="2"/>
-        </svg>
-      </div>`,
-      iconSize: [20, 20],
-      iconAnchor: [10, 10],
-      popupAnchor: [0, -16],
-    });
-
-    // ── Dead-reckoning: aggiorna lo stato PRIMA di posizionare il marker ──
-    // Il loop rAF legge drState ogni frame: aggiornandolo prima di setLatLng
-    // evitiamo che sovrascriva la posizione appena ricevuta dal poll.
-    const prevDr = drState[u.username];
-    let toPos = pos; // default: rimane fermo (posizione di fallback o GPS statico)
-    if(posSource !== 'default_italia'){
-      const nextCoord = u.next_station ? getStationCoord(u.next_station) : null;
-      if(nextCoord){
-        const distLat = nextCoord.lat - pos[0];
-        const distLon = nextCoord.lon - pos[1];
-        const distDeg = Math.sqrt(distLat*distLat + distLon*distLon);
-        const speedKmh = u.speed_kmh || 0;
-        const intervalH = POLL_INTERVAL_MS / 3600000;
-        const travelDeg = speedKmh > 0 ? Math.min(distDeg, (speedKmh * intervalH) / 111) : 0;
-        if(distDeg > 0.0001 && travelDeg > 0){
-          const ratio = travelDeg / distDeg;
-          toPos = [pos[0] + distLat * ratio, pos[1] + distLon * ratio];
-        }
-      }
-    }
-    // fromPos: parte dalla posizione interpolata corrente (evita salti bruschi)
-    const fromPos = prevDr
-      ? [
-          prevDr.fromPos[0] + (prevDr.toPos[0] - prevDr.fromPos[0]) * Math.min(1, (now - prevDr.fetchedAt) / prevDr.pollInterval),
-          prevDr.fromPos[1] + (prevDr.toPos[1] - prevDr.fromPos[1]) * Math.min(1, (now - prevDr.fetchedAt) / prevDr.pollInterval),
-        ]
-      : pos;
-    // Scrivi drState PRIMA di creare/aggiornare il marker, così il loop rAF
-    // legge subito il nuovo stato e non sovrascrive la posizione del poll
-    drState[u.username] = { fromPos, toPos, fetchedAt: now, pollInterval: POLL_INTERVAL_MS };
-
-    if(trainMarkers[u.username]){
-      const m = trainMarkers[u.username];
-      // setIcon in Leaflet rimuove e riattacca internamente il DOM del marker,
-      // resettando la posizione all'ultimo valore noto da Leaflet (non quella del loop rAF).
-      // Chiamiamo setIcon solo se il colore/opacità è cambiato per evitare reset inutili,
-      // e subito dopo forziamo la posizione corrente con setLatLng.
-      const newIconKey = markerColor + '|' + iconOpacity;
-      if(m._vtvIconKey !== newIconKey){
-        m.setIcon(trainIcon);
-        m._vtvIconKey = newIconKey;
-      }
-      // Forza sempre la posizione interpolata corrente: il loop rAF continuerà da qui.
-      m.setLatLng(fromPos);
-      const popup = m.getPopup();
-      if(popup) popup.setContent(popupHtml);
-    } else {
-      const m = L.marker(fromPos, { icon: trainIcon })
-        .bindPopup(popupHtml).addTo(leafletMap);
-      m._vtvIconKey = markerColor + '|' + iconOpacity;
-      trainMarkers[u.username] = m;
-    }
-  });
-
-  // Rimuovi marker utenti offline
-  Object.keys(trainMarkers).forEach(username => {
-    if(!users.find(u => u.username === username)){
-      leafletMap.removeLayer(trainMarkers[username]);
-      delete trainMarkers[username];
-      delete drState[username]; // rimuovi stato dead-reckoning
-    }
-  });
-
-}
-
-async function loadStationCoords(){
-  try{
-    const r = await fetch('/api/station_coords');
-    stationCoords = await r.json();
-    // Se ci sono già dati live in memoria, aggiorna la mappa con le coordinate appena caricate
-    // Nota: non aggiorniamo drState qui (nessun timestamp fresco), la mappa si aggiornerà
-    // al prossimo poll di loadLive()
-    if(liveData.length) updateMap(liveData, Date.now());
-  }catch(e){}
-}
-
-function getStationCoord(name){
-  if(!name) return null;
-  if(stationCoords[name]) return stationCoords[name];
-  const nl = name.toLowerCase().replace(/[.\-]/g,'').trim();
-  for(const [k,v] of Object.entries(stationCoords)){
-    const kl = k.toLowerCase().replace(/[.\-]/g,'').trim();
-    if(kl === nl || kl.includes(nl) || nl.includes(kl)) return v;
-  }
-  return null;
-}
-
-function interpolatePosition(stations, nextStation, speedKmh){
-  if(!stations || !stations.length) return null;
-  const passed = stations.filter(s => s.passed);
-  const notPassed = stations.filter(s => !s.passed);
-  const lastPassed = passed.length ? passed[passed.length-1] : null;
-  const nextSt = stations.find(s => s.is_current)
-              || (nextStation ? stations.find(s => s.station_name === nextStation) : null)
-              || (notPassed.length ? notPassed[0] : null);
-  const fromCoord = lastPassed ? getStationCoord(lastPassed.station_name) : null;
-  const toCoord   = nextSt    ? getStationCoord(nextSt.station_name)      : null;
-  if(fromCoord && toCoord){
-    // Se abbiamo la velocità, stima la progressione lungo il segmento
-    // usando il tempo trascorso dall'ultima fermata (arr_time o dep_time)
-    let t = 0.5; // default: metà percorso
-    if(speedKmh > 0 && lastPassed && nextSt){
-      // Distanza tra le due stazioni in gradi
-      const dLat = toCoord.lat - fromCoord.lat;
-      const dLon = toCoord.lon - fromCoord.lon;
-      const distDeg = Math.sqrt(dLat*dLat + dLon*dLon);
-      // Stima distanza percorsa in gradi basandosi sul timestamp dell'ultima fermata
-      const depTime = lastPassed.dep_time || lastPassed.arr_time;
-      if(depTime){
-        const depMs = parseTimeToToday(depTime);
-        const elapsedH = depMs !== null ? (Date.now() - depMs) / 3600000 : 0;
-        const travelDeg = (speedKmh * Math.max(0, elapsedH)) / 111;
-        t = distDeg > 0.001 ? Math.min(0.95, travelDeg / distDeg) : 0.5;
-      }
-    }
-    return [fromCoord.lat + (toCoord.lat - fromCoord.lat) * t,
-            fromCoord.lon + (toCoord.lon - fromCoord.lon) * t];
-  }
-  if(fromCoord) return [fromCoord.lat, fromCoord.lon];
-  if(toCoord)   return [toCoord.lat,   toCoord.lon];
-  return null;
-}
-
-// Converte "HH:MM" o "HH:MM:SS" nell'orario di oggi in ms epoch
-function parseTimeToToday(timeStr){
-  if(!timeStr) return null;
-  const parts = timeStr.split(':');
-  if(parts.length < 2) return null;
-  const now = new Date();
-  now.setHours(parseInt(parts[0],10), parseInt(parts[1],10), parseInt(parts[2]||0,10), 0);
-  return now.getTime();
-}
-
-// ── Helper: ricava il ritardo aggiornato dalla timetable delle fermate ──
-function getDelayFromStations(u){
-  const stations = u.stations || [];
-  const passedWithDelay = stations.filter(s => s.passed && s.delay_min != null);
-  if(passedWithDelay.length){
-    return passedWithDelay[passedWithDelay.length - 1].delay_min;
-  }
-  return u.delay_min || 0;
-}
-
-// ── Drawer storico utente ──
-function openDrawer(idx){
-  const row = lbRows[idx];
-  if(!row) return;
-  const username = row.username;
-  const overlay = document.getElementById('drawer-overlay');
-  document.getElementById('drawer-username').textContent = username;
-  document.getElementById('drawer-grade').textContent = (row.grade||'') + (row.online ? '  ● ONLINE' : '');
-  document.getElementById('drawer-corse').textContent = row.corse||'—';
-  document.getElementById('drawer-best').textContent = '—';
-  document.getElementById('drawer-media').textContent = '—';
-  document.getElementById('drawer-body').innerHTML = '<div class="drawer-loading">Caricamento sessioni...</div>';
-  overlay.classList.add('open');
-  document.body.style.overflow = 'hidden';
-  fetch('/api/user_sessions/'+encodeURIComponent(username))
-    .then(r=>r.json())
-    .then(sessions=>{
-      if(!Array.isArray(sessions)||!sessions.length){
-        document.getElementById('drawer-body').innerHTML='<div class="drawer-empty">Nessuna sessione registrata.</div>';
-        return;
-      }
-      sessions.sort((a,b)=>new Date(b.registrata_at||0)-new Date(a.registrata_at||0));
-      const scores = sessions.map(s=>parseFloat(s.punteggio)).filter(v=>!isNaN(v));
-      if(scores.length){
-        document.getElementById('drawer-best').textContent = Math.max(...scores).toFixed(1);
-        document.getElementById('drawer-media').textContent = (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1);
-      }
-      document.getElementById('drawer-body').innerHTML = sessions.map((s,idx)=>{
-        const sc = parseFloat(s.punteggio||0);
-        const col = scoreColor(sc);
-        const data = fmtDate(s.registrata_at||'');
-        const serv = s.ultimo_servizio||'—';
-        const age = idx===0 ? '<span style="font-size:8px;color:var(--green);font-family:var(--font-md);margin-left:4px">ULTIMA</span>' : '';
-        return `<div class="drawer-row">
-          <div class="drawer-row-serv" title="${serv}">${serv}${age}</div>
-          <div class="drawer-row-date">${data}</div>
-          <div class="drawer-row-score" style="color:${col}">${sc.toFixed(1)}<span style="font-size:9px;opacity:.5">/100</span></div>
-          <div class="drawer-row-vt">${vtLink(serv)}</div>
-        </div>`;
-      }).join('');
+"""
+OpenRails Monitor — Piattaforma Web v1.2 (SECURE)
+Backend Flask con PostgreSQL (persistente su Render)
+
+Modifiche sicurezza rispetto a v1.1:
+  - Password hashate con bcrypt (invece di SHA-256 semplice)
+  - SESSION_COOKIE_SECURE = True
+  - Rate limiting su login/register/submit (Flask-Limiter)
+  - reCAPTCHA secret rimosso dal codice → solo env var
+  - CSRF protection su endpoint sensibili (token in sessione)
+  - Validazione username più restrittiva (solo [a-zA-Z0-9_.-])
+  - Endpoint per rigenerare api_token
+  - Logging tentativi di login falliti
+"""
+
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for
+from functools import wraps
+import psycopg2, psycopg2.extras, psycopg2.errorcodes, psycopg2.pool
+import os, secrets, re, logging, threading, time
+from contextlib import contextmanager
+
+import bcrypt
+import requests
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from datetime import timedelta, datetime, timezone
+from authlib.integrations.flask_client import OAuth
+
+# ─────────────────────────────────────────────────────────
+#  App setup
+# ─────────────────────────────────────────────────────────
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+
+app.config["SESSION_COOKIE_SECURE"]   = True   # ← era False, CORRETTO
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"   # era "Strict", necessario per OAuth redirect
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
+
+# ─────────────────────────────────────────────────────────
+#  OAuth2 — Google e Discord
+# ─────────────────────────────────────────────────────────
+
+oauth = OAuth(app)
+
+oauth.register(
+    name='google',
+    client_id=os.environ.get('GOOGLE_CLIENT_ID', ''),
+    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid email profile'}
+)
+
+oauth.register(
+    name='discord',
+    client_id=os.environ.get('DISCORD_CLIENT_ID', ''),
+    client_secret=os.environ.get('DISCORD_CLIENT_SECRET', ''),
+    access_token_url='https://discord.com/api/oauth2/token',
+    authorize_url='https://discord.com/api/oauth2/authorize',
+    api_base_url='https://discord.com/',
+    client_kwargs={'scope': 'identify email'}
+)
+
+# reCAPTCHA secret SOLO da env var — mai hardcoded nel codice
+RECAPTCHA_SECRET = os.environ.get("RECAPTCHA_SECRET", "")
+
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
+
+# ─────────────────────────────────────────────────────────
+#  Logging
+# ─────────────────────────────────────────────────────────
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# ─────────────────────────────────────────────────────────
+#  Notifiche Discord (webhook)
+# ─────────────────────────────────────────────────────────
+
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
+DISCORD_CRON_SECRET = os.environ.get("DISCORD_CRON_SECRET", "")
+
+# ─────────────────────────────────────────────────────────
+#  Email via Brevo API HTTP (per reset password)
+# ─────────────────────────────────────────────────────────
+
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
+SMTP_FROM     = os.environ.get("SMTP_FROM", "ViaggaTreno_Virtual <ricoterzo@gmail.com>")
+APP_BASE_URL  = os.environ.get("APP_BASE_URL", "https://orts-passengers-server.onrender.com")
+
+def send_email(to_address: str, subject: str, body_html: str) -> bool:
+    """Invia un'email tramite Brevo API HTTP. Ritorna True se l'invio ha successo."""
+    if not BREVO_API_KEY:
+        logger.warning("BREVO_API_KEY non configurata: impossibile inviare email a %s", to_address)
+        return False
+    # Estrai nome e indirizzo da SMTP_FROM (es. "Nome <email@x.it>")
+    import re as _re
+    m = _re.match(r'^(.+?)\s*<(.+?)>$', SMTP_FROM.strip())
+    if m:
+        from_name, from_email = m.group(1).strip(), m.group(2).strip()
+    else:
+        from_name, from_email = "ViaggaTreno Virtual", SMTP_FROM.strip()
+    try:
+        resp = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={
+                "api-key": BREVO_API_KEY,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json={
+                "sender":      {"name": from_name, "email": from_email},
+                "to":          [{"email": to_address}],
+                "subject":     subject,
+                "htmlContent": body_html,
+            },
+            timeout=15,
+        )
+        if resp.status_code in (200, 201):
+            logger.info("Email inviata a %s — oggetto: %s", to_address, subject)
+            return True
+        else:
+            logger.error("Brevo API errore %s: %s", resp.status_code, resp.text)
+            return False
+    except Exception:
+        logger.exception("Errore invio email a %s", to_address)
+        return False
+
+def notify_discord(content=None, embed=None):
+    """Invia una notifica al webhook Discord. Non blocca/solleva mai
+    eccezioni: un fallimento qui non deve mai rompere la request principale."""
+    if not DISCORD_WEBHOOK_URL:
+        return
+    payload = {}
+    if content:
+        payload["content"] = content
+    if embed:
+        payload["embeds"] = [embed]
+    if not payload:
+        return
+    try:
+        requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=5)
+    except Exception:
+        logger.warning("Invio notifica Discord fallito", exc_info=True)
+
+# ─────────────────────────────────────────────────────────
+#  Rate Limiting
+# ─────────────────────────────────────────────────────────
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri=os.environ.get("REDIS_URL", "memory://")
+)
+
+# ─────────────────────────────────────────────────────────
+#  Database
+# ─────────────────────────────────────────────────────────
+
+def _create_pool_with_retry(
+    dsn: str,
+    minconn: int = 1,
+    maxconn: int = 8,
+    delays: tuple = (2, 4, 8, 16, 32),
+) -> psycopg2.pool.ThreadedConnectionPool:
+    """
+    Crea il ThreadedConnectionPool con retry esponenziale.
+
+    Un blip momentaneo al boot (pooler che si sveglia, network glitch,
+    circuit breaker Supabase) non causa più un crash immediato: il processo
+    ritenta fino a len(delays) volte prima di arrendersi — evitando il
+    crash-loop su Render.
+
+    delays: sequenza di secondi di attesa tra un tentativo e il successivo.
+            Default: 2 → 4 → 8 → 16 → 32 s  (totale max ~62 s di attesa).
+    """
+    last_exc: Exception | None = None
+    for attempt, wait in enumerate(delays, start=1):
+        try:
+            pool = psycopg2.pool.ThreadedConnectionPool(
+                minconn=minconn,
+                maxconn=maxconn,
+                dsn=dsn,
+            )
+            if attempt > 1:
+                logger.info("DB pool creato al tentativo %d.", attempt)
+            return pool
+        except Exception as exc:
+            last_exc = exc
+            logger.warning(
+                "Impossibile creare il DB pool (tentativo %d/%d): %s — "
+                "nuovo tentativo tra %ds…",
+                attempt, len(delays), exc, wait,
+            )
+            time.sleep(wait)
+
+    # Tutti i tentativi esauriti: crash esplicito con log chiaro
+    logger.critical(
+        "DB pool non creato dopo %d tentativi. Arresto del processo.",
+        len(delays),
+    )
+    raise RuntimeError(
+        f"Impossibile connettersi al database dopo {len(delays)} tentativi."
+    ) from last_exc
+
+
+db_pool = _create_pool_with_retry(
+    dsn=DATABASE_URL,
+    minconn=1,
+    maxconn=int(os.environ.get("DB_POOL_MAX", "8")),
+)
+
+@contextmanager
+def get_db():
+    """
+    Ritorna una connessione presa dal pool (NON ne apre una nuova ogni volta).
+    Al termine del blocco 'with' la connessione viene fatta commit/rollback
+    e restituita al pool — mai chiusa, mai 'persa'.
+
+    NB: prima, get_db() faceva psycopg2.connect(...) ad ogni chiamata e
+    'with conn:' su psycopg2 NON chiude la connessione (gestisce solo la
+    transazione), quindi ogni richiesta API lasciava una connessione TCP
+    aperta verso Postgres/Supabase fino al garbage collector. Con /api/live
+    che apriva 1 + N connessioni (N = utenti online) ad ogni poll dei
+    client, con 2+ utenti live il pool del pooler Supabase si esauriva
+    rapidamente e le richieste iniziavano a fallire silenziosamente.
+    """
+    conn = db_pool.getconn()
+    # Scarta connessioni "morte" (es. chiuse per inattività dal pooler
+    # Supabase): senza questo controllo verrebbe restituito un errore al
+    # primo utilizzo, e quella connessione resterebbe bloccata nel pool.
+    if conn.closed:
+        db_pool.putconn(conn, close=True)
+        conn = db_pool.getconn()
+
+    ok = True
+    try:
+        yield conn
+        conn.commit()
+    except psycopg2.OperationalError:
+        # Connessione caduta durante l'uso: non rimetterla nel pool,
+        # la prossima getconn() ne aprirà una nuova.
+        ok = False
+        raise
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        db_pool.putconn(conn, close=not ok)
+
+def fetchone(cur):
+    row = cur.fetchone()
+    if row is None:
+        return None
+    cols = [d[0] for d in cur.description]
+    return dict(zip(cols, row))
+
+def fetchall(cur):
+    cols = [d[0] for d in cur.description]
+    return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+def init_db():
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id            SERIAL PRIMARY KEY,
+                nome          TEXT    NOT NULL,
+                cognome       TEXT    NOT NULL,
+                username      TEXT    NOT NULL UNIQUE,
+                email         TEXT    NOT NULL UNIQUE,
+                password_hash TEXT    NOT NULL,
+                api_token     TEXT    NOT NULL UNIQUE,
+                created_at    TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS live_sessions (
+                user_id         INTEGER PRIMARY KEY REFERENCES users(id),
+                speed_kmh       REAL    DEFAULT 0,
+                comfort_live    REAL    DEFAULT 100,
+                delay_min       REAL    DEFAULT 0,
+                next_station    TEXT    DEFAULT '',
+                consist         TEXT    DEFAULT '',
+                sim_time        TEXT    DEFAULT '',
+                activity_name   TEXT    DEFAULT '',
+                updated_at      TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS heartbeats (
+                user_id     INTEGER PRIMARY KEY REFERENCES users(id),
+                last_seen   TIMESTAMPTZ NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS speed_history (
+                id          SERIAL PRIMARY KEY,
+                user_id     INTEGER NOT NULL REFERENCES users(id),
+                speed_kmh   REAL    NOT NULL,
+                sim_time    TEXT    DEFAULT '',
+                recorded_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS live_stations (
+                id              SERIAL PRIMARY KEY,
+                user_id         INTEGER NOT NULL REFERENCES users(id),
+                station_name    TEXT    NOT NULL,
+                arrival         TEXT    DEFAULT '',
+                departure       TEXT    DEFAULT '',
+                delay_min       REAL    DEFAULT 0,
+                passed          BOOLEAN DEFAULT FALSE,
+                is_current      BOOLEAN DEFAULT FALSE,
+                sort_order      INTEGER DEFAULT 0,
+                updated_at      TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS station_coords (
+                id          SERIAL PRIMARY KEY,
+                name        TEXT    NOT NULL UNIQUE,
+                lat         REAL    NOT NULL,
+                lon         REAL    NOT NULL,
+                updated_at  TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS user_stats (
+                user_id         INTEGER PRIMARY KEY REFERENCES users(id),
+                affidabilita    REAL    DEFAULT 0,
+                ultima_tratta   TEXT    DEFAULT '',
+                grade           TEXT    DEFAULT '',
+                updated_at      TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS sessions (
+                id              SERIAL PRIMARY KEY,
+                user_id         INTEGER NOT NULL REFERENCES users(id),
+                punteggio       REAL    NOT NULL,
+                ultimo_servizio TEXT    NOT NULL,
+                frenate_brusche INTEGER DEFAULT 0,
+                accel_brusche   INTEGER DEFAULT 0,
+                penalita        REAL    DEFAULT 0.0,
+                completamento   INTEGER DEFAULT 0,
+                durata_min      REAL    DEFAULT 0.0,
+                grade           TEXT    DEFAULT '',
+                registrata_at   TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id          SERIAL PRIMARY KEY,
+                user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                token       TEXT    NOT NULL UNIQUE,
+                expires_at  TIMESTAMPTZ NOT NULL,
+                used        BOOLEAN DEFAULT FALSE,
+                created_at  TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS user_stats_period (
+                user_id      INTEGER NOT NULL REFERENCES users(id),
+                period       TEXT    NOT NULL,
+                period_key   TEXT    NOT NULL,
+                affidabilita REAL    DEFAULT 0,
+                corse        INTEGER DEFAULT 0,
+                ultima_tratta TEXT   DEFAULT '',
+                grade        TEXT    DEFAULT '',
+                updated_at   TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (user_id, period, period_key)
+            );
+            """)
+        conn.commit()
+
+init_db()
+
+def migrate_db():
+    migrations = [
+        """CREATE TABLE IF NOT EXISTS station_coords (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            lat REAL NOT NULL,
+            lon REAL NOT NULL,
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )""",
+        """CREATE TABLE IF NOT EXISTS user_stats (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id),
+            affidabilita REAL DEFAULT 0,
+            ultima_tratta TEXT DEFAULT '',
+            grade TEXT DEFAULT '',
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_live REAL DEFAULT 100""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_grade TEXT DEFAULT ''""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_penalty REAL DEFAULT 0""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS speed_kmh REAL DEFAULT 0""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS delay_min REAL DEFAULT 0""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS next_station TEXT DEFAULT ''""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS consist TEXT DEFAULT ''""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS sim_time TEXT DEFAULT ''""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS activity_name TEXT DEFAULT ''""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS train_lat REAL DEFAULT 0""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS train_lon REAL DEFAULT 0""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS train_dir REAL DEFAULT 0""",
+        """ALTER TABLE users ADD COLUMN IF NOT EXISTS azienda TEXT DEFAULT ''""",
+        """ALTER TABLE users ADD COLUMN IF NOT EXISTS compartimento TEXT DEFAULT ''""",
+        """ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT""",
+        """ALTER TABLE users ADD COLUMN IF NOT EXISTS discord_id TEXT""",
+        # password_hash diventa nullable per utenti OAuth (non hanno password)
+        """ALTER TABLE users ALTER COLUMN password_hash SET DEFAULT ''""",
+        """CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            token TEXT NOT NULL UNIQUE,
+            expires_at TIMESTAMPTZ NOT NULL,
+            used BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )""",
+        """CREATE TABLE IF NOT EXISTS user_stats_period (
+            user_id      INTEGER NOT NULL REFERENCES users(id),
+            period       TEXT    NOT NULL,
+            period_key   TEXT    NOT NULL,
+            affidabilita REAL    DEFAULT 0,
+            corse        INTEGER DEFAULT 0,
+            ultima_tratta TEXT   DEFAULT '',
+            grade        TEXT    DEFAULT '',
+            updated_at   TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (user_id, period, period_key)
+        )""",
+    ]
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            for sql in migrations:
+                try:
+                    cur.execute(sql)
+                except Exception:
+                    pass
+        conn.commit()
+
+migrate_db()
+
+# ─────────────────────────────────────────────────────────
+#  Utility — Password (bcrypt)
+# ─────────────────────────────────────────────────────────
+
+def hash_password(pw: str) -> str:
+    """Genera hash bcrypt della password. Sicuro contro rainbow table."""
+    return bcrypt.hashpw(pw.encode(), bcrypt.gensalt(rounds=12)).decode()
+
+def check_password(pw: str, hashed: str) -> bool:
+    """Verifica password contro hash bcrypt.
+    Supporta anche hash SHA-256 legacy per utenti pre-migrazione.
+    Utenti OAuth hanno password_hash vuoto: per loro il login classico
+    è sempre negato, indipendentemente dalla password inserita."""
+    if not hashed:
+        return False
+    try:
+        # Tenta verifica bcrypt (nuovo formato)
+        return bcrypt.checkpw(pw.encode(), hashed.encode())
+    except Exception:
+        # Fallback: confronto SHA-256 legacy (da rimuovere dopo migrazione completa)
+        import hashlib
+        return hashlib.sha256(pw.encode()).hexdigest() == hashed
+
+def migrate_password_if_needed(user_id: int, password: str, stored_hash: str) -> None:
+    """Se l'hash è ancora nel vecchio formato SHA-256 (non bcrypt),
+    lo rigenera in bcrypt dopo un login riuscito. Migrazione 'lazy',
+    un utente alla volta, senza toccare gli altri."""
+    if stored_hash and not stored_hash.startswith(("$2a$", "$2b$", "$2y$")):
+        new_hash = hash_password(password)
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_hash, user_id))
+            conn.commit()
+        logger.info("Password migrata a bcrypt per user_id=%s", user_id)
+
+def _oauth_login_or_create(provider: str, provider_id: str, email: str,
+                            nome: str, cognome: str) -> dict:
+    """
+    Cerca l'utente per provider_id o email.
+    Se non esiste lo crea con password vuota (non può fare login classico).
+    Restituisce il record utente.
+    """
+    id_col = f"{provider}_id"   # 'google_id' o 'discord_id'
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            # Prima cerca per provider ID
+            cur.execute(f"SELECT * FROM users WHERE {id_col}=%s", (provider_id,))
+            user = fetchone(cur)
+            if not user and email:
+                # Poi per email (utente già registrato con metodo classico)
+                cur.execute("SELECT * FROM users WHERE email=%s", (email,))
+                user = fetchone(cur)
+
+            if user:
+                # Collega il provider_id se mancava (es. stesso utente, prima volta OAuth)
+                if not user.get(id_col):
+                    cur.execute(
+                        f"UPDATE users SET {id_col}=%s WHERE id=%s",
+                        (provider_id, user["id"])
+                    )
+                return user
+
+            # Crea nuovo utente OAuth
+            username_base = (email.split("@")[0] if email else f"{provider}_{provider_id[:8]}")
+            username_base = re.sub(r"[^a-zA-Z0-9_.\-]", "_", username_base)[:28]
+            username = username_base
+            suffix = 1
+            while True:
+                cur.execute("SELECT id FROM users WHERE username=%s", (username,))
+                if not cur.fetchone():
+                    break
+                username = f"{username_base}_{suffix}"
+                suffix += 1
+
+            api_token = secrets.token_hex(32)
+            cur.execute(
+                f"""INSERT INTO users
+                    (nome, cognome, username, email, password_hash, api_token, {id_col})
+                    VALUES (%s,%s,%s,%s,%s,%s,%s)
+                    RETURNING *""",
+                (nome or username, cognome or "", username,
+                 email or "", "", api_token, provider_id)
+            )
+            user = fetchone(cur)
+            # Crea riga user_stats
+            cur.execute(
+                "INSERT INTO user_stats (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                (user["id"],)
+            )
+            logger.info("Nuovo utente OAuth (%s) creato: %s", provider, username)
+            notify_discord(content=f"🆕 Nuovo utente via {provider.capitalize()}: **{username}**")
+            return user
+
+# ─────────────────────────────────────────────────────────
+#  Utility — Validazione
+# ─────────────────────────────────────────────────────────
+
+def validate_email(email: str) -> bool:
+    return bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email))
+
+def validate_username(username: str) -> bool:
+    """Solo lettere, numeri, underscore, punto, trattino. Lunghezza 3-30."""
+    return bool(re.match(r"^[a-zA-Z0-9_.\-]{3,30}$", username))
+
+# ─────────────────────────────────────────────────────────
+#  Utility — Periodi classifica (settimanale/mensile)
+# ─────────────────────────────────────────────────────────
+
+def current_week_key() -> str:
+    """Es. '2026-W24' — ISO week, si resetta ogni lunedì."""
+    iso = __import__("datetime").datetime.utcnow().isocalendar()
+    return f"{iso[0]}-W{iso[1]:02d}"
+
+def current_month_key() -> str:
+    """Es. '2026-06' — si resetta il primo giorno del mese."""
+    return __import__("datetime").datetime.utcnow().strftime("%Y-%m")
+
+# ─────────────────────────────────────────────────────────
+#  Utility — Anti-spam: domini email usa-e-getta
+# ─────────────────────────────────────────────────────────
+
+DISPOSABLE_EMAIL_DOMAINS = {
+    "mailinator.com", "10minutemail.com", "10minutemail.net", "guerrillamail.com",
+    "guerrillamail.net", "guerrillamail.org", "guerrillamail.biz", "guerrillamailblock.com",
+    "tempmail.com", "temp-mail.org", "throwawaymail.com", "yopmail.com", "yopmail.fr",
+    "yopmail.net", "fakeinbox.com", "trashmail.com", "trashmail.net", "trashmail.me",
+    "getnada.com", "maildrop.cc", "mailnesia.com", "mintemail.com", "mailcatch.com",
+    "spamgourmet.com", "dispostable.com", "mohmal.com", "emailondeck.com",
+    "tempinbox.com", "sharklasers.com", "mytemp.email", "moakt.com", "moakt.cc",
+    "33mail.com", "anonbox.net", "spambog.com", "spambog.de", "spambog.ru",
+    "tempr.email", "discardmail.com", "discardmail.de", "mailbox52.ml", "mailbox92.biz",
+    "fakemailgenerator.com", "burnermail.io", "incognitomail.com", "tempmailaddress.com",
+    "luxusmail.org", "0-mail.com", "1secmail.com", "1secmail.net", "1secmail.org",
+    "emailtemporanea.com", "emailtemporanea.net", "throwam.com", "tempemail.co",
+    "deadaddress.com", "mailforspam.com", "mailnull.com", "no-spam.ws", "spam4.me",
+    "armyspy.com", "cuvox.de", "dayrep.com", "einrot.com", "fleckens.hu", "gustr.com",
+    "jourrapide.com", "rhyta.com", "superrito.com", "teleworm.us",
+}
+
+def is_disposable_email(email: str) -> bool:
+    try:
+        domain = email.rsplit("@", 1)[1].strip().lower()
+    except IndexError:
+        return False
+    return domain in DISPOSABLE_EMAIL_DOMAINS
+
+# ─────────────────────────────────────────────────────────
+#  Utility — CSRF
+# ─────────────────────────────────────────────────────────
+
+def generate_csrf_token() -> str:
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(32)
+    return session["csrf_token"]
+
+def verify_csrf(f):
+    """Decorator: verifica X-CSRF-Token header per endpoint POST sensibili."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get("X-CSRF-Token", "")
+        if not token or not secrets.compare_digest(token, session.get("csrf_token", "")):
+            logger.warning("CSRF check fallito da IP %s", request.remote_addr)
+            return jsonify({"ok": False, "error": "Token CSRF non valido"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+def require_login(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login_page"))
+        return f(*args, **kwargs)
+    return decorated
+
+# ─────────────────────────────────────────────────────────
+#  Pagine HTML
+# ─────────────────────────────────────────────────────────
+
+@app.route("/")
+def index():
+    return redirect(url_for("leaderboard_page"))
+
+@app.route("/register")
+def register_page():
+    return render_template("register.html")
+
+@app.route("/login")
+def login_page():
+    token = generate_csrf_token()
+    return render_template("login.html", csrf_token=token)
+
+@app.route("/leaderboard")
+def leaderboard_page():
+    if "user_id" not in session:
+        return redirect(url_for("login_page"))
+    return render_template("leaderboard.html")
+
+@app.route("/completa-profilo")
+@require_login
+def complete_profile_page():
+    token = generate_csrf_token()
+    return render_template("complete_profile.html", csrf_token=token)
+
+@app.route("/profile")
+@require_login
+def profile_page():
+    return render_template("profile.html")
+
+# ─────────────────────────────────────────────────────────
+#  API Auth
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/csrf_token")
+def api_csrf_token():
+    """Endpoint per ottenere il CSRF token corrente (usato dal frontend)."""
+    return jsonify({"csrf_token": generate_csrf_token()})
+
+@app.route("/api/register", methods=["POST"])
+@limiter.limit("5 per minute; 20 per hour")   # anti-spam registrazione
+def api_register():
+    data     = request.get_json(force=True) or {}
+    nome     = (data.get("nome",     "") or "").strip()
+    cognome  = (data.get("cognome",  "") or "").strip()
+    username = (data.get("username", "") or "").strip()
+    email    = (data.get("email",    "") or "").strip().lower()
+    password = data.get("password", "") or ""
+
+    # Honeypot anti-bot: campo nascosto che solo i bot compilano
+    honeypot = (data.get("website", "") or "").strip()
+    if honeypot:
+        logger.warning("Registrazione bloccata da honeypot per IP %s", request.remote_addr)
+        # Risposta finta "ok" per non rivelare ai bot la presenza dell'honeypot
+        return jsonify({"ok": True, "message": "Registrazione completata!"})
+
+    captcha_token = data.get("captcha", "")
+    if not captcha_token:
+        return jsonify({"ok": False, "error": "Captcha mancante"}), 400
+
+    if not RECAPTCHA_SECRET:
+        logger.error("RECAPTCHA_SECRET non configurato nelle env var!")
+        return jsonify({"ok": False, "error": "Configurazione server incompleta"}), 500
+
+    import urllib.request as _ur, json as _json
+    try:
+        _resp = _ur.urlopen(
+            f"https://www.google.com/recaptcha/api/siteverify"
+            f"?secret={RECAPTCHA_SECRET}&response={captcha_token}",
+            timeout=5
+        )
+        _rc = _json.loads(_resp.read())
+        if not _rc.get("success"):
+            return jsonify({"ok": False, "error": "Captcha non valido"}), 400
+    except Exception:
+        return jsonify({"ok": False, "error": "Errore verifica captcha"}), 500
+
+    if not all([nome, cognome, username, email, password]):
+        return jsonify({"ok": False, "error": "Tutti i campi sono obbligatori"}), 400
+    if len(password) < 6:
+        return jsonify({"ok": False, "error": "La password deve essere di almeno 6 caratteri"}), 400
+    if not validate_email(email):
+        return jsonify({"ok": False, "error": "Email non valida"}), 400
+    if is_disposable_email(email):
+        return jsonify({"ok": False, "error": "Indirizzi email temporanei/usa-e-getta non sono ammessi"}), 400
+    if not validate_username(username):
+        return jsonify({"ok": False, "error": "Username non valido (solo lettere, numeri, _, ., - ; 3-30 caratteri)"}), 400
+
+    token = secrets.token_hex(32)
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO users (nome, cognome, username, email, password_hash, api_token, azienda, compartimento) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (nome, cognome, username, email, hash_password(password), token, '', '')
+                )
+            conn.commit()
+        logger.info("Nuovo utente registrato: %s", username)
+        return jsonify({"ok": True, "redirect_to": "/completa-profilo"})
+    except psycopg2.errors.UniqueViolation as e:
+        msg = str(e)
+        if "username" in msg:
+            return jsonify({"ok": False, "error": "Username già in uso"}), 409
+        return jsonify({"ok": False, "error": "Email già registrata"}), 409
+
+
+@app.route("/api/login", methods=["POST"])
+@limiter.limit("10 per minute; 50 per hour")   # anti brute-force
+def api_login():
+    data     = request.get_json(force=True) or {}
+    username = (data.get("username", "") or "").strip()
+    password = data.get("password", "") or ""
+
+    if not username or not password:
+        return jsonify({"ok": False, "error": "Credenziali mancanti"}), 400
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM users WHERE (username=%s OR email=%s)",
+                (username, username)
+            )
+            user = fetchone(cur)
+
+    # Verifica password separata dall'interrogazione (evita timing oracle)
+    if not user or not check_password(password, user["password_hash"]):
+        logger.warning("Login fallito per '%s' da IP %s", username, request.remote_addr)
+        return jsonify({"ok": False, "error": "Credenziali non valide"}), 401
+
+    # Migra hash SHA-256 legacy → bcrypt se necessario
+    migrate_password_if_needed(user["id"], password, user["password_hash"])
+
+    session.permanent   = True
+    session["user_id"]  = user["id"]
+    session["username"] = user["username"]
+    # Rigenera CSRF token ad ogni login
+    session.pop("csrf_token", None)
+    csrf = generate_csrf_token()
+
+    logger.info("Login utente: %s da IP %s", user["username"], request.remote_addr)
+    profile_complete = bool(user.get("azienda") and user.get("compartimento"))
+    redirect_to = "/leaderboard" if profile_complete else "/completa-profilo"
+    return jsonify({"ok": True, "username": user["username"], "csrf_token": csrf, "redirect_to": redirect_to})
+
+@app.route("/api/logout", methods=["POST"])
+def api_logout():
+    logger.info("Logout utente: %s", session.get("username", "?"))
+    session.clear()
+    return jsonify({"ok": True})
+
+@app.route("/api/me")
+def api_me():
+    if "user_id" not in session:
+        return jsonify({"logged_in": False})
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM users WHERE id=%s", (session["user_id"],))
+            user = fetchone(cur)
+            if not user:
+                return jsonify({"logged_in": False})
+            cur.execute(
+                "SELECT COUNT(*) as runs, MAX(punteggio) as best, AVG(punteggio) as avg "
+                "FROM sessions WHERE user_id=%s", (user["id"],)
+            )
+            stats = fetchone(cur)
+    return jsonify({
+        "logged_in":  True,
+        "username":   user["username"],
+        "nome":       user["nome"],
+        "cognome":    user["cognome"],
+        "email":      user["email"],
+        "api_token":  user["api_token"],
+        "created_at": str(user["created_at"]),
+        "runs":       stats["runs"] or 0,
+        "best_score": round(float(stats["best"] or 0), 1),
+        "avg_score":  round(float(stats["avg"]  or 0), 1),
+        "azienda":       user.get("azienda") or "",
+        "compartimento": user.get("compartimento") or "",
+        "csrf_token": generate_csrf_token(),
     })
-    .catch(()=>{
-      document.getElementById('drawer-body').innerHTML='<div class="drawer-empty" style="color:var(--red)">Errore caricamento sessioni.</div>';
-    });
-}
-function closeDrawer(){
-  document.getElementById('drawer-overlay').classList.remove('open');
-  document.body.style.overflow='';
-}
-// ── Popup utenti registrati ──
-let allUsersCache = [];
-let usersSortKey = 'nome';
-let usersSortAsc = true;
-let usersFilterOnline = false;
 
-async function openUsersPopup(){
-  document.getElementById('overlay-users').classList.add('open');
-  document.body.style.overflow='hidden';
-  const body=document.getElementById('users-popup-body');
-  body.innerHTML='<div class="users-modal-loading">Caricamento...</div>';
-  document.getElementById('users-search-input').value='';
-  usersFilterOnline=false;
-  document.getElementById('filter-btn-online').classList.remove('active');
+@app.route("/api/profile/extra", methods=["POST"])
+@require_login
+@verify_csrf
+def api_profile_extra():
+    data = request.get_json(silent=True) or {}
+    azienda = (data.get("azienda") or "").strip()
+    compartimento = (data.get("compartimento") or "").strip()
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            try:
+                cur.execute(
+                    "UPDATE users SET azienda=%s, compartimento=%s WHERE id=%s",
+                    (azienda, compartimento, session["user_id"])
+                )
+            except Exception:
+                conn.rollback()
+                # Colonne mancanti: applica la migrazione e riprova
+                with conn.cursor() as cur2:
+                    cur2.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS azienda TEXT DEFAULT ''")
+                    cur2.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS compartimento TEXT DEFAULT ''")
+                conn.commit()
+                with conn.cursor() as cur3:
+                    cur3.execute(
+                        "UPDATE users SET azienda=%s, compartimento=%s WHERE id=%s",
+                        (azienda, compartimento, session["user_id"])
+                    )
+        conn.commit()
+    return jsonify({"ok": True, "azienda": azienda, "compartimento": compartimento})
 
-  try{
-    const r=await fetch('/api/users');
-    const users=await r.json();
-    allUsersCache=users;
-    // Mostra bottone online solo se almeno un utente è online
-    const anyOnline=users.some(u=>u.online);
-    const btn=document.getElementById('filter-btn-online');
-    btn.classList.toggle('visible', anyOnline);
-    renderUsersPopup(getSortedFiltered(''));
-  }catch(e){
-    body.innerHTML='<div class="users-modal-empty" style="color:var(--red)">Errore caricamento utenti.</div>';
-  }
-}
+@app.route("/api/regenerate_token", methods=["POST"])
+@require_login
+@verify_csrf
+def api_regenerate_token():
+    """Permette all'utente di rigenerare il proprio api_token se compromesso."""
+    new_token = secrets.token_hex(32)
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET api_token=%s WHERE id=%s",
+                (new_token, session["user_id"])
+            )
+        conn.commit()
+    logger.info("API token rigenerato per user_id=%s", session["user_id"])
+    return jsonify({"ok": True, "api_token": new_token})
 
-function setUsersSort(key){
-  if(usersSortKey===key){ usersSortAsc=!usersSortAsc; }
-  else{ usersSortKey=key; usersSortAsc=(key!=='punteggio'); }
-  ['nome','data','punteggio'].forEach(k=>{
-    const btn=document.getElementById('sort-btn-'+k);
-    const arrow=document.getElementById('sort-arrow-'+k);
-    if(k===usersSortKey){
-      btn.classList.add('active');
-      arrow.textContent=usersSortAsc?'↑':'↓';
-    } else {
-      btn.classList.remove('active');
-      arrow.textContent='';
-    }
-  });
-  const q=document.getElementById('users-search-input').value;
-  renderUsersPopup(getSortedFiltered(q), q);
-}
+# ─────────────────────────────────────────────────────────
+#  OAuth2 — Google
+# ─────────────────────────────────────────────────────────
 
-function toggleOnlineFilter(){
-  usersFilterOnline=!usersFilterOnline;
-  const btn=document.getElementById('filter-btn-online');
-  btn.classList.toggle('active', usersFilterOnline);
-  const q=document.getElementById('users-search-input').value;
-  renderUsersPopup(getSortedFiltered(q), q);
-}
+@app.route("/auth/google")
+def auth_google():
+    redirect_uri = url_for("auth_google_callback", _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
 
-function getSortedFiltered(query){
-  const q=query.toLowerCase().trim();
-  let list=allUsersCache.slice();
-  if(q) list=list.filter(u=>u.username.toLowerCase().includes(q));
-  if(usersFilterOnline) list=list.filter(u=>u.online);
-  list.sort((a,b)=>{
-    if(usersSortKey==='nome'){
-      const va=a.username.toLowerCase(), vb=b.username.toLowerCase();
-      return usersSortAsc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);
-    } else if(usersSortKey==='data'){
-      const va=a.created_at||'', vb=b.created_at||'';
-      return usersSortAsc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);
-    } else {
-      const va=parseFloat(a.punteggio||0), vb=parseFloat(b.punteggio||0);
-      return usersSortAsc?(va-vb):(vb-va);
-    }
-  });
-  return list;
-}
+@app.route("/auth/google/callback")
+def auth_google_callback():
+    try:
+        token = oauth.google.authorize_access_token()
+        info  = token.get("userinfo") or oauth.google.userinfo(token=token)
+        provider_id = str(info["sub"])
+        email       = (info.get("email") or "").lower()
+        nome        = info.get("given_name", "")
+        cognome     = info.get("family_name", "")
+    except Exception as e:
+        logger.warning("Google OAuth callback error: %s", e)
+        return redirect(url_for("login_page") + "?oauth_error=google")
 
-function closeUsersPopup(){
-  document.getElementById('overlay-users').classList.remove('open');
-  document.body.style.overflow='';
-}
+    user = _oauth_login_or_create("google", provider_id, email, nome, cognome)
+    session.permanent  = True
+    session["user_id"] = user["id"]
+    session["username"]= user["username"]
+    session.pop("csrf_token", None)
+    generate_csrf_token()
+    if not (user.get("azienda") and user.get("compartimento")):
+        return redirect(url_for("complete_profile_page"))
+    return redirect(url_for("leaderboard_page"))
 
-function filterUsers(query){
-  renderUsersPopup(getSortedFiltered(query), query);
-}
+# ─────────────────────────────────────────────────────────
+#  OAuth2 — Discord
+# ─────────────────────────────────────────────────────────
 
-function fmtDate(iso){
-  if(!iso) return '—';
-  const p=iso.slice(0,10).split('-');
-  if(p.length<3) return iso.slice(0,10);
-  return p[2]+'/'+p[1]+'/'+p[0].slice(2);
-}
+@app.route("/auth/discord")
+def auth_discord():
+    redirect_uri = url_for("auth_discord_callback", _external=True)
+    return oauth.discord.authorize_redirect(redirect_uri)
 
-function renderUsersPopup(users, query=''){
-  const body=document.getElementById('users-popup-body');
-  document.getElementById('users-popup-count').textContent=users.length;
-  if(!users.length){
-    body.innerHTML=query
-      ?'<div class="users-modal-empty">Nessun utente trovato per "<strong>'+query+'</strong>"</div>'
-      :'<div class="users-modal-empty">Nessun utente registrato.</div>';
-    return;
-  }
-  body.innerHTML=users.map((u,i)=>{
-    const initials=(u.username||'?').slice(0,2).toUpperCase();
-    const colorIdx=Object.keys(_userColorMap).indexOf(u.username);
-    const avatarColor=USER_COLORS[((colorIdx>=0?colorIdx:i)%USER_COLORS.length)];
-    const sc=parseFloat(u.punteggio||0);
-    const hasCorse=u.corse>0;
-    const hasScore=!isNaN(sc)&&sc>0&&hasCorse;
-    const gradeText=u.grade||'';
-    const onlineDot=u.online?`<span class="users-online-dot" title="Online ora"></span>`:'';
-    const scoreHtml=hasScore
-      ?`<div class="users-modal-score" style="color:${scoreColor(sc)}">${sc.toFixed(1)}<span style="font-size:9px;opacity:.5">/100</span></div>`
-      :`<div class="users-modal-score" style="color:var(--dimgrey);font-size:11px">Nessuna corsa</div>`;
-    const subInfo=hasCorse
-      ?(gradeText?`<div class="users-modal-grade">${gradeText} · ${u.corse} cors${u.corse===1?'a':'e'}</div>`
-                 :`<div class="users-modal-grade">${u.corse} cors${u.corse===1?'a':'e'}</div>`)
-      :(u.created_at?`<div class="users-modal-grade">Iscritto il ${fmtDate(u.created_at)}</div>`:'');
-    return`<div class="users-modal-row">
-      <div class="users-modal-row-left">
-        <div class="users-modal-avatar" style="background:${avatarColor}22;border-color:${avatarColor}44;color:${avatarColor}">${initials}</div>
-        <div>
-          <div class="users-modal-name">${u.username}</div>
-          ${subInfo}
-        </div>
-        ${onlineDot}
-      </div>
-      <div class="users-modal-right">
-        ${scoreHtml}
-      </div>
-    </div>`;
-  }).join('');
-}
+@app.route("/auth/discord/callback")
+def auth_discord_callback():
+    try:
+        oauth.discord.authorize_access_token()
+        resp = oauth.discord.get("api/users/@me")
+        info = resp.json()
+        provider_id = str(info["id"])
+        email       = (info.get("email") or "").lower()
+        username_dc = info.get("username", "")
+        nome        = username_dc
+        cognome     = ""
+    except Exception as e:
+        logger.warning("Discord OAuth callback error: %s", e)
+        return redirect(url_for("login_page") + "?oauth_error=discord")
 
-document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeDrawer();closeUsersPopup();}
-});
+    user = _oauth_login_or_create("discord", provider_id, email, nome, cognome)
+    session.permanent  = True
+    session["user_id"] = user["id"]
+    session["username"]= user["username"]
+    session.pop("csrf_token", None)
+    generate_csrf_token()
+    if not (user.get("azienda") and user.get("compartimento")):
+        return redirect(url_for("complete_profile_page"))
+    return redirect(url_for("leaderboard_page"))
 
-// ── Hamburger nav ──
-function toggleNav(){
-  const btn=document.getElementById('hamburger-btn');
-  const nav=document.getElementById('nav-drawer');
-  const open=nav.classList.toggle('open');
-  btn.classList.toggle('open',open);
-  btn.setAttribute('aria-expanded',open);
-}
-function closeNav(){
-  const btn=document.getElementById('hamburger-btn');
-  const nav=document.getElementById('nav-drawer');
-  nav.classList.remove('open');
-  btn.classList.remove('open');
-  btn.setAttribute('aria-expanded','false');
-}
-function toggleMenu(e){
-  e.stopPropagation();
-  const dd=document.getElementById('menu-dropdown');
-  const btn=document.getElementById('btn-menu');
-  const open=dd.classList.toggle('open');
-  btn.setAttribute('aria-expanded',open);
-}
-function closeMenu(){
-  const dd=document.getElementById('menu-dropdown');
-  const btn=document.getElementById('btn-menu');
-  dd.classList.remove('open');
-  btn.setAttribute('aria-expanded','false');
-}
-document.addEventListener('click',e=>{
-  const nav=document.getElementById('nav-drawer');
-  const btn=document.getElementById('hamburger-btn');
-  if(nav.classList.contains('open')&&!nav.contains(e.target)&&!btn.contains(e.target)){closeNav();}
-  // Chiudi dropdown menù se click fuori
-  const dd=document.getElementById('menu-dropdown');
-  const mw=document.getElementById('menu-wrap');
-  if(dd&&dd.classList.contains('open')&&mw&&!mw.contains(e.target)){closeMenu();}
-});
+# ─────────────────────────────────────────────────────────
+#  API Leaderboard
+# ─────────────────────────────────────────────────────────
 
-// ── Init ──
-checkMe();
-loadLeaderboard();
-initMap();
-startDeadReckoningLoop();
-loadStationCoords().then(() => loadLive()).catch(() => loadLive());
-setInterval(loadLeaderboard,15000);
-setInterval(loadLive, POLL_INTERVAL_MS);
-setInterval(loadStationCoords,300000);
-</script>
+@app.route("/api/leaderboard")
+def api_leaderboard():
+    """Classifica generale (default, mai si resetta), oppure settimanale/mensile
+    tramite il parametro ?period=week|month. La classifica generale resta
+    sempre basata sulla affidabilita' cumulativa in user_stats."""
+    period = request.args.get("period", "all").strip().lower()
 
-<!-- POPUP UTENTI REGISTRATI -->
-<div class="overlay" id="overlay-users" onclick="if(event.target===this)closeUsersPopup()">
-  <div class="users-modal">
-    <div class="users-modal-hdr">
-      <div class="users-modal-title">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.456.76 1.72l-.008.002-.014.002H7.022zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816zM4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275zM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0zm3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
-        Utenti Registrati
-        <span class="users-modal-count" id="users-popup-count">—</span>
-      </div>
-      <button class="users-modal-close" onclick="closeUsersPopup()">✕</button>
-    </div>
-    <div class="users-modal-search">
-      <input type="text" id="users-search-input" placeholder="Cerca username..." oninput="filterUsers(this.value)" autocomplete="off">
-    </div>
-    <div class="users-modal-toolbar">
-      <span class="users-sort-lbl">Ordina:</span>
-      <button class="users-sort-btn active" id="sort-btn-nome" onclick="setUsersSort('nome')">Nome <span class="users-sort-arrow" id="sort-arrow-nome">↑</span></button>
-      <button class="users-sort-btn" id="sort-btn-data" onclick="setUsersSort('data')">Data <span class="users-sort-arrow" id="sort-arrow-data"></span></button>
-      <button class="users-sort-btn" id="sort-btn-punteggio" onclick="setUsersSort('punteggio')">Punteggio <span class="users-sort-arrow" id="sort-arrow-punteggio"></span></button>
-      <button class="users-filter-online" id="filter-btn-online" onclick="toggleOnlineFilter()"><span class="filter-dot"></span>Online</button>
-    </div>
-    <div class="users-modal-body" id="users-popup-body">
-      <div class="users-modal-loading">Caricamento...</div>
-    </div>
-  </div>
-</div>
+    if period == "week":
+        period_key = current_week_key()
+    elif period == "month":
+        period_key = current_month_key()
+    else:
+        period = "all"
+        period_key = None
 
-<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()">
-  <div class="drawer" onclick="event.stopPropagation()">
-    <div class="drawer-hdr">
-      <div class="drawer-hdr-left">
-        <div class="drawer-title" id="drawer-username">—</div>
-        <div class="drawer-sub" id="drawer-grade">—</div>
-      </div>
-      <button class="drawer-close" onclick="closeDrawer()">✕</button>
-    </div>
-    <div class="drawer-stats">
-      <div class="drawer-stat"><div class="drawer-stat-val" id="drawer-corse">—</div><div class="drawer-stat-lbl">Corse</div></div>
-      <div class="drawer-stat"><div class="drawer-stat-val" id="drawer-best">—</div><div class="drawer-stat-lbl">Best</div></div>
-      <div class="drawer-stat"><div class="drawer-stat-val" id="drawer-media">—</div><div class="drawer-stat-lbl">Media</div></div>
-    </div>
-    <div class="drawer-list-hdr">
-      <span>Tratta</span>
-      <span class="r">Data</span>
-      <span class="r">Punteggio</span>
-      <span></span>
-    </div>
-    <div class="drawer-body" id="drawer-body">
-      <div class="drawer-loading">Caricamento...</div>
-    </div>
-  </div>
-</div>
-</body>
-</html>
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            if period == "all":
+                cur.execute("""
+                    SELECT
+                        u.id                              AS user_id,
+                        u.username,
+                        COALESCE(u.azienda, '')          AS azienda,
+                        COALESCE(u.compartimento, '')    AS compartimento,
+                        COALESCE(us.affidabilita, 0)    AS punteggio,
+                        COALESCE(us.ultima_tratta, '')  AS ultimo_servizio,
+                        COALESCE(us.grade, '')           AS grade,
+                        COUNT(s.id)                      AS corse,
+                        CASE
+                            WHEN h.last_seen >= NOW() - INTERVAL '2 minutes'
+                            THEN 1 ELSE 0
+                        END                              AS online,
+                        ls.speed_kmh,
+                        ls.delay_min,
+                        ls.next_station,
+                        ls.consist,
+                        ls.sim_time,
+                        ls.activity_name,
+                        ls.comfort_live
+                    FROM users u
+                    LEFT JOIN user_stats us ON us.user_id = u.id
+                    LEFT JOIN sessions s ON s.user_id = u.id
+                    LEFT JOIN heartbeats h ON h.user_id = u.id
+                    LEFT JOIN live_sessions ls ON ls.user_id = u.id
+                    WHERE us.affidabilita IS NOT NULL
+                    GROUP BY u.id, u.username, u.azienda, u.compartimento, us.affidabilita, us.ultima_tratta,
+                             us.grade, h.last_seen, ls.speed_kmh, ls.delay_min,
+                             ls.next_station, ls.consist, ls.sim_time,
+                             ls.activity_name, ls.comfort_live
+                    ORDER BY us.affidabilita DESC
+                    LIMIT 100
+                """)
+            else:
+                cur.execute("""
+                    SELECT
+                        u.id                              AS user_id,
+                        u.username,
+                        COALESCE(u.azienda, '')          AS azienda,
+                        COALESCE(u.compartimento, '')    AS compartimento,
+                        COALESCE(usp.affidabilita, 0)   AS punteggio,
+                        COALESCE(usp.ultima_tratta, '') AS ultimo_servizio,
+                        COALESCE(usp.grade, '')          AS grade,
+                        COALESCE(usp.corse, 0)           AS corse,
+                        CASE
+                            WHEN h.last_seen >= NOW() - INTERVAL '2 minutes'
+                            THEN 1 ELSE 0
+                        END                              AS online,
+                        ls.speed_kmh,
+                        ls.delay_min,
+                        ls.next_station,
+                        ls.consist,
+                        ls.sim_time,
+                        ls.activity_name,
+                        ls.comfort_live
+                    FROM users u
+                    JOIN user_stats_period usp ON usp.user_id = u.id
+                        AND usp.period = %s AND usp.period_key = %s
+                    LEFT JOIN heartbeats h ON h.user_id = u.id
+                    LEFT JOIN live_sessions ls ON ls.user_id = u.id
+                    ORDER BY usp.affidabilita DESC
+                    LIMIT 100
+                """, (period, period_key))
+            rows = fetchall(cur)
+
+    for row in rows:
+        row.pop("user_id", None)
+
+    return jsonify(rows)
+
+@app.route("/api/users/count")
+def api_users_count():
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) AS count FROM users")
+            row = fetchone(cur)
+    return jsonify({"count": row["count"] if row else 0})
+
+@app.route("/api/users")
+def api_users():
+    """Lista tutti gli utenti registrati con statistiche aggregate (pubblica, senza dati sensibili)."""
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    u.username,
+                    u.created_at::text                   AS created_at,
+                    COALESCE(us.affidabilita, 0)         AS punteggio,
+                    COALESCE(us.grade, '')               AS grade,
+                    COUNT(s.id)                          AS corse,
+                    CASE
+                        WHEN h.last_seen >= NOW() - INTERVAL '2 minutes'
+                        THEN 1 ELSE 0
+                    END                                  AS online
+                FROM users u
+                LEFT JOIN user_stats us ON us.user_id = u.id
+                LEFT JOIN sessions   s  ON s.user_id  = u.id
+                LEFT JOIN heartbeats h  ON h.user_id  = u.id
+                GROUP BY u.id, u.username, u.created_at,
+                         us.affidabilita, us.grade, h.last_seen
+                ORDER BY u.username ASC
+            """)
+            rows = fetchall(cur)
+    return jsonify(rows)
+
+@app.route("/api/my_sessions")
+def api_my_sessions():
+    if "user_id" not in session:
+        return jsonify([]), 401
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT punteggio, ultimo_servizio, grade, frenate_brusche,
+                       accel_brusche, penalita, completamento,
+                       registrata_at::text AS registrata_at
+                FROM sessions WHERE user_id=%s
+                ORDER BY registrata_at DESC LIMIT 50
+            """, (session["user_id"],))
+            rows = fetchall(cur)
+    return jsonify(rows)
+
+@app.route("/api/my_history")
+def api_my_history():
+    """Storico cronologico del punteggio dell'utente loggato, più la
+    media generale della piattaforma per il confronto nel grafico."""
+    if "user_id" not in session:
+        return jsonify({"ok": False, "error": "Non autenticato"}), 401
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT punteggio, ultimo_servizio, grade,
+                       registrata_at::text AS registrata_at
+                FROM sessions WHERE user_id=%s
+                ORDER BY registrata_at DESC LIMIT 50
+            """, (session["user_id"],))
+            rows = fetchall(cur)
+            rows.reverse()
+
+            cur.execute("SELECT AVG(punteggio) AS avg FROM sessions")
+            platform = fetchone(cur)
+
+    platform_avg = float(platform["avg"]) if platform and platform["avg"] is not None else None
+    return jsonify({"ok": True, "sessions": rows, "platform_avg": platform_avg})
+
+@app.route("/api/user_sessions/<username>")
+def api_user_sessions(username):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE username=%s", (username,))
+            user = fetchone(cur)
+    if not user:
+        return jsonify([])
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT punteggio, ultimo_servizio, grade,
+                       registrata_at::text AS registrata_at
+                FROM sessions WHERE user_id=%s
+                ORDER BY registrata_at DESC LIMIT 50
+            """, (user["id"],))
+            rows = fetchall(cur)
+    return jsonify(rows)
+
+# ─────────────────────────────────────────────────────────
+#  API ricezione dati dall'EXE
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/submit", methods=["POST"])
+@limiter.limit("30 per minute")   # anti-spam submit sessioni
+def api_submit():
+    token = request.headers.get("X-API-Token", "").strip()
+    if not token:
+        return jsonify({"ok": False, "error": "Token mancante"}), 401
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM users WHERE api_token=%s", (token,))
+            user = fetchone(cur)
+    if not user:
+        logger.warning("Submit con token non valido da IP %s", request.remote_addr)
+        return jsonify({"ok": False, "error": "Token non valido"}), 401
+
+    data = request.get_json(force=True) or {}
+    try:
+        punteggio       = float(data.get("punteggio", 0))
+        ultimo_servizio = str(data.get("ultimo_servizio", "Sconosciuto"))[:200]
+        frenate         = int(data.get("frenate_brusche", 0))
+        accel           = int(data.get("accel_brusche", 0))
+        penalita        = float(data.get("penalita", 0.0))
+        completamento   = int(data.get("completamento", 0))
+        durata_min      = float(data.get("durata_min", 0.0))
+        grade           = str(data.get("grade", ""))[:20]
+    except (ValueError, TypeError) as e:
+        return jsonify({"ok": False, "error": f"Dati non validi: {e}"}), 400
+
+    if completamento < 50:
+        return jsonify({"ok": False, "error": f"Sessione troppo breve ({completamento}% < 50%)"}), 400
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO sessions
+                  (user_id, punteggio, ultimo_servizio, frenate_brusche, accel_brusche,
+                   penalita, completamento, durata_min, grade)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (user["id"], punteggio, ultimo_servizio, frenate, accel,
+                  penalita, completamento, durata_min, grade))
+            cur.execute("""
+                INSERT INTO user_stats (user_id, affidabilita, ultima_tratta, grade, updated_at)
+                SELECT
+                    %s,
+                    AVG(punteggio),
+                    (SELECT ultimo_servizio FROM sessions
+                     WHERE user_id=%s ORDER BY registrata_at DESC LIMIT 1),
+                    (SELECT grade FROM sessions
+                     WHERE user_id=%s ORDER BY registrata_at DESC LIMIT 1),
+                    NOW()
+                FROM sessions WHERE user_id=%s
+                ON CONFLICT (user_id) DO UPDATE SET
+                    affidabilita  = EXCLUDED.affidabilita,
+                    ultima_tratta = EXCLUDED.ultima_tratta,
+                    grade         = EXCLUDED.grade,
+                    updated_at    = NOW()
+            """, (user["id"], user["id"], user["id"], user["id"]))
+
+            # Aggiorna le classifiche periodiche (settimanale / mensile)
+            for period, period_key in (("week", current_week_key()), ("month", current_month_key())):
+                cur.execute("""
+                    INSERT INTO user_stats_period
+                      (user_id, period, period_key, affidabilita, corse, ultima_tratta, grade, updated_at)
+                    VALUES (%s, %s, %s, %s, 1, %s, %s, NOW())
+                    ON CONFLICT (user_id, period, period_key) DO UPDATE SET
+                        affidabilita  = (user_stats_period.affidabilita * user_stats_period.corse + %s)
+                                         / (user_stats_period.corse + 1),
+                        corse         = user_stats_period.corse + 1,
+                        ultima_tratta = %s,
+                        grade         = %s,
+                        updated_at    = NOW()
+                """, (user["id"], period, period_key, punteggio, ultimo_servizio, grade,
+                      punteggio, ultimo_servizio, grade))
+        conn.commit()
+    return jsonify({"ok": True, "message": "Sessione registrata!"})
+
+# ─────────────────────────────────────────────────────────
+#  API heartbeat (dal .exe, ogni 30s)
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/heartbeat", methods=["POST"])
+@limiter.limit("120 per minute")   # max 2/s per utente
+def api_heartbeat():
+    token = request.headers.get("X-API-Token", "").strip()
+    if not token:
+        return jsonify({"ok": False, "error": "Token mancante"}), 401
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, username FROM users WHERE api_token=%s", (token,))
+            user = fetchone(cur)
+    if not user:
+        return jsonify({"ok": False, "error": "Token non valido"}), 401
+
+    data = request.get_json(force=True) or {}
+    speed_kmh    = float(data.get("speed_kmh",   0) or 0)
+    delay_min    = float(data.get("delay_min",   0) or 0)
+    next_station = str(data.get("next_station",  "") or "")[:100]
+    consist      = str(data.get("consist",       "") or "")[:100]
+    sim_time     = str(data.get("sim_time",      "") or "")[:10]
+    activity_name= str(data.get("activity_name", "") or "")[:200]
+    comfort_live    = float(data.get("comfort_live",    100) or 100)
+    comfort_grade   = str(data.get("comfort_grade",    "")  or "")[:20]
+    comfort_penalty = float(data.get("comfort_penalty",  0) or 0)
+    train_lat       = float(data.get("train_lat", 0) or 0)
+    train_lon       = float(data.get("train_lon", 0) or 0)
+    train_dir       = float(data.get("train_dir", 0) or 0)
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT last_seen < NOW() - INTERVAL '2 minutes' AS was_offline
+                FROM heartbeats WHERE user_id=%s
+            """, (user["id"],))
+            row = fetchone(cur)
+            new_session = row is None or row["was_offline"]
+
+            cur.execute("""
+                INSERT INTO heartbeats (user_id, last_seen)
+                VALUES (%s, NOW())
+                ON CONFLICT (user_id) DO UPDATE SET last_seen = NOW()
+            """, (user["id"],))
+            cur.execute("""
+                INSERT INTO live_sessions
+                  (user_id, speed_kmh, delay_min, next_station, consist, sim_time, activity_name,
+                   comfort_live, comfort_grade, comfort_penalty, train_lat, train_lon, train_dir, updated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+                ON CONFLICT (user_id) DO UPDATE SET
+                  speed_kmh=EXCLUDED.speed_kmh,
+                  delay_min=EXCLUDED.delay_min,
+                  next_station=EXCLUDED.next_station,
+                  consist=EXCLUDED.consist,
+                  sim_time=EXCLUDED.sim_time,
+                  activity_name=EXCLUDED.activity_name,
+                  comfort_live=EXCLUDED.comfort_live,
+                  comfort_grade=EXCLUDED.comfort_grade,
+                  comfort_penalty=EXCLUDED.comfort_penalty,
+                  train_lat=EXCLUDED.train_lat,
+                  train_lon=EXCLUDED.train_lon,
+                  train_dir=EXCLUDED.train_dir,
+                  updated_at=NOW()
+            """, (user["id"], speed_kmh, delay_min, next_station, consist, sim_time, activity_name,
+                  comfort_live, comfort_grade, comfort_penalty, train_lat, train_lon, train_dir))
+            if new_session:
+                cur.execute("DELETE FROM speed_history WHERE user_id=%s", (user["id"],))
+            if speed_kmh > 0:
+                cur.execute("""
+                    INSERT INTO speed_history (user_id, speed_kmh, sim_time)
+                    VALUES (%s, %s, %s)
+                """, (user["id"], speed_kmh, sim_time))
+                cur.execute("""
+                    DELETE FROM speed_history WHERE user_id=%s
+                    AND id NOT IN (
+                        SELECT id FROM speed_history
+                        WHERE user_id=%s ORDER BY recorded_at DESC LIMIT 200
+                    )
+                """, (user["id"], user["id"]))
+        conn.commit()
+
+    if new_session:
+        msg = f"🚆 **{user['username']}** è in servizio"
+        if activity_name:
+            msg += f" su *{activity_name}*"
+        notify_discord(embed={
+            "title": "Nuova sessione live",
+            "description": msg,
+            "color": 0x007A3D,
+            "url": "https://" + request.host + "/leaderboard"
+        })
+
+    return jsonify({"ok": True})
+
+# ─────────────────────────────────────────────────────────
+#  API dati live
+# ─────────────────────────────────────────────────────────
+
+def _fetch_live_data():
+    """Esegue le query reali per /api/live (3 query batch, 1 sola connessione)."""
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    u.username,
+                    u.id        AS user_id,
+                    ls.speed_kmh,
+                    ls.delay_min,
+                    ls.next_station,
+                    ls.consist,
+                    ls.sim_time,
+                    ls.activity_name,
+                    ls.comfort_live,
+                    ls.comfort_grade,
+                    ls.comfort_penalty,
+                    ls.train_lat,
+                    ls.train_lon,
+                    ls.train_dir,
+                    ls.updated_at::text AS updated_at
+                FROM live_sessions ls
+                JOIN users u ON u.id = ls.user_id
+                JOIN heartbeats h ON h.user_id = ls.user_id
+                WHERE h.last_seen >= NOW() - INTERVAL '2 minutes'
+                ORDER BY h.last_seen ASC
+            """)
+            users_online = fetchall(cur)
+
+            if not users_online:
+                return []
+
+            user_ids = [u["user_id"] for u in users_online]
+
+            # Storico velocità per TUTTI gli utenti online in un'unica query
+            cur.execute("""
+                SELECT user_id, speed_kmh, sim_time, recorded_at::text AS recorded_at
+                FROM speed_history
+                WHERE user_id = ANY(%s)
+                ORDER BY user_id, recorded_at DESC
+            """, (user_ids,))
+            history_rows = fetchall(cur)
+
+            # Fermate per TUTTI gli utenti online in un'unica query
+            cur.execute("""
+                SELECT user_id, station_name, arrival, departure, delay_min,
+                       passed, is_current, sort_order
+                FROM live_stations
+                WHERE user_id = ANY(%s)
+                ORDER BY user_id, sort_order ASC
+            """, (user_ids,))
+            station_rows = fetchall(cur)
+
+    # Raggruppa storico velocità per utente (max 40 punti, ordine cronologico)
+    history_by_user = {}
+    for row in history_rows:
+        lst = history_by_user.setdefault(row["user_id"], [])
+        if len(lst) < 40:
+            lst.append(row)
+    for lst in history_by_user.values():
+        lst.reverse()
+
+    # Raggruppa fermate per utente
+    stations_by_user = {}
+    for row in station_rows:
+        stations_by_user.setdefault(row["user_id"], []).append(row)
+
+    for u in users_online:
+        u["speed_history"] = history_by_user.get(u["user_id"], [])
+        u["stations"] = stations_by_user.get(u["user_id"], [])
+
+    return users_online
+
+
+# ── Cache in memoria per /api/live ──────────────────────────────────────
+# I client (ognuno dei quali può avere la pagina leaderboard aperta) fanno
+# polling di /api/live ogni 5s. Prima, OGNI poll di OGNI client generava
+# query dirette al DB (e con l'N+1 di prima, 1+N connessioni per poll).
+# Con N client connessi e M treni live il carico cresceva come N*M.
+#
+# Ora un singolo thread di background interroga il DB ogni
+# LIVE_CACHE_INTERVAL secondi e tiene il risultato in memoria; tutte le
+# richieste /api/live leggono semplicemente questa cache, quindi il carico
+# sul DB non dipende più dal numero di client connessi (resta O(1) per
+# processo worker). Se la cache è vuota o troppo vecchia (es. il thread
+# non è ancora partito, o gunicorn è in modalità --preload), la route fa
+# comunque un fetch diretto come fallback "self-healing".
+LIVE_CACHE_INTERVAL = float(os.environ.get("LIVE_CACHE_INTERVAL", "3"))
+LIVE_CACHE_MAX_AGE  = float(os.environ.get("LIVE_CACHE_MAX_AGE", "15"))
+
+_live_cache_lock = threading.Lock()
+_live_cache = {"data": [], "updated": 0.0}
+
+
+def _live_cache_loop():
+    while True:
+        try:
+            data = _fetch_live_data()
+            with _live_cache_lock:
+                _live_cache["data"] = data
+                _live_cache["updated"] = time.time()
+        except Exception:
+            logger.exception("Errore aggiornamento cache /api/live")
+        time.sleep(LIVE_CACHE_INTERVAL)
+
+
+threading.Thread(target=_live_cache_loop, daemon=True).start()
+
+
+@app.route("/api/live")
+def api_live():
+    with _live_cache_lock:
+        data = _live_cache["data"]
+        age = time.time() - _live_cache["updated"]
+
+    if age > LIVE_CACHE_MAX_AGE:
+        try:
+            data = _fetch_live_data()
+            with _live_cache_lock:
+                _live_cache["data"] = data
+                _live_cache["updated"] = time.time()
+        except Exception:
+            logger.exception("Fallback diretto /api/live fallito")
+
+    return jsonify(data)
+
+def _norm_station_name(name):
+    """Normalizza il nome stazione per il confronto di deduplica."""
+    return str(name or "").strip().casefold()
+
+
+def _dedupe_stations(stations):
+    """Unisce fermate consecutive con lo stesso nome (es. doppio PlatformItem
+    per binari/direzioni diverse) in una sola riga, mantenendo i dati piu'
+    completi tra le due (arrivo/partenza/ritardo/stato)."""
+    result = []
+    for st in stations:
+        name = _norm_station_name(st.get("name"))
+        if result and _norm_station_name(result[-1].get("name")) == name:
+            prev = result[-1]
+            # arrivo/partenza: tieni il valore non vuoto
+            if not str(prev.get("arrival", "") or "").strip():
+                prev["arrival"] = st.get("arrival", "")
+            if not str(prev.get("departure", "") or "").strip():
+                prev["departure"] = st.get("departure", "")
+            # stato: basta che una delle due righe sia passata/corrente
+            prev["passed"] = bool(prev.get("passed")) or bool(st.get("passed"))
+            prev["is_current"] = bool(prev.get("is_current")) or bool(st.get("is_current"))
+            # ritardo: tieni il valore non nullo/non zero piu' significativo
+            prev_delay = prev.get("delay_min", 0) or 0
+            cur_delay = st.get("delay_min", 0) or 0
+            if abs(float(cur_delay)) > abs(float(prev_delay)):
+                prev["delay_min"] = cur_delay
+            continue
+        result.append(dict(st))
+    return result
+
+
+@app.route("/api/live_stations", methods=["POST"])
+@limiter.limit("120 per minute")
+def api_live_stations():
+    token = request.headers.get("X-API-Token", "").strip()
+    if not token:
+        return jsonify({"ok": False, "error": "Token mancante"}), 401
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE api_token=%s", (token,))
+            user = fetchone(cur)
+    if not user:
+        return jsonify({"ok": False, "error": "Token non valido"}), 401
+
+    data = request.get_json(force=True) or {}
+    stations = _dedupe_stations(data.get("stations", []))
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM live_stations WHERE user_id=%s", (user["id"],))
+            for i, st in enumerate(stations):
+                cur.execute("""
+                    INSERT INTO live_stations
+                      (user_id, station_name, arrival, departure, delay_min,
+                       passed, is_current, sort_order)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (
+                    user["id"],
+                    str(st.get("name", ""))[:100],
+                    str(st.get("arrival", "") or "")[:10],
+                    str(st.get("departure", "") or "")[:10],
+                    float(st.get("delay_min", 0) or 0),
+                    bool(st.get("passed", False)),
+                    bool(st.get("is_current", False)),
+                    i
+                ))
+        conn.commit()
+    return jsonify({"ok": True})
+
+# ─────────────────────────────────────────────────────────
+#  API eliminazione account
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/delete_account", methods=["POST"])
+@require_login
+@verify_csrf
+def api_delete_account():
+    data     = request.get_json(force=True) or {}
+    password = data.get("password", "") or ""
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM users WHERE id=%s", (session["user_id"],))
+            user = fetchone(cur)
+
+    if not user or not check_password(password, user["password_hash"]):
+        logger.warning("Tentativo eliminazione account fallito per user_id=%s", session["user_id"])
+        return jsonify({"ok": False, "error": "Password non corretta"}), 401
+
+    uid = session["user_id"]
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM speed_history   WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM live_stations   WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM live_sessions   WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM heartbeats      WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM sessions        WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM user_stats        WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM user_stats_period WHERE user_id=%s", (uid,))
+                cur.execute("DELETE FROM users             WHERE id=%s",      (uid,))
+            conn.commit()
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Errore DB: {e}"}), 500
+
+    logger.info("Account eliminato: user_id=%s", uid)
+    session.clear()
+    return jsonify({"ok": True, "message": "Account eliminato."})
+
+# ─────────────────────────────────────────────────────────
+#  API coordinate stazioni
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/station_coords", methods=["GET", "POST"])
+def api_station_coords():
+    if request.method == "GET":
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT name, lat, lon FROM station_coords ORDER BY name")
+                rows = fetchall(cur)
+        return jsonify({r["name"]: {"lat": r["lat"], "lon": r["lon"]} for r in rows})
+
+    token = request.headers.get("X-API-Token", "").strip()
+    if not token:
+        return jsonify({"ok": False, "error": "Token mancante"}), 401
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE api_token=%s", (token,))
+            user = fetchone(cur)
+    if not user:
+        return jsonify({"ok": False, "error": "Token non valido"}), 401
+
+    data = request.get_json(force=True) or {}
+    stations = data.get("stations", {})
+    if not stations:
+        return jsonify({"ok": False, "error": "Nessuna stazione"}), 400
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            for name, coords in stations.items():
+                try:
+                    lat = float(coords.get("lat", 0))
+                    lon = float(coords.get("lon", 0))
+                    if not (35.0 <= lat <= 47.5 and 6.0 <= lon <= 19.0):
+                        continue
+                    cur.execute("""
+                        INSERT INTO station_coords (name, lat, lon, updated_at)
+                        VALUES (%s, %s, %s, NOW())
+                        ON CONFLICT (name) DO UPDATE SET
+                            lat=EXCLUDED.lat, lon=EXCLUDED.lon, updated_at=NOW()
+                    """, (str(name)[:100], lat, lon))
+                except Exception:
+                    pass
+        conn.commit()
+    return jsonify({"ok": True, "count": len(stations)})
+
+# ─────────────────────────────────────────────────────────
+#  API riepilogo Discord (chiamata da cron esterno)
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/discord/daily_summary", methods=["POST"])
+def api_discord_daily_summary():
+    """Posta su Discord la top 10 classifica corrente.
+    Protetto da header X-Cron-Token, da chiamare con un cron esterno
+    (es. cron-job.org, GitHub Actions scheduled workflow)."""
+    token = request.headers.get("X-Cron-Token", "")
+    if not DISCORD_CRON_SECRET or not secrets.compare_digest(token, DISCORD_CRON_SECRET):
+        return jsonify({"ok": False, "error": "Non autorizzato"}), 401
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT u.username,
+                       COALESCE(us.affidabilita, 0) AS punteggio,
+                       COALESCE(us.grade, '')        AS grade
+                FROM users u
+                JOIN user_stats us ON us.user_id = u.id
+                WHERE us.affidabilita IS NOT NULL
+                ORDER BY us.affidabilita DESC
+                LIMIT 10
+            """)
+            top = fetchall(cur)
+
+    if not top:
+        notify_discord(content="📊 Nessun dato per il riepilogo di oggi.")
+        return jsonify({"ok": True})
+
+    medals = ["🥇", "🥈", "🥉"]
+    lines = []
+    for i, row in enumerate(top):
+        prefix = medals[i] if i < 3 else f"{i + 1}."
+        lines.append(f"{prefix} **{row['username']}** — {row['punteggio']:.1f} pt ({row['grade'] or '—'})")
+
+    notify_discord(embed={
+        "title": "📊 Classifica — Riepilogo",
+        "description": "\n".join(lines),
+        "color": 0xCE1B26,
+        "url": "https://" + request.host + "/leaderboard"
+    })
+    return jsonify({"ok": True, "count": len(top)})
+
+# ─────────────────────────────────────────────────────────
+#  API recupero password
+# ─────────────────────────────────────────────────────────
+
+@app.route("/api/password_reset_request", methods=["POST"])
+@limiter.limit("5 per hour")   # anti-spam: max 5 richieste/ora per IP
+def api_password_reset_request():
+    """Genera un token di reset e invia l'email. Non rivela mai se l'email esiste."""
+    data  = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+
+    if not email:
+        # Risposta generica per non rivelare nulla
+        return jsonify({"ok": True})
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, username FROM users WHERE LOWER(email)=%s", (email,))
+            user = fetchone(cur)
+
+    if user:
+        token      = secrets.token_urlsafe(48)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=2)
+
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                # Invalida eventuali token precedenti non ancora usati
+                cur.execute(
+                    "UPDATE password_reset_tokens SET used=TRUE WHERE user_id=%s AND used=FALSE",
+                    (user["id"],)
+                )
+                cur.execute(
+                    """INSERT INTO password_reset_tokens (user_id, token, expires_at)
+                       VALUES (%s, %s, %s)""",
+                    (user["id"], token, expires_at)
+                )
+            conn.commit()
+
+        reset_url = f"{APP_BASE_URL}/reset-password?token={token}"
+        body = f"""
+        <html><body style="font-family:'Trebuchet MS',sans-serif;color:#2B2B2B;max-width:480px;margin:auto;padding:24px">
+          <img src="{APP_BASE_URL}/static/VTV_logo.jpg" alt="ViaggiaTreno Virtual" style="max-width:140px;margin-bottom:20px">
+          <h2 style="font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#CE1B26;margin-bottom:12px">
+            Recupero Password
+          </h2>
+          <p style="font-size:13px;line-height:1.7;margin-bottom:16px">
+            Ciao <strong>{user["username"]}</strong>,<br>
+            hai richiesto il reset della password per il tuo account ViaggiaTreno Virtual.<br>
+            Clicca il pulsante qui sotto per impostare una nuova password.
+            Il link è valido per <strong>2 ore</strong>.
+          </p>
+          <a href="{reset_url}"
+             style="display:inline-block;background:#CE1B26;color:#fff;text-decoration:none;
+                    padding:12px 28px;border-radius:2px;font-size:12px;font-weight:500;
+                    letter-spacing:.08em;text-transform:uppercase">
+            Reimposta password
+          </a>
+          <p style="font-size:11px;color:#888;margin-top:20px;line-height:1.6">
+            Se non hai richiesto questo reset, ignora questa email: il tuo account è al sicuro.<br>
+            Link diretto: <a href="{reset_url}" style="color:#CE1B26">{reset_url}</a>
+          </p>
+          <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+          <p style="font-size:10px;color:#aaa">ViaggiaTreno Virtual — TSH Studio Repaint</p>
+        </body></html>
+        """
+        send_email(email, "ViaggiaTreno Virtual — Recupero password", body)
+        logger.info("Reset password richiesto per user_id=%s", user["id"])
+
+    # Risposta sempre identica (non rivela se l'email è registrata)
+    return jsonify({"ok": True})
+
+
+@app.route("/reset-password")
+def reset_password_page():
+    """Pagina di reset password (token via query string)."""
+    token = request.args.get("token", "").strip()
+    # Verifica subito che il token esista e non sia scaduto/usato
+    valid = False
+    if token:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id FROM password_reset_tokens
+                    WHERE token=%s AND used=FALSE AND expires_at > NOW()
+                """, (token,))
+                valid = bool(fetchone(cur))
+    return render_template("reset_password.html", token=token, valid=valid)
+
+
+@app.route("/api/password_reset_confirm", methods=["POST"])
+@limiter.limit("10 per hour")
+def api_password_reset_confirm():
+    """Imposta la nuova password tramite token di reset."""
+    data         = request.get_json(silent=True) or {}
+    token        = (data.get("token") or "").strip()
+    new_password = data.get("password", "") or ""
+
+    if not token or not new_password:
+        return jsonify({"ok": False, "error": "Dati mancanti"}), 400
+    if len(new_password) < 6:
+        return jsonify({"ok": False, "error": "La password deve essere di almeno 6 caratteri"}), 400
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT prt.id AS token_id, prt.user_id
+                FROM password_reset_tokens prt
+                WHERE prt.token=%s AND prt.used=FALSE AND prt.expires_at > NOW()
+            """, (token,))
+            row = fetchone(cur)
+
+    if not row:
+        return jsonify({"ok": False, "error": "Link non valido o scaduto. Richiedi un nuovo reset."}), 400
+
+    new_hash = hash_password(new_password)
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_hash, row["user_id"]))
+            cur.execute("UPDATE password_reset_tokens SET used=TRUE WHERE id=%s", (row["token_id"],))
+        conn.commit()
+
+    logger.info("Password reimpostata per user_id=%s", row["user_id"])
+    return jsonify({"ok": True, "message": "Password aggiornata con successo. Ora puoi accedere."})
+
+
+# ─────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
