@@ -650,16 +650,20 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
       <button class="nav-btn menu-toggle-btn" id="btn-menu" onclick="toggleMenu(event)" aria-expanded="false" aria-haspopup="true">Menù ▾</button>
       <div class="menu-dropdown" id="menu-dropdown" role="menu">
         <a class="menu-item" href="https://download1584.mediafire.com/v34o7e0e1h1gAv3wEooeKyyw_AsTjiuggB7jh5295ARTRHCLIPHw5qGgDmtCPcRl_ByLhz2XyHh995dttf-IlfdHv5ArhiodifGPrUaX8F3nzVlEwX5P0D6E5sg1hS2Tm8ieFYh1sSLdUlFPD11mAL4B7eZGBfIFERWdgyI3Obc/8ncp5v5bw9azw9b/ORTS+Passengers+V3.4.zip" download onclick="closeMenu()">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><path d="M2 1a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8l4-4V2a1 1 0 0 0-1-1H2zm7 12v-3h3l-3 3zm-1-4V2h5v6H8zM2 2h4v11H2V2z"/></svg>
+          <i class="fa-solid fa-download" style="flex-shrink:0;width:13px;text-align:center"></i>
           ORTS Passengers
+        </a>
+        <a class="menu-item" href="https://www.interazioni-educative.it/Downloads/getfile.php?name=OR_NewYear_MG.zip" download onclick="closeMenu()">
+          <i class="fa-solid fa-download" style="flex-shrink:0;width:13px;text-align:center"></i>
+          Open Rails MGNY
         </a>
         <div class="menu-divider"></div>
         <button class="menu-item" id="menu-profile" onclick="loadProfile();closeMenu();closeNav()">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 1c-2.67 0-8 1.34-8 4v1h16v-1c0-2.66-5.33-4-8-4z"/></svg>
+          <i class="fa-solid fa-user" style="flex-shrink:0;width:13px;text-align:center"></i>
           Profilo
         </button>
         <button class="menu-item menu-item-danger" id="menu-logout" onclick="doLogout();closeMenu()">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><path d="M10 2H2v12h8v-1H3V3h7V2zm3.146 5.146-3-3-.707.707L11.293 7H6v1h5.293l-1.854 1.854.707.707 3-3a.5.5 0 0 0 0-.707z"/></svg>
+          <i class="fa-solid fa-arrow-right-from-bracket" style="flex-shrink:0;width:13px;text-align:center"></i>
           Esci
         </button>
       </div>
