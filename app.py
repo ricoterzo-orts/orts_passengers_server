@@ -672,7 +672,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
   <div id="user-banner">
     <span><span class="lbl">Token API per il .exe: </span><span class="tv masked" id="banner-token">••••••••••••••••</span></span>
     <div class="token-actions">
-      <button class="token-toggle-btn" id="token-toggle-btn" onclick="toggleToken()"><i class="fa-solid fa-eye" id="token-toggle-icon" style="font-size:10px"></i>Mostra</button>
+      <button class="token-toggle-btn" id="token-toggle-btn" onclick="toggleToken()">Mostra</button>
       <button class="copy-btn" onclick="copyToken()">Copia</button>
     </div>
   </div>
@@ -1029,7 +1029,7 @@ function updateNav(){
     el.classList.add('masked');
     el.dataset.revealed='0';
     const tbtn=document.getElementById('token-toggle-btn');
-    if(tbtn){tbtn.innerHTML='<i class="fa-solid fa-eye" style="font-size:10px"></i> Mostra';}
+    if(tbtn){tbtn.innerHTML='Mostra';}
   }
   else{b.style.display='none';}
 }
@@ -1043,12 +1043,12 @@ function toggleToken(){
     el.textContent='••••••••••••••••';
     el.classList.add('masked');
     el.dataset.revealed='0';
-    btn.innerHTML='<i class="fa-solid fa-eye" style="font-size:10px"></i> Mostra';
+    btn.innerHTML='Mostra';
   } else {
     el.textContent=me.api_token;
     el.classList.remove('masked');
     el.dataset.revealed='1';
-    btn.innerHTML='<i class="fa-solid fa-eye-slash" style="font-size:10px"></i> Nascondi';
+    btn.innerHTML='Nascondi';
   }
 }
 
@@ -1056,7 +1056,7 @@ function copyToken(){
   if(!me)return;
   navigator.clipboard.writeText(me.api_token).then(()=>{
     const btn=document.querySelector('#user-banner .copy-btn');
-    btn.textContent='✓ Copiato!';setTimeout(()=>btn.textContent='📋 Copia',1500);
+    btn.textContent='✓ Copiato!';setTimeout(()=>btn.textContent='Copia',1500);
   });
 }
 
