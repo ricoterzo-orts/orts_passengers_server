@@ -120,9 +120,10 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .lb-tab:hover{background:var(--card);color:var(--white)}
 .lb-tab.active{background:var(--card);color:var(--accent);border-bottom-color:var(--card)}
 .lb-table-wrap-active{border-top-left-radius:0}
-.lb-period-range{font-family:var(--font);font-size:10px;color:var(--dimgrey);padding:4px 12px 6px;letter-spacing:.03em}
+.lb-period-range{font-family:var(--font);font-size:10px;color:var(--dimgrey);padding:5px 2px 4px;letter-spacing:.03em}
 .lb-period-range strong{font-family:var(--font-md);color:var(--grey);font-weight:500}
 
+.lb-pagination{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);border:1px solid var(--border);border-top:none;font-family:var(--font-md);font-size:11px;color:var(--grey)}
 .lb-pag-info{white-space:nowrap}
 .lb-pag-perpage{display:flex;align-items:center;gap:8px;white-space:nowrap}
 .lb-pag-perpage select{background:var(--card);border:1px solid var(--border);color:var(--white);font-family:var(--font-md);font-size:11px;font-weight:500;padding:4px 8px;border-radius:2px;cursor:pointer}
@@ -724,8 +725,8 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
       <div class="lb-tab" data-period="month" onclick="switchLbPeriod('month')">Mensile</div>
       <div class="lb-tab" data-period="week" onclick="switchLbPeriod('week')">Settimanale</div>
     </div>
+    <div class="lb-period-range" id="lb-period-range" style="display:none"></div>
     <div class="table-wrap lb-table-wrap-active">
-      <div class="lb-period-range" id="lb-period-range" style="display:none"></div>
       <table>
         <thead>
           <tr>
@@ -974,6 +975,56 @@ function closeModal(n){document.getElementById('overlay-'+n).classList.remove('o
 function switchModal(a,b){closeModal(a);openModal(b)}
 document.querySelectorAll('.overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open')}));
 
+// ── Render wake-up: retry con backoff su 502/503 ──
+const RETRY_DELAYS = [2000, 4000, 8000, 15000]; // ms tra tentativi
+let _wakeUpShown = false;
+
+function showWakeUpBanner(){
+  if(_wakeUpShown) return;
+  _wakeUpShown = true;
+  let el = document.getElementById('wakeup-banner');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'wakeup-banner';
+    el.style.cssText = 'display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--amber);padding:8px 12px;margin-bottom:14px;border-radius:2px;font-family:var(--font);font-size:11px;color:var(--grey)';
+    el.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);animation:blink 1s infinite;flex-shrink:0"></span><span>Server in avvio — riconnessione in corso…</span>';
+    const main = document.querySelector('main');
+    main.insertBefore(el, main.firstChild);
+  }
+}
+
+function hideWakeUpBanner(){
+  _wakeUpShown = false;
+  const el = document.getElementById('wakeup-banner');
+  if(el) el.remove();
+}
+
+async function fetchWithRetry(url, options={}, retries=RETRY_DELAYS){
+  for(let attempt=0; attempt<=retries.length; attempt++){
+    try{
+      const r = await fetch(url, options);
+      if(r.status === 502 || r.status === 503){
+        if(attempt < retries.length){
+          showWakeUpBanner();
+          await new Promise(res => setTimeout(res, retries[attempt]));
+          continue;
+        }
+        throw new Error('502');
+      }
+      hideWakeUpBanner();
+      return r;
+    } catch(e){
+      if(attempt < retries.length){
+        showWakeUpBanner();
+        await new Promise(res => setTimeout(res, retries[attempt]));
+      } else {
+        hideWakeUpBanner();
+        throw e;
+      }
+    }
+  }
+}
+
 // ── Auth ──
 async function doRegister(){
   const btn=document.getElementById('r-btn'),msg=document.getElementById('r-msg');
@@ -1009,7 +1060,7 @@ async function doLogin(){
 async function doLogout(){await fetch('/api/logout',{method:'POST'});window.location.href='/login';}
 
 async function checkMe(){
-  try{const r=await fetch('/api/me');const d=await r.json();me=d.logged_in?d:null;}
+  try{const r=await fetchWithRetry('/api/me');const d=await r.json();me=d.logged_in?d:null;}
   catch{me=null;}
   updateNav();
 }
@@ -1174,7 +1225,7 @@ function vtLink(servizio){
 
 async function loadLeaderboard(){
   try{
-    const r=await fetch('/api/leaderboard?period='+lbPeriod);
+    const r=await fetchWithRetry('/api/leaderboard?period='+lbPeriod);
     const rows=await r.json();
     const now=new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
     document.getElementById('lb-count').textContent=rows.length+' utenti in classifica';
