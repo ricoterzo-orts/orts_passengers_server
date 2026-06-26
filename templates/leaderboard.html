@@ -120,7 +120,9 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .lb-tab:hover{background:var(--card);color:var(--white)}
 .lb-tab.active{background:var(--card);color:var(--accent);border-bottom-color:var(--card)}
 .lb-table-wrap-active{border-top-left-radius:0}
-.lb-pagination{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);border:1px solid var(--border);border-top:none;font-family:var(--font-md);font-size:11px;color:var(--grey)}
+.lb-period-range{font-family:var(--font);font-size:10px;color:var(--dimgrey);padding:4px 12px 6px;letter-spacing:.03em}
+.lb-period-range strong{font-family:var(--font-md);color:var(--grey);font-weight:500}
+
 .lb-pag-info{white-space:nowrap}
 .lb-pag-perpage{display:flex;align-items:center;gap:8px;white-space:nowrap}
 .lb-pag-perpage select{background:var(--card);border:1px solid var(--border);color:var(--white);font-family:var(--font-md);font-size:11px;font-weight:500;padding:4px 8px;border-radius:2px;cursor:pointer}
@@ -193,11 +195,15 @@ td.servizio{text-align:center}
 .statusbar-right{font-family:var(--font);font-size:10px;color:var(--grey)}
 
 /* ── TOKEN BANNER ── */
-#user-banner{display:none;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);padding:8px 12px;margin-bottom:14px;border-radius:2px;font-family:var(--font);font-size:11px;align-items:center;justify-content:space-between;gap:10px}
+#user-banner{display:none;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);padding:8px 12px;margin-bottom:14px;border-radius:2px;font-family:var(--font);font-size:11px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 #user-banner .lbl{color:var(--grey)}
-#user-banner .tv{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
+#user-banner .tv{color:var(--accent2);font-weight:500;font-family:var(--font-md);letter-spacing:.04em}
+#user-banner .tv.masked{color:var(--dimgrey);letter-spacing:.18em;font-size:13px;vertical-align:middle}
+#user-banner .token-actions{display:flex;gap:4px;align-items:center;flex-shrink:0}
 .copy-btn{background:var(--bg);border:1px solid var(--border);color:var(--grey);font-family:var(--font);font-size:10px;padding:2px 8px;cursor:pointer;border-radius:2px}
 .copy-btn:hover{border-color:var(--accent);color:var(--white)}
+.token-toggle-btn{background:var(--bg);border:1px solid var(--border);color:var(--grey);font-family:var(--font);font-size:10px;padding:2px 8px;cursor:pointer;border-radius:2px;display:flex;align-items:center;gap:4px}
+.token-toggle-btn:hover{border-color:var(--accent);color:var(--white)}
 
 /* ── MODALI ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
@@ -644,16 +650,20 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
       <button class="nav-btn menu-toggle-btn" id="btn-menu" onclick="toggleMenu(event)" aria-expanded="false" aria-haspopup="true">Menù ▾</button>
       <div class="menu-dropdown" id="menu-dropdown" role="menu">
         <a class="menu-item" href="https://download1584.mediafire.com/v34o7e0e1h1gAv3wEooeKyyw_AsTjiuggB7jh5295ARTRHCLIPHw5qGgDmtCPcRl_ByLhz2XyHh995dttf-IlfdHv5ArhiodifGPrUaX8F3nzVlEwX5P0D6E5sg1hS2Tm8ieFYh1sSLdUlFPD11mAL4B7eZGBfIFERWdgyI3Obc/8ncp5v5bw9azw9b/ORTS+Passengers+V3.4.zip" download onclick="closeMenu()">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><path d="M2 1a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8l4-4V2a1 1 0 0 0-1-1H2zm7 12v-3h3l-3 3zm-1-4V2h5v6H8zM2 2h4v11H2V2z"/></svg>
+          <i class="fa-solid fa-download" style="flex-shrink:0;width:13px;text-align:center"></i>
           ORTS Passengers
+        </a>
+        <a class="menu-item" href="https://www.interazioni-educative.it/Downloads/getfile.php?name=OR_NewYear_MG.zip" download onclick="closeMenu()">
+          <i class="fa-solid fa-download" style="flex-shrink:0;width:13px;text-align:center"></i>
+          Open Rails MGNY
         </a>
         <div class="menu-divider"></div>
         <button class="menu-item" id="menu-profile" onclick="loadProfile();closeMenu();closeNav()">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 1c-2.67 0-8 1.34-8 4v1h16v-1c0-2.66-5.33-4-8-4z"/></svg>
+          <i class="fa-solid fa-user" style="flex-shrink:0;width:13px;text-align:center"></i>
           Profilo
         </button>
         <button class="menu-item menu-item-danger" id="menu-logout" onclick="doLogout();closeMenu()">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><path d="M10 2H2v12h8v-1H3V3h7V2zm3.146 5.146-3-3-.707.707L11.293 7H6v1h5.293l-1.854 1.854.707.707 3-3a.5.5 0 0 0 0-.707z"/></svg>
+          <i class="fa-solid fa-arrow-right-from-bracket" style="flex-shrink:0;width:13px;text-align:center"></i>
           Esci
         </button>
       </div>
@@ -664,8 +674,11 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 <main>
   <!-- Token banner -->
   <div id="user-banner">
-    <span><span class="lbl">Token API per il .exe: </span><span class="tv" id="banner-token"></span></span>
-    <button class="copy-btn" onclick="copyToken()">📋 Copia</button>
+    <span><span class="lbl">Token API per il .exe: </span><span class="tv masked" id="banner-token">••••••••••••••••</span></span>
+    <div class="token-actions">
+      <button class="token-toggle-btn" id="token-toggle-btn" onclick="toggleToken()">Mostra</button>
+      <button class="copy-btn" onclick="copyToken()">Copia</button>
+    </div>
   </div>
 
   <!-- Statusbar -->
@@ -712,6 +725,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
       <div class="lb-tab" data-period="week" onclick="switchLbPeriod('week')">Settimanale</div>
     </div>
     <div class="table-wrap lb-table-wrap-active">
+      <div class="lb-period-range" id="lb-period-range" style="display:none"></div>
       <table>
         <thead>
           <tr>
@@ -895,6 +909,25 @@ const LB_PERPAGE_OPTIONS = [10, 25, 50, 100];
 const LB_TITLES = {all:'Classifica Generale', month:'Classifica Mensile', week:'Classifica Settimanale'};
 const LB_SCORE_LABELS = {all:'Affidabilità', month:'Punteggio', week:'Punteggio'};
 
+function getLbPeriodRange(period){
+  const now = new Date();
+  const fmt = d => d.toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'});
+  if(period==='week'){
+    // Lunedì–domenica della settimana corrente
+    const day = now.getDay(); // 0=dom
+    const diffToMon = (day===0)?-6:(1-day);
+    const mon = new Date(now); mon.setDate(now.getDate()+diffToMon); mon.setHours(0,0,0,0);
+    const sun = new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+    return `<strong>Settimana</strong> ${fmt(mon)} – ${fmt(sun)}`;
+  }
+  if(period==='month'){
+    const first = new Date(now.getFullYear(), now.getMonth(), 1);
+    const last  = new Date(now.getFullYear(), now.getMonth()+1, 0);
+    return `<strong>Mese</strong> ${fmt(first)} – ${fmt(last)}`;
+  }
+  return null;
+}
+
 function switchLbPeriod(period){
   if(lbPeriod===period) return;
   lbPeriod = period;
@@ -905,6 +938,10 @@ function switchLbPeriod(period){
   document.getElementById('lb-section-title').textContent = LB_TITLES[period] || 'Classifica';
   document.getElementById('lb-score-col').textContent = LB_SCORE_LABELS[period] || 'Punteggio';
   document.getElementById('lb-body').innerHTML='<tr><td colspan="6"><div class="empty-state">Caricamento...</div></td></tr>';
+  const rangeEl = document.getElementById('lb-period-range');
+  const range = getLbPeriodRange(period);
+  if(range){rangeEl.innerHTML=range;rangeEl.style.display='';}
+  else{rangeEl.style.display='none';}
   loadLeaderboard();
 }
 let activeTab = 0;
@@ -988,15 +1025,42 @@ function updateNav(){
   }
   document.getElementById('nav-username').textContent=li?('● '+me.username+_navExtra+'  '):'';
   const b=document.getElementById('user-banner');
-  if(li){b.style.display='flex';document.getElementById('banner-token').textContent=me.api_token;}
+  if(li){
+    b.style.display='flex';
+    // Reset token to masked state on every login/refresh
+    const el=document.getElementById('banner-token');
+    el.textContent='••••••••••••••••';
+    el.classList.add('masked');
+    el.dataset.revealed='0';
+    const tbtn=document.getElementById('token-toggle-btn');
+    if(tbtn){tbtn.innerHTML='Mostra';}
+  }
   else{b.style.display='none';}
+}
+
+function toggleToken(){
+  if(!me)return;
+  const el=document.getElementById('banner-token');
+  const btn=document.getElementById('token-toggle-btn');
+  const revealed=el.dataset.revealed==='1';
+  if(revealed){
+    el.textContent='••••••••••••••••';
+    el.classList.add('masked');
+    el.dataset.revealed='0';
+    btn.innerHTML='Mostra';
+  } else {
+    el.textContent=me.api_token;
+    el.classList.remove('masked');
+    el.dataset.revealed='1';
+    btn.innerHTML='Nascondi';
+  }
 }
 
 function copyToken(){
   if(!me)return;
   navigator.clipboard.writeText(me.api_token).then(()=>{
     const btn=document.querySelector('#user-banner .copy-btn');
-    btn.textContent='✓ Copiato!';setTimeout(()=>btn.textContent='📋 Copia',1500);
+    btn.textContent='✓ Copiato!';setTimeout(()=>btn.textContent='Copia',1500);
   });
 }
 
