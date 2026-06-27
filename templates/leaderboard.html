@@ -185,11 +185,11 @@ td.lb-col-azienda{text-align:left;white-space:nowrap;min-width:80px}
 td.lb-col-compartimento{text-align:left;white-space:nowrap}
 .compartimento-text{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white)}
 .sub{font-family:var(--font);font-size:10px;color:var(--dimgrey);margin-top:1px}
-td.score{text-align:center}
+td.score{text-align:left}
 .snum{font-family:var(--font-md);font-size:18px;font-weight:500;line-height:1}
 .sgrade{font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
 .g-ecc{color:#007A3D}.g-buo{color:#1565C0}.g-suf{color:#E07B00}.g-ins{color:#CE1B26}
-td.servizio{text-align:center}
+td.servizio{text-align:left}
 .serv-pill{display:inline-block;background:rgba(206,27,38,.08);border:1px solid rgba(206,27,38,.2);color:var(--accent2);font-family:var(--font);font-size:10px;padding:2px 8px;border-radius:2px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .empty-state{text-align:center;padding:40px;font-family:var(--font);font-size:11px;color:var(--dimgrey)}
 
@@ -738,9 +738,9 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
             <th>Username</th>
             <th>Azienda</th>
             <th>Dipartimento</th>
-            <th class="c" id="lb-score-col">Affidabilità</th>
-            <th class="c">Ultima Tratta</th>
-            <th class="c lb-col-corse">Corse</th>
+            <th id="lb-score-col">Affidabilità</th>
+            <th>Ultima Tratta</th>
+            <th class="lb-col-corse">Corse</th>
           </tr>
         </thead>
         <tbody id="lb-body">
@@ -1187,9 +1187,9 @@ const AZIENDA_LOGOS = {
 // Altezza di rendering per ciascun logo (width:auto preserva proporzioni senza perdita qualità)
 const AZIENDA_LOGO_HEIGHT = {
   'Trenitalia':                          16,
-  'Trenitalia DPR':                      18,
+  'Trenitalia DPR':                      22,
   'Trenitalia TPER':                     16,
-  'TrenoNord':                           10,
+  'TrenoNord':                           9,
   'ITALO - Nuovo Trasporto Viaggiatori': 14,
 };
 // Opacità per logo (1 = colori pieni)
@@ -1288,7 +1288,7 @@ function renderLbPage(){
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
         </td>
         <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
-        <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
+        <td class="lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">${row.corse}</td>
       </tr>`;
     }
     // Online user: riga con accordion dettaglio
@@ -1311,7 +1311,7 @@ function renderLbPage(){
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
         </td>
         <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
-        <td class="c lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">
+        <td class="lb-col-corse" style="font-family:var(--font);font-size:11px;color:var(--grey)">
           ${row.corse}
           <span class="lb-live-chevron" id="${chevId}" style="display:inline-block;margin-left:4px"><i class="fa-solid fa-chevron-down"></i></span>
         </td>
