@@ -182,8 +182,8 @@ tr.lb-user-online:hover td{background:rgba(206,27,38,.05)!important}
 @media(max-width:600px){.lb-col-corse{display:none}}
 td.username{font-weight:500;font-size:13px;color:var(--white);font-family:var(--font-md)}
 td.lb-col-azienda{text-align:left;white-space:nowrap;min-width:80px}
-td.lb-col-compartimento{text-align:left;white-space:nowrap}
-.compartimento-text{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white)}
+td.lb-col-dipartimento{text-align:left;white-space:nowrap}
+.dipartimento-text{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white)}
 .sub{font-family:var(--font);font-size:10px;color:var(--dimgrey);margin-top:1px}
 td.score{text-align:left}
 .snum{font-family:var(--font-md);font-size:18px;font-weight:500;line-height:1}
@@ -466,7 +466,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 .username-extra{font-family:var(--font);font-size:9px;color:var(--dimgrey);letter-spacing:.03em}
 .azienda-badge{display:inline-flex;align-items:center;gap:6px;vertical-align:middle}
 .azienda-badge img{width:auto;vertical-align:middle;display:inline-block;flex-shrink:0}
-.azienda-badge-compartimento{font-family:var(--font);font-size:10px;color:var(--dimgrey);vertical-align:middle;white-space:nowrap}
+.azienda-badge-dipartimento{font-family:var(--font);font-size:10px;color:var(--dimgrey);vertical-align:middle;white-space:nowrap}
 .treno-reale-link{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--dimgrey);text-decoration:none;transition:color .15s}
 .treno-reale-link:hover{color:var(--accent)}
 @media(max-width:480px){
@@ -817,7 +817,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 
       <div class="slbl">Token API (da incollare nel .exe → Impostazioni)</div>
       <div class="token-display" id="profile-token">—</div>
-      <!-- Azienda & Compartimento -->
+      <!-- Azienda & Dipartimento -->
       <div id="profile-extra-display" style="display:none">
         <div class="profile-extra" id="profile-extra-chips">
           <span class="profile-extra-chip" id="profile-extra-chips-text"></span>
@@ -836,9 +836,9 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
           <option value="ITALO - Nuovo Trasporto Viaggiatori">ITALO – Nuovo Trasporto Viaggiatori</option>
         </select>
       </div>
-      <div class="slbl">Compartimento</div>
+      <div class="slbl">Dipartimento</div>
       <div class="field">
-        <select id="profile-compartimento">
+        <select id="profile-dipartimento">
           <option value="">— Non specificato —</option>
           <option value="Torino">Torino</option>
           <option value="Milano">Milano</option>
@@ -1024,8 +1024,8 @@ function updateNav(){
   document.getElementById('btn-register').style.display=li?'none':'';
   document.getElementById('menu-wrap').style.display=li?'':'none';
   let _navExtra='';
-  if(li && (me.azienda || me.compartimento)){
-    _navExtra=' (' + [me.azienda, me.compartimento].filter(Boolean).join(' – ') + ')';
+  if(li && (me.azienda || me.dipartimento)){
+    _navExtra=' (' + [me.azienda, me.dipartimento].filter(Boolean).join(' – ') + ')';
   }
   document.getElementById('nav-username').textContent=li?('● '+me.username+_navExtra+'  '):'';
   const b=document.getElementById('user-banner');
@@ -1080,18 +1080,18 @@ async function loadProfile(){
     <div class="stat-box"><div class="stat-num" style="color:${col}">${me.best_score}</div><div class="stat-lbl">Best</div></div>
     <div class="stat-box"><div class="stat-num" style="color:var(--grey)">${me.avg_score}</div><div class="stat-lbl">Media</div></div>`;
 
-  // Legge azienda/compartimento dal profilo utente (backend)
+  // Legge azienda/dipartimento dal profilo utente (backend)
   const azienda = me.azienda || '';
-  const compartimento = me.compartimento || '';
+  const dipartimento = me.dipartimento || '';
   document.getElementById('profile-azienda').value = azienda;
-  document.getElementById('profile-compartimento').value = compartimento;
+  document.getElementById('profile-dipartimento').value = dipartimento;
   // Reset save message
   const saveMsg = document.getElementById('profile-save-msg');
   saveMsg.textContent = '';
   saveMsg.className = 'profile-save-msg';
   // Show chips if values are set; collapse the select fields if already configured
-  renderProfileExtraChips(azienda, compartimento);
-  document.getElementById('profile-extra-fields').style.display = (azienda || compartimento) ? 'none' : '';
+  renderProfileExtraChips(azienda, dipartimento);
+  document.getElementById('profile-extra-fields').style.display = (azienda || dipartimento) ? 'none' : '';
 
   loadProfileChart();
 
@@ -1114,15 +1114,15 @@ async function loadProfile(){
   }catch{sl.innerHTML='<div style="color:var(--red)">Errore.</div>';}
 }
 
-function renderProfileExtraChips(azienda, compartimento){
+function renderProfileExtraChips(azienda, dipartimento){
   const wrap = document.getElementById('profile-extra-display');
   const text = document.getElementById('profile-extra-chips-text');
-  if(!azienda && !compartimento){ wrap.style.display='none'; return; }
+  if(!azienda && !dipartimento){ wrap.style.display='none'; return; }
   wrap.style.display='flex';
   text.innerHTML =
     (azienda ? `Azienda: <strong>${azienda}</strong>` : '') +
-    (azienda && compartimento ? '&nbsp;&nbsp;' : '') +
-    (compartimento ? `Compartimento: <strong>${compartimento}</strong>` : '');
+    (azienda && dipartimento ? '&nbsp;&nbsp;' : '') +
+    (dipartimento ? `Dipartimento: <strong>${dipartimento}</strong>` : '');
 }
 
 function toggleProfileExtraEdit(){
@@ -1133,19 +1133,19 @@ function toggleProfileExtraEdit(){
 async function saveProfileExtra(){
   const msg = document.getElementById('profile-save-msg');
   const azienda = document.getElementById('profile-azienda').value;
-  const compartimento = document.getElementById('profile-compartimento').value;
+  const dipartimento = document.getElementById('profile-dipartimento').value;
   try {
     const r = await fetch('/api/profile/extra', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRF-Token': (me && me.csrf_token) || ''},
-      body: JSON.stringify({azienda, compartimento})
+      body: JSON.stringify({azienda, dipartimento})
     });
     const d = await r.json();
     if(d.ok){
-      if(me){ me.azienda = azienda; me.compartimento = compartimento; }
+      if(me){ me.azienda = azienda; me.dipartimento = dipartimento; }
       msg.textContent = '\u2713 Salvato';
       msg.className = 'profile-save-msg ok';
-      renderProfileExtraChips(azienda, compartimento);
+      renderProfileExtraChips(azienda, dipartimento);
       updateNav();
       document.getElementById('profile-extra-fields').style.display = 'none';
     } else {
@@ -1202,8 +1202,8 @@ const AZIENDA_LOGO_OPACITY = {
 };
 // Etichetta testuale aggiuntiva accanto al logo (nessuna: tutti hanno logo dedicato)
 const AZIENDA_SUBLABEL = {};
-function renderAziendaBadge(azienda, compartimento){
-  if(!azienda && !compartimento) return '<span style="color:var(--dimgrey);font-size:10px">—</span>';
+function renderAziendaBadge(azienda, dipartimento){
+  if(!azienda && !dipartimento) return '<span style="color:var(--dimgrey);font-size:10px">—</span>';
   let html = '<span class="azienda-badge">';
   if(azienda){
     const logo = AZIENDA_LOGOS[azienda];
@@ -1212,22 +1212,22 @@ function renderAziendaBadge(azienda, compartimento){
       const op = AZIENDA_LOGO_OPACITY[azienda] ?? 1;
       html += `<img src="${logo}" alt="${azienda}" title="${azienda}" loading="lazy" style="height:${h}px;width:auto;vertical-align:middle;opacity:${op}">`;
       const sub = AZIENDA_SUBLABEL[azienda];
-      if(sub) html += `<span class="azienda-badge-compartimento">${sub}</span>`;
+      if(sub) html += `<span class="azienda-badge-dipartimento">${sub}</span>`;
     } else {
-      html += `<span class="azienda-badge-compartimento">${azienda}</span>`;
+      html += `<span class="azienda-badge-dipartimento">${azienda}</span>`;
     }
   }
-  if(compartimento){
-    html += `<span class="azienda-badge-compartimento">${compartimento}</span>`;
+  if(dipartimento){
+    html += `<span class="azienda-badge-dipartimento">${dipartimento}</span>`;
   }
   html += '</span>';
   return html;
 }
-// Solo logo, senza compartimento (usato nella colonna Azienda separata)
+// Solo logo, senza dipartimento (usato nella colonna Azienda separata)
 function renderAziendaLogo(azienda){
   if(!azienda) return '<span style="color:var(--dimgrey);font-size:10px">—</span>';
   const logo = AZIENDA_LOGOS[azienda];
-  if(!logo) return `<span class="azienda-badge-compartimento">${azienda}</span>`;
+  if(!logo) return `<span class="azienda-badge-dipartimento">${azienda}</span>`;
   const h = AZIENDA_LOGO_HEIGHT[azienda] || 14;
   const op = AZIENDA_LOGO_OPACITY[azienda] ?? 1;
   return `<img src="${logo}" alt="${azienda}" title="${azienda}" loading="lazy" style="height:${h}px;width:auto;vertical-align:middle;opacity:${op}">`;
@@ -1282,7 +1282,7 @@ function renderLbPage(){
         <td class="rank lb-col-gps"></td>
         <td class="username"><span class="username-text">${row.username}</span></td>
         <td class="lb-col-azienda">${renderAziendaLogo(row.azienda)}</td>
-        <td class="lb-col-compartimento">${row.compartimento?`<span class="compartimento-text">${row.compartimento}</span>`:'<span style="color:var(--dimgrey);font-size:10px">—</span>'}</td>
+        <td class="lb-col-dipartimento">${row.dipartimento?`<span class="dipartimento-text">${row.dipartimento}</span>`:'<span style="color:var(--dimgrey);font-size:10px">—</span>'}</td>
         <td class="score">
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
@@ -1305,7 +1305,7 @@ function renderLbPage(){
           <span class="username-text">${row.username}</span>
         </td>
         <td class="lb-col-azienda">${renderAziendaLogo(row.azienda)}</td>
-        <td class="lb-col-compartimento">${row.compartimento?`<span class="compartimento-text">${row.compartimento}</span>`:'<span style="color:var(--dimgrey);font-size:10px">—</span>'}</td>
+        <td class="lb-col-dipartimento">${row.dipartimento?`<span class="dipartimento-text">${row.dipartimento}</span>`:'<span style="color:var(--dimgrey);font-size:10px">—</span>'}</td>
         <td class="score">
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
