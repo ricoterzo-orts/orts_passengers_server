@@ -461,7 +461,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 .username-btn:hover{color:var(--accent)}
 .username-extra{font-family:var(--font);font-size:9px;color:var(--dimgrey);letter-spacing:.03em}
 .azienda-badge{display:inline-flex;align-items:center;gap:3px;vertical-align:middle;margin-left:5px}
-.azienda-badge img{height:14px;width:auto;vertical-align:middle;opacity:.85;filter:none}
+.azienda-badge img{width:auto;vertical-align:middle;opacity:.88;display:inline-block}
 .azienda-badge-compartimento{font-family:var(--font);font-size:9px;color:var(--dimgrey);vertical-align:middle}
 .treno-reale-link{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--dimgrey);text-decoration:none;transition:color .15s}
 .treno-reale-link:hover{color:var(--accent)}
@@ -1170,16 +1170,23 @@ function vtLink(servizio){
 
 // ── Logo azienda ferroviaria ──
 const AZIENDA_LOGOS = {
-  'Trenitalia':                      'https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Trenitalia_logo.svg/200px-Trenitalia_logo.svg.png',
-  'Trenitalia DPR':                  'https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Trenitalia_logo.svg/200px-Trenitalia_logo.svg.png',
-  'Trenitalia TPER':                 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Trenitalia_logo.svg/200px-Trenitalia_logo.svg.png',
-  'TrenoNord':                       'https://upload.wikimedia.org/wikipedia/it/thumb/7/72/Trenord_logo.svg/200px-Trenord_logo.svg.png',
-  'ITALO - Nuovo Trasporto Viaggiatori': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/NTV_Italo_logo.svg/200px-NTV_Italo_logo.svg.png',
+  'Trenitalia':                          '/static/logo_trenitalia.svg',
+  'Trenitalia DPR':                      '/static/logo_trenitalia.svg',
+  'Trenitalia TPER':                     '/static/logo_tper.svg',
+  'TrenoNord':                           '/static/logo_trenord.svg',
+  'ITALO - Nuovo Trasporto Viaggiatori': '/static/logo_italo.svg',
 };
-// Etichetta abbreviata (es. "DPR", "TPER") da mostrare accanto al logo
+// Altezza di rendering per ciascun logo (width:auto preserva proporzioni senza perdita qualità)
+const AZIENDA_LOGO_HEIGHT = {
+  'Trenitalia':                          14,
+  'Trenitalia DPR':                      14,
+  'Trenitalia TPER':                     14,
+  'TrenoNord':                           14,
+  'ITALO - Nuovo Trasporto Viaggiatori': 12,
+};
+// Etichetta testuale aggiuntiva accanto al logo (solo DPR: TPER ha logo dedicato)
 const AZIENDA_SUBLABEL = {
-  'Trenitalia DPR':  'DPR',
-  'Trenitalia TPER': 'TPER',
+  'Trenitalia DPR': 'DPR',
 };
 function renderAziendaBadge(azienda, compartimento){
   if(!azienda && !compartimento) return '';
@@ -1187,7 +1194,8 @@ function renderAziendaBadge(azienda, compartimento){
   if(azienda){
     const logo = AZIENDA_LOGOS[azienda];
     if(logo){
-      html += `<img src="${logo}" alt="${azienda}" title="${azienda}" loading="lazy">`;
+      const h = AZIENDA_LOGO_HEIGHT[azienda] || 14;
+      html += `<img src="${logo}" alt="${azienda}" title="${azienda}" loading="lazy" style="height:${h}px;width:auto;vertical-align:middle">`;
       const sub = AZIENDA_SUBLABEL[azienda];
       if(sub) html += `<span class="azienda-badge-compartimento">${sub}</span>`;
     } else {
