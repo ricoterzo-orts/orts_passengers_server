@@ -116,11 +116,12 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 /* ── CLASSIFICA AFFIDABILITÀ ── */
 .lb-section{margin-bottom:24px}
 .lb-tabs{display:flex;gap:4px;margin-bottom:0;flex-wrap:wrap}
+.lb-tabs-row{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
 .lb-tab{padding:5px 14px;background:var(--panel);border:1px solid var(--border);border-bottom:none;color:var(--grey);font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:2px 2px 0 0;transition:all .15s}
 .lb-tab:hover{background:var(--card);color:var(--white)}
 .lb-tab.active{background:var(--card);color:var(--accent);border-bottom-color:var(--card)}
 .lb-table-wrap-active{border-top-left-radius:0}
-.lb-period-range{font-family:var(--font);font-size:10px;color:var(--dimgrey);padding:5px 2px 4px;letter-spacing:.03em}
+.lb-period-range{font-family:var(--font);font-size:10px;color:var(--dimgrey);padding:0 2px 6px;letter-spacing:.03em;text-align:right}
 .lb-period-range strong{font-family:var(--font-md);color:var(--grey);font-weight:500}
 
 .lb-pagination{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);border:1px solid var(--border);border-top:none;font-family:var(--font-md);font-size:11px;color:var(--grey)}
@@ -718,12 +719,14 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
     <div class="sec-hdr">
       <div class="sec-title" id="lb-section-title">Classifica Generale</div>
     </div>
-    <div class="lb-tabs" id="lb-tabs">
-      <div class="lb-tab active" data-period="all" onclick="switchLbPeriod('all')">Generale</div>
-      <div class="lb-tab" data-period="month" onclick="switchLbPeriod('month')">Mensile</div>
-      <div class="lb-tab" data-period="week" onclick="switchLbPeriod('week')">Settimanale</div>
+    <div class="lb-tabs-row">
+      <div class="lb-tabs" id="lb-tabs">
+        <div class="lb-tab active" data-period="all" onclick="switchLbPeriod('all')">Generale</div>
+        <div class="lb-tab" data-period="month" onclick="switchLbPeriod('month')">Mensile</div>
+        <div class="lb-tab" data-period="week" onclick="switchLbPeriod('week')">Settimanale</div>
+      </div>
+      <div class="lb-period-range" id="lb-period-range" style="display:none"></div>
     </div>
-    <div class="lb-period-range" id="lb-period-range" style="display:none"></div>
     <div class="table-wrap lb-table-wrap-active">
       <table>
         <thead>
@@ -1180,11 +1183,11 @@ const AZIENDA_LOGOS = {
 };
 // Altezza di rendering per ciascun logo (width:auto preserva proporzioni senza perdita qualità)
 const AZIENDA_LOGO_HEIGHT = {
-  'Trenitalia':                          16,
-  'Trenitalia DPR':                      16,
-  'Trenitalia TPER':                     16,
+  'Trenitalia':                          17,
+  'Trenitalia DPR':                      17,
+  'Trenitalia TPER':                     17,
   'TrenoNord':                           10,
-  'ITALO - Nuovo Trasporto Viaggiatori': 14,
+  'ITALO - Nuovo Trasporto Viaggiatori': 16,
 };
 // Opacità per logo (1 = colori pieni)
 const AZIENDA_LOGO_OPACITY = {
