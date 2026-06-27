@@ -180,6 +180,7 @@ tr.lb-user-online:hover td{background:rgba(206,27,38,.05)!important}
 @media(max-width:600px){.lb-live-chip{padding:5px 6px}.lb-live-act{padding:6px 8px}}
 @media(max-width:600px){.lb-col-corse{display:none}}
 td.username{font-weight:500;font-size:13px;color:var(--white);font-family:var(--font-md)}
+td.lb-col-azienda{text-align:center;white-space:nowrap;min-width:80px}
 .sub{font-family:var(--font);font-size:10px;color:var(--dimgrey);margin-top:1px}
 td.score{text-align:center}
 .snum{font-family:var(--font-md);font-size:18px;font-weight:500;line-height:1}
@@ -460,7 +461,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 .username-btn{background:none;border:none;padding:0;font:inherit;color:inherit;cursor:pointer;font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white);text-align:left;text-decoration:none;transition:color .15s}
 .username-btn:hover{color:var(--accent)}
 .username-extra{font-family:var(--font);font-size:9px;color:var(--dimgrey);letter-spacing:.03em}
-.azienda-badge{display:inline-flex;align-items:center;gap:3px;vertical-align:middle;margin-left:5px}
+.azienda-badge{display:inline-flex;align-items:center;gap:3px;vertical-align:middle}
 .azienda-badge img{width:auto;vertical-align:middle;display:inline-block}
 .azienda-badge-compartimento{font-family:var(--font);font-size:9px;color:var(--dimgrey);vertical-align:middle}
 .treno-reale-link{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--dimgrey);text-decoration:none;transition:color .15s}
@@ -730,13 +731,14 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
             <th style="text-align:center;width:40px"><i class="fa-solid fa-user"></i></th>
             <th class="lb-col-gps" style="text-align:center;width:40px;font-size:9px;letter-spacing:.08em">GPS</th>
             <th>Username</th>
+            <th>Azienda &amp; Compartimento</th>
             <th class="c" id="lb-score-col">Affidabilità</th>
             <th class="c">Ultima Tratta</th>
             <th class="c lb-col-corse">Corse</th>
           </tr>
         </thead>
         <tbody id="lb-body">
-          <tr><td colspan="6"><div class="empty-state">Caricamento...</div></td></tr>
+          <tr><td colspan="7"><div class="empty-state">Caricamento...</div></td></tr>
         </tbody>
       </table>
     </div>
@@ -935,7 +937,7 @@ function switchLbPeriod(period){
   });
   document.getElementById('lb-section-title').textContent = LB_TITLES[period] || 'Classifica';
   document.getElementById('lb-score-col').textContent = LB_SCORE_LABELS[period] || 'Punteggio';
-  document.getElementById('lb-body').innerHTML='<tr><td colspan="6"><div class="empty-state">Caricamento...</div></td></tr>';
+  document.getElementById('lb-body').innerHTML='<tr><td colspan="7"><div class="empty-state">Caricamento...</div></td></tr>';
   const rangeEl = document.getElementById('lb-period-range');
   const range = getLbPeriodRange(period);
   if(range){rangeEl.innerHTML=range;rangeEl.style.display='';}
@@ -1197,13 +1199,13 @@ const AZIENDA_SUBLABEL = {
   'Trenitalia DPR': 'DPR',
 };
 function renderAziendaBadge(azienda, compartimento){
-  if(!azienda && !compartimento) return '';
+  if(!azienda && !compartimento) return '<span style="color:var(--dimgrey);font-size:10px">—</span>';
   let html = '<span class="azienda-badge">';
   if(azienda){
     const logo = AZIENDA_LOGOS[azienda];
     if(logo){
       const h = AZIENDA_LOGO_HEIGHT[azienda] || 14;
-      const op = AZIENDA_LOGO_OPACITY[azienda] ?? 0.88;
+      const op = AZIENDA_LOGO_OPACITY[azienda] ?? 1;
       html += `<img src="${logo}" alt="${azienda}" title="${azienda}" loading="lazy" style="height:${h}px;width:auto;vertical-align:middle;opacity:${op}">`;
       const sub = AZIENDA_SUBLABEL[azienda];
       if(sub) html += `<span class="azienda-badge-compartimento">${sub}</span>`;
@@ -1212,7 +1214,7 @@ function renderAziendaBadge(azienda, compartimento){
     }
   }
   if(compartimento){
-    html += `<span class="azienda-badge-compartimento"${azienda?' style="margin-left:2px"':''}>· ${compartimento}</span>`;
+    html += `<span class="azienda-badge-compartimento" style="margin-left:3px">· ${compartimento}</span>`;
   }
   html += '</span>';
   return html;
@@ -1234,7 +1236,7 @@ async function loadLeaderboard(){
       const emptyMsg = lbPeriod==='all'
         ? 'Nessuna sessione ancora. Completa una corsa con il monitor attivo!'
         : 'Nessuna corsa registrata in questo periodo. Sii il primo a scalare la classifica!';
-      body.innerHTML='<tr><td colspan="6"><div class="empty-state">'+emptyMsg+'</div></td></tr>';
+      body.innerHTML='<tr><td colspan="7"><div class="empty-state">'+emptyMsg+'</div></td></tr>';
       pag.style.display='none';
       pag.innerHTML='';
       return;
@@ -1244,7 +1246,7 @@ async function loadLeaderboard(){
     if(lbPage>maxPage) lbPage=maxPage;
     renderLbPage();
   }catch(e){
-    document.getElementById('lb-body').innerHTML='<tr><td colspan="6"><div class="empty-state">Errore caricamento.</div></td></tr>';
+    document.getElementById('lb-body').innerHTML='<tr><td colspan="7"><div class="empty-state">Errore caricamento.</div></td></tr>';
     document.getElementById('lb-pagination').style.display='none';
   }
 }
@@ -1265,7 +1267,8 @@ function renderLbPage(){
           <button class="username-btn" onclick="openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
         </td>
         <td class="rank lb-col-gps"></td>
-        <td class="username"><span class="username-text">${row.username}${renderAziendaBadge(row.azienda,row.compartimento)}</span></td>
+        <td class="username"><span class="username-text">${row.username}</span></td>
+        <td class="lb-col-azienda">${renderAziendaBadge(row.azienda,row.compartimento)}</td>
         <td class="score">
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
@@ -1285,7 +1288,9 @@ function renderLbPage(){
           <button class="online-map-btn" onclick="event.stopPropagation();lbFlyToUser('${row.username}')" title="Mostra sulla mappa"><i class="fa-solid fa-location-pin"></i></button>
         </td>
         <td class="username">
-          <span class="username-text">${row.username}${renderAziendaBadge(row.azienda,row.compartimento)}</span>
+          <span class="username-text">${row.username}</span>
+        </td>
+        <td class="lb-col-azienda">${renderAziendaBadge(row.azienda,row.compartimento)}</td>
         </td>
         <td class="score">
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
@@ -1297,7 +1302,7 @@ function renderLbPage(){
           <span class="lb-live-chevron" id="${chevId}" style="display:inline-block;margin-left:4px"><i class="fa-solid fa-chevron-down"></i></span>
         </td>
       </tr>
-      <tr class="lb-online-row"><td colspan="6" style="border-left:3px solid var(--accent);padding:0!important">
+      <tr class="lb-online-row"><td colspan="7" style="border-left:3px solid var(--accent);padding:0!important">
         <div class="lb-live-panel" id="${panelId}"></div>
       </td></tr>`;
   }).join('');
