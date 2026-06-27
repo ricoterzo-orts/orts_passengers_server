@@ -181,7 +181,7 @@ tr.lb-user-online:hover td{background:rgba(206,27,38,.05)!important}
 @media(max-width:600px){.lb-live-chip{padding:5px 6px}.lb-live-act{padding:6px 8px}}
 @media(max-width:600px){.lb-col-corse{display:none}}
 td.username{font-weight:500;font-size:13px;color:var(--white);font-family:var(--font-md)}
-td.lb-col-azienda{text-align:center;white-space:nowrap;min-width:80px}
+td.lb-col-azienda{text-align:left;white-space:nowrap;min-width:100px}
 .sub{font-family:var(--font);font-size:10px;color:var(--dimgrey);margin-top:1px}
 td.score{text-align:center}
 .snum{font-family:var(--font-md);font-size:18px;font-weight:500;line-height:1}
@@ -462,9 +462,9 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 .username-btn{background:none;border:none;padding:0;font:inherit;color:inherit;cursor:pointer;font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white);text-align:left;text-decoration:none;transition:color .15s}
 .username-btn:hover{color:var(--accent)}
 .username-extra{font-family:var(--font);font-size:9px;color:var(--dimgrey);letter-spacing:.03em}
-.azienda-badge{display:inline-flex;align-items:center;gap:3px;vertical-align:middle}
-.azienda-badge img{width:auto;vertical-align:middle;display:inline-block}
-.azienda-badge-compartimento{font-family:var(--font);font-size:9px;color:var(--dimgrey);vertical-align:middle}
+.azienda-badge{display:inline-flex;align-items:center;gap:6px;vertical-align:middle}
+.azienda-badge img{width:auto;vertical-align:middle;display:inline-block;flex-shrink:0}
+.azienda-badge-compartimento{font-family:var(--font);font-size:10px;color:var(--dimgrey);vertical-align:middle;white-space:nowrap}
 .treno-reale-link{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--dimgrey);text-decoration:none;transition:color .15s}
 .treno-reale-link:hover{color:var(--accent)}
 @media(max-width:480px){
@@ -1183,11 +1183,11 @@ const AZIENDA_LOGOS = {
 };
 // Altezza di rendering per ciascun logo (width:auto preserva proporzioni senza perdita qualità)
 const AZIENDA_LOGO_HEIGHT = {
-  'Trenitalia':                          17,
-  'Trenitalia DPR':                      17,
-  'Trenitalia TPER':                     17,
+  'Trenitalia':                          16,
+  'Trenitalia DPR':                      16,
+  'Trenitalia TPER':                     16,
   'TrenoNord':                           10,
-  'ITALO - Nuovo Trasporto Viaggiatori': 16,
+  'ITALO - Nuovo Trasporto Viaggiatori': 14,
 };
 // Opacità per logo (1 = colori pieni)
 const AZIENDA_LOGO_OPACITY = {
@@ -1217,7 +1217,7 @@ function renderAziendaBadge(azienda, compartimento){
     }
   }
   if(compartimento){
-    html += `<span class="azienda-badge-compartimento" style="margin-left:3px">· ${compartimento}</span>`;
+    html += `<span class="azienda-badge-compartimento">${compartimento}</span>`;
   }
   html += '</span>';
   return html;
