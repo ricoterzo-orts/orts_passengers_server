@@ -1176,15 +1176,15 @@ function vtLink(servizio){
 // ── Logo azienda ferroviaria ──
 const AZIENDA_LOGOS = {
   'Trenitalia':                          '/static/logo_trenitalia.svg',
-  'Trenitalia DPR':                      '/static/logo_trenitalia.svg',
+  'Trenitalia DPR':                      '/static/logo_dpr.svg',
   'Trenitalia TPER':                     '/static/logo_tper.svg',
   'TrenoNord':                           '/static/logo_trenord.svg',
   'ITALO - Nuovo Trasporto Viaggiatori': '/static/logo_italo.svg',
 };
 // Altezza di rendering per ciascun logo (width:auto preserva proporzioni senza perdita qualità)
 const AZIENDA_LOGO_HEIGHT = {
-  'Trenitalia':                          18,
-  'Trenitalia DPR':                      18,
+  'Trenitalia':                          16,
+  'Trenitalia DPR':                      16,
   'Trenitalia TPER':                     16,
   'TrenoNord':                           10,
   'ITALO - Nuovo Trasporto Viaggiatori': 14,
@@ -1197,10 +1197,8 @@ const AZIENDA_LOGO_OPACITY = {
   'TrenoNord':                           1,
   'ITALO - Nuovo Trasporto Viaggiatori': 1,
 };
-// Etichetta testuale aggiuntiva accanto al logo (solo DPR: TPER ha logo dedicato)
-const AZIENDA_SUBLABEL = {
-  'Trenitalia DPR': 'DPR',
-};
+// Etichetta testuale aggiuntiva accanto al logo (nessuna: tutti hanno logo dedicato)
+const AZIENDA_SUBLABEL = {};
 function renderAziendaBadge(azienda, compartimento){
   if(!azienda && !compartimento) return '<span style="color:var(--dimgrey);font-size:10px">—</span>';
   let html = '<span class="azienda-badge">';
