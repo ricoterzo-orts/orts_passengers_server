@@ -1024,8 +1024,8 @@ function updateNav(){
   document.getElementById('btn-register').style.display=li?'none':'';
   document.getElementById('menu-wrap').style.display=li?'':'none';
   let _navExtra='';
-  if(li && (me.azienda || me.dipartimento)){
-    _navExtra=' (' + [me.azienda, me.dipartimento].filter(Boolean).join(' – ') + ')';
+  if(li && (me.azienda || me.compartimento)){
+    _navExtra=' (' + [me.azienda, me.compartimento].filter(Boolean).join(' – ') + ')';
   }
   document.getElementById('nav-username').textContent=li?('● '+me.username+_navExtra+'  '):'';
   const b=document.getElementById('user-banner');
@@ -1082,7 +1082,7 @@ async function loadProfile(){
 
   // Legge azienda/dipartimento dal profilo utente (backend)
   const azienda = me.azienda || '';
-  const dipartimento = me.dipartimento || '';
+  const dipartimento = me.compartimento || '';
   document.getElementById('profile-azienda').value = azienda;
   document.getElementById('profile-dipartimento').value = dipartimento;
   // Reset save message
@@ -1138,11 +1138,11 @@ async function saveProfileExtra(){
     const r = await fetch('/api/profile/extra', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRF-Token': (me && me.csrf_token) || ''},
-      body: JSON.stringify({azienda, dipartimento})
+      body: JSON.stringify({azienda, compartimento: dipartimento})
     });
     const d = await r.json();
     if(d.ok){
-      if(me){ me.azienda = azienda; me.dipartimento = dipartimento; }
+      if(me){ me.azienda = azienda; me.compartimento = dipartimento; }
       msg.textContent = '\u2713 Salvato';
       msg.className = 'profile-save-msg ok';
       renderProfileExtraChips(azienda, dipartimento);
@@ -1282,7 +1282,7 @@ function renderLbPage(){
         <td class="rank lb-col-gps"></td>
         <td class="username"><span class="username-text">${row.username}</span></td>
         <td class="lb-col-azienda">${renderAziendaLogo(row.azienda)}</td>
-        <td class="lb-col-dipartimento">${row.dipartimento?`<span class="dipartimento-text">${row.dipartimento}</span>`:'<span style="color:var(--dimgrey);font-size:10px">—</span>'}</td>
+        <td class="lb-col-dipartimento">${row.compartimento?`<span class="dipartimento-text">${row.compartimento}</span>`:'<span style="color:var(--dimgrey);font-size:10px">—</span>'}</td>
         <td class="score">
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
@@ -1305,7 +1305,7 @@ function renderLbPage(){
           <span class="username-text">${row.username}</span>
         </td>
         <td class="lb-col-azienda">${renderAziendaLogo(row.azienda)}</td>
-        <td class="lb-col-dipartimento">${row.dipartimento?`<span class="dipartimento-text">${row.dipartimento}</span>`:'<span style="color:var(--dimgrey);font-size:10px">—</span>'}</td>
+        <td class="lb-col-dipartimento">${row.compartimento?`<span class="dipartimento-text">${row.compartimento}</span>`:'<span style="color:var(--dimgrey);font-size:10px">—</span>'}</td>
         <td class="score">
           <div class="snum" style="color:${scoreColor(row.punteggio)}">${parseFloat(row.punteggio).toFixed(1)}<span style="font-size:10px;opacity:.5">/100</span></div>
           <div class="sgrade ${gradeClass(row.grade)}">${row.grade||''}</div>
