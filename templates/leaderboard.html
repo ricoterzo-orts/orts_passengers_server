@@ -461,7 +461,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
 .username-btn:hover{color:var(--accent)}
 .username-extra{font-family:var(--font);font-size:9px;color:var(--dimgrey);letter-spacing:.03em}
 .azienda-badge{display:inline-flex;align-items:center;gap:3px;vertical-align:middle;margin-left:5px}
-.azienda-badge img{width:auto;vertical-align:middle;opacity:.88;display:inline-block}
+.azienda-badge img{width:auto;vertical-align:middle;display:inline-block}
 .azienda-badge-compartimento{font-family:var(--font);font-size:9px;color:var(--dimgrey);vertical-align:middle}
 .treno-reale-link{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--dimgrey);text-decoration:none;transition:color .15s}
 .treno-reale-link:hover{color:var(--accent)}
@@ -1181,8 +1181,16 @@ const AZIENDA_LOGO_HEIGHT = {
   'Trenitalia':                          14,
   'Trenitalia DPR':                      14,
   'Trenitalia TPER':                     14,
-  'TrenoNord':                           14,
-  'ITALO - Nuovo Trasporto Viaggiatori': 12,
+  'TrenoNord':                           18,
+  'ITALO - Nuovo Trasporto Viaggiatori': 16,
+};
+// Opacità per logo (1 = colori pieni)
+const AZIENDA_LOGO_OPACITY = {
+  'Trenitalia':                          1,
+  'Trenitalia DPR':                      1,
+  'Trenitalia TPER':                     1,
+  'TrenoNord':                           1,
+  'ITALO - Nuovo Trasporto Viaggiatori': 1,
 };
 // Etichetta testuale aggiuntiva accanto al logo (solo DPR: TPER ha logo dedicato)
 const AZIENDA_SUBLABEL = {
@@ -1195,7 +1203,8 @@ function renderAziendaBadge(azienda, compartimento){
     const logo = AZIENDA_LOGOS[azienda];
     if(logo){
       const h = AZIENDA_LOGO_HEIGHT[azienda] || 14;
-      html += `<img src="${logo}" alt="${azienda}" title="${azienda}" loading="lazy" style="height:${h}px;width:auto;vertical-align:middle">`;
+      const op = AZIENDA_LOGO_OPACITY[azienda] ?? 0.88;
+      html += `<img src="${logo}" alt="${azienda}" title="${azienda}" loading="lazy" style="height:${h}px;width:auto;vertical-align:middle;opacity:${op}">`;
       const sub = AZIENDA_SUBLABEL[azienda];
       if(sub) html += `<span class="azienda-badge-compartimento">${sub}</span>`;
     } else {
