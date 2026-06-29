@@ -1274,6 +1274,8 @@ def _fetch_live_data():
                 SELECT
                     u.username,
                     u.id        AS user_id,
+                    u.azienda,
+                    u.compartimento,
                     ls.speed_kmh,
                     ls.delay_min,
                     ls.next_station,
