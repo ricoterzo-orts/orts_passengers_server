@@ -239,17 +239,48 @@ def get_db():
         db_pool.putconn(conn, close=True)
         conn = db_pool.getconn()
 
+    # Alcuni errori di connessione persa (es. "Software caused connection
+    # abort", "server closed the connection", timeout SSL) vengono sollevati
+    # da psycopg2 come DatabaseError "nudo", non come OperationalError.
+    # Se ci si basa solo su OperationalError, questi casi cadono nel ramo
+    # generico, conn.rollback() fallisce a sua volta (connessione morta),
+    # e la connessione marcia veniva rimessa nel pool con close=False,
+    # facendo fallire ogni richiesta successiva che la pescava.
+    _DEAD_CONN_MARKERS = (
+        "server closed the connection",
+        "connection already closed",
+        "could not connect to server",
+        "could not send data to server",
+        "could not receive data from server",
+        "connection abort",
+        "ssl syscall error",
+        "terminating connection",
+        "broken pipe",
+    )
+
+    def _is_dead_connection_error(exc: Exception) -> bool:
+        if isinstance(exc, psycopg2.OperationalError):
+            return True
+        msg = str(exc).lower()
+        return any(marker in msg for marker in _DEAD_CONN_MARKERS)
+
     ok = True
     try:
         yield conn
         conn.commit()
-    except psycopg2.OperationalError:
-        # Connessione caduta durante l'uso: non rimetterla nel pool,
-        # la prossima getconn() ne aprirà una nuova.
-        ok = False
-        raise
-    except Exception:
-        conn.rollback()
+    except Exception as exc:
+        if _is_dead_connection_error(exc):
+            # Connessione caduta durante l'uso: non rimetterla nel pool,
+            # la prossima getconn() ne aprirà una nuova. Niente rollback:
+            # su una connessione morta fallirebbe comunque.
+            ok = False
+        else:
+            try:
+                conn.rollback()
+            except Exception:
+                # Il rollback stesso ha fallito: la connessione è morta
+                # anche se il messaggio originale non era tra quelli noti.
+                ok = False
         raise
     finally:
         db_pool.putconn(conn, close=not ok)
