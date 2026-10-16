@@ -126,12 +126,6 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-hdr-name{font-family:var(--font-md);font-size:17px;font-weight:500;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .tn-hdr-name .treno-reale-link{font-size:10px}
 .tn-hdr-right{text-align:right;font-family:var(--font-md);font-size:22px;font-weight:700;line-height:1}
-.tn-cat{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;height:24px;min-width:30px;padding:0 7px;border-radius:4px;font-family:var(--font-md);font-weight:700;font-size:14px;letter-spacing:.04em;color:#fff;box-sizing:border-box}
-.tn-cat-REG{background:#fff;color:#2B2B2B;border:2px solid #2B2B2B}
-.tn-cat-IC{background:#1B3A6B}
-.tn-cat-ICN{background:#0F2447}
-.tn-cat-AV{background:var(--accent)}
-.tn-cat img{height:22px;width:auto;display:block}
 .tn-body{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;align-items:stretch}
 .tn-left{display:flex;flex-direction:column;gap:10px;min-width:0}
 .tn-arrive{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:10px 12px;text-align:center}
@@ -1541,22 +1535,6 @@ function renderActivityName(name){
   return name + link;
 }
 
-// ── Categoria treno (Regionale / IC / ICN / AV) dedotta dal nome dell'activity ──
-// Per usare loghi propri, valorizza CATEGORY_LOGO_IMG (es. {REG:'/static/logo_reg.svg'}).
-const CATEGORY_LOGO_IMG = {};
-function trainCategory(name){
-  const n=(name||'').toUpperCase();
-  if(/\bICN\b/.test(n)) return 'ICN';
-  if(/\b(IC|EC|EN)\b|INTERCITY/.test(n)) return 'IC';
-  if(/\b(AV|FR|FA|FB|ES|ESAV|ITALO)\b|FRECCIA/.test(n)) return 'AV';
-  return 'REG';
-}
-function renderCategoryLogo(cat){
-  const img=CATEGORY_LOGO_IMG[cat];
-  const label={REG:'R',IC:'IC',ICN:'ICN',AV:'AV'}[cat]||'R';
-  const title={REG:'Regionale',IC:'Intercity',ICN:'Intercity Notte',AV:'Alta Velocità'}[cat]||'';
-  return `<span class="tn-cat tn-cat-${cat}" title="${title}">${img?`<img src="${img}" alt="${title}">`:label}</span>`;
-}
 function fmtSimTime(t){
   if(!t) return '—';
   const p=String(t).split(':');
@@ -1663,7 +1641,6 @@ function renderPanel(u,el){
         <span class="tn-time" title="Orario dell'activity">${fmtSimTime(u.sim_time)}</span>
       </div>
       <div class="tn-hdr-center">
-        ${renderCategoryLogo(trainCategory(u.activity_name))}
         <span class="tn-hdr-name">${renderActivityName(u.activity_name)}</span>
       </div>
       <div class="tn-hdr-right" style="color:${dColor}" title="Ritardo">${dTxt}</div>
