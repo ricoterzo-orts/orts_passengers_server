@@ -11,26 +11,25 @@
 <style>
 @font-face {
   font-family: 'Futura';
-  src: url('/static/FuturaCyrillicMedium.woff2') format('woff2'),
-       url('/static/FuturaCyrillicMedium.woff') format('woff'),
-       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicMedium.woff2') format('woff2');
+  src: url('/static/futura_medium_bt.woff2') format('woff2'),
+       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/futura_medium_bt.woff2') format('woff2');
   font-weight: 400 500;
   font-style: normal;
 }
 @font-face {
   font-family: 'Futura';
-  src: url('/static/FuturaCyrillicBook.woff2') format('woff2'),
-       url('/static/FuturaCyrillicBook.woff') format('woff'),
-       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicBook.woff2') format('woff2');
+  src: url('/static/futur.woff2') format('woff2'),
+       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/futur.woff2') format('woff2');
   font-weight: 600 900;
   font-style: normal;
 }
 @font-face {
   font-family: 'FuturaBold';
-  src: url('/static/FuturaCyrillicMedium.woff2') format('woff2'),
-       url('/static/FuturaCyrillicMedium.woff') format('woff'),
-       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicMedium.woff2') format('woff2');
-  font-weight: 400;
+  src: url('/static/futur.woff2') format('woff2'),
+       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/futur.woff2') format('woff2'),
+       url('/static/futura_medium_bt.woff2') format('woff2'),
+       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/futura_medium_bt.woff2') format('woff2');
+  font-weight: 700;
   font-style: normal;
 }
 :root {
@@ -166,7 +165,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 
 .tn-stop.cur .tn-stop-name{background:var(--tn-blue);color:#fff;font-family:var(--font-md);font-weight:700;padding:1px 6px}
 /* ── Maschera del display: sfumature, contorni e doppia cornice ── */
-.tn-board{--tn-line:#BFC8CF;background:linear-gradient(180deg,#F7F9FA 0%,#E2E8EC 55%,#D3DBE0 100%);border:2px solid #4B5259;box-shadow:inset 0 0 0 1px rgba(255,255,255,.8),0 1px 3px rgba(0,0,0,.15)}
+.tn-board{--tn-line:#BFC8CF;background:linear-gradient(180deg,#F7F9FA 0%,#E2E8EC 55%,#D3DBE0 100%);border:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.8),0 1px 3px rgba(0,0,0,.15)}
 .tn-hdr{position:relative;background:linear-gradient(180deg,#FFFFFF 0%,#E9EEF1 100%);border-bottom:1px solid var(--tn-line);box-shadow:0 1px 0 rgba(255,255,255,.9)}
 .tn-hdr::after{content:'';position:absolute;top:0;right:0;bottom:0;width:20%;background:linear-gradient(180deg,#FFFFFF,#DDE4E9);clip-path:polygon(22% 0,100% 0,100% 100%,0 100%);pointer-events:none;opacity:.95}
 .tn-hdr>*{position:relative;z-index:1}
