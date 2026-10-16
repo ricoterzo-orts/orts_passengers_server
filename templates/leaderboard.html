@@ -199,9 +199,13 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-stop.passed::before{background:#7D2F2F}
 /* Targhetta ritardo: pannello sfumato con taglio diagonale a sinistra */
 .tn-hdr::after{display:none}
-.tn-board .tn-hdr-right{position:relative;justify-self:end;align-self:stretch;margin:-8px -14px -8px 0;padding:0 18px 0 38px;min-width:104px;display:flex;align-items:center;justify-content:flex-end;font-weight:700;text-shadow:0 1px 0 rgba(255,255,255,.75)}
-.tn-board .tn-hdr-right::before{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,#FFFFFF 0%,#EDF1F3 45%,#D2DADF 100%);clip-path:polygon(26px 0,100% 0,100% 100%,0 100%);box-shadow:inset 0 1px 0 #fff}
-.tn-board .tn-hdr-right::after{content:'';position:absolute;left:0;top:0;bottom:0;width:27px;z-index:-1;background:linear-gradient(to bottom right,transparent calc(50% - 1.5px),rgba(45,58,68,.55) calc(50% - .5px),rgba(45,58,68,.55) calc(50% + .5px),transparent calc(50% + 1.5px))}
+.tn-board .tn-hdr-right{position:relative;justify-self:end;align-self:stretch;margin:-8px -14px -8px 0;padding:0 14px 0 30px;min-width:78px;display:flex;align-items:center;justify-content:flex-end;font-weight:700}
+.tn-board .tn-hdr-right::before{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,#000000 0%,#2B2E31 40%,#8A9096 100%);clip-path:polygon(20px 0,100% 0,100% 100%,0 100%)}
+.tn-board .tn-hdr-right::after{display:none;content:'';position:absolute;left:0;top:0;bottom:0;width:21px;z-index:-1;background:linear-gradient(to bottom right,transparent calc(50% - 1.5px),rgba(45,58,68,.55) calc(50% - .5px),rgba(45,58,68,.55) calc(50% + .5px),transparent calc(50% + 1.5px))}
+/* Striscia rossa continua fino al pallino della prossima stazione + freccia */
+.tn-stop.cur::before{background:linear-gradient(180deg,#7D2F2F 50%,#C9C9C9 50%)}
+.tn-stop.cur:first-child::before{background:#C9C9C9}
+.tn-stop.cur .tn-stop-dot::after{content:'';position:absolute;left:50%;bottom:100%;margin-bottom:2px;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #7D2F2F}
 /* Riquadro velocità: occupa tutto lo spazio fino in basso */
 .tn-left .live-chart-wrap{flex:1 1 auto;min-height:0}
 .tn-left .live-chart-canvas{flex:1 1 auto;height:auto;min-height:130px}
