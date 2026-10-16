@@ -120,12 +120,12 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-board{--tn-blue:#0A3CF0;padding:0!important;overflow:hidden}
 .tn-hdr{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--card)}
 .tn-hdr-left{display:flex;flex-direction:column;line-height:1.05}
-.tn-date{font-family:var(--font);font-size:10px;color:var(--grey)}
-.tn-time{font-family:var(--font-md);font-size:22px;font-weight:500;color:var(--white);letter-spacing:.5px}
+.tn-date{font-family:var(--font);font-size:10px;font-weight:700;color:var(--grey)}
+.tn-time{font-family:var(--font-md);font-size:22px;font-weight:700;color:var(--white);letter-spacing:.5px}
 .tn-hdr-center{display:flex;align-items:center;justify-content:center;gap:10px;min-width:0;text-align:center}
 .tn-hdr-name{font-family:var(--font-md);font-size:17px;font-weight:500;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .tn-hdr-name .treno-reale-link{font-size:10px}
-.tn-hdr-right{text-align:right;font-family:var(--font-md);font-size:22px;font-weight:500;line-height:1}
+.tn-hdr-right{text-align:right;font-family:var(--font-md);font-size:22px;font-weight:700;line-height:1}
 .tn-cat{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;height:24px;min-width:30px;padding:0 7px;border-radius:4px;font-family:var(--font-md);font-weight:700;font-size:14px;letter-spacing:.04em;color:#fff;box-sizing:border-box}
 .tn-cat-REG{background:#fff;color:#2B2B2B;border:2px solid #2B2B2B}
 .tn-cat-IC{background:#1B3A6B}
@@ -136,10 +136,9 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-left{display:flex;flex-direction:column;gap:10px;min-width:0}
 .tn-arrive{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:10px 12px;text-align:center}
 .tn-arrive-lbl{font-family:var(--font);font-size:12px;color:var(--grey);letter-spacing:.04em;text-transform:uppercase}
-.tn-arrive-name{font-family:var(--font-md);font-size:22px;font-weight:700;color:var(--white);margin-top:3px;line-height:1.15;text-transform:uppercase}
+.tn-arrive-name{font-family:var(--font-md);font-size:22px;font-weight:700!important;color:var(--white);margin-top:3px;line-height:1.15;text-transform:uppercase}
 .tn-logo-box{background:var(--accent);border-radius:4px;padding:16px 12px 10px;display:flex;flex-direction:column;align-items:center;gap:8px}
 .tn-logo-box img{height:46px;width:auto;max-width:80%;filter:brightness(0) invert(1)}
-.tn-logo-sub{font-family:var(--font-md);font-size:8px;font-weight:500;letter-spacing:.08em;color:#fff;text-transform:uppercase;text-align:center}
 .tn-left .live-chart-wrap{border-radius:4px;background:var(--card)}
 .tn-left .live-chart-canvas{flex:none;height:130px}
 .tn-foot{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--font);font-size:10px;color:var(--dimgrey);padding:0 2px}
@@ -1636,8 +1635,7 @@ function renderTnStops(stations,hiIdx){
 }
 
 function renderPanel(u,el){
-  const cft=u.comfort_live!=null?Math.round(u.comfort_live):100;
-  const stations=u.stations||[];
+  const stations=u.stations||[]; 
 
   // Fermata evidenziata / prossima
   let hiIdx=-1;
@@ -1678,7 +1676,6 @@ function renderPanel(u,el){
         </div>
         <div class="tn-logo-box">
           <img src="${AZIENDA_LOGOS['Trenitalia']}" alt="Trenitalia">
-          <div class="tn-logo-sub">Gruppo Ferrovie dello Stato Italiane</div>
         </div>
         <div class="live-chart-wrap">
           <div class="live-chart-hdr">
@@ -1697,7 +1694,6 @@ function renderPanel(u,el){
         </div>
         <div class="tn-foot">
           ${u.consist?`<span>🚂 ${u.consist}</span>`:''}
-          <span>Comfort <strong style="color:${comfortColor(cft)}">${cft}</strong></span>
         </div>
       </div>
       <div class="tn-stops-wrap">
