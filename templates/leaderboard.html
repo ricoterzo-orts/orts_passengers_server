@@ -11,15 +11,19 @@
 <style>
 @font-face {
   font-family: 'Futura';
-  src: url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicBook.woff2') format('woff2'),
-       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicBook.woff') format('woff');
-  font-weight: normal;
+  src: url('/static/FuturaCyrillicMedium.woff2') format('woff2'),
+       url('/static/FuturaCyrillicMedium.woff') format('woff'),
+       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicMedium.woff2') format('woff2');
+  font-weight: 400 500;
+  font-style: normal;
 }
 @font-face {
   font-family: 'Futura';
-  src: url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicMedium.woff2') format('woff2'),
-       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicMedium.woff') format('woff');
-  font-weight: 500;
+  src: url('/static/FuturaCyrillicBook.woff2') format('woff2'),
+       url('/static/FuturaCyrillicBook.woff') format('woff'),
+       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicBook.woff2') format('woff2');
+  font-weight: 600 900;
+  font-style: normal;
 }
 :root {
   --bg:      #F2F2F2;
@@ -155,6 +159,10 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-stop:not(.passed):not(.cur){color:#8A8A8A}
 .tn-stop:not(.passed):not(.cur) .tn-stop-time{color:#8A8A8A}
 .tn-stop-name{text-transform:uppercase;letter-spacing:.01em;min-width:0}
+.tn-stop-wx{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-family:var(--font);font-size:12px;color:var(--grey);min-width:46px;justify-content:flex-end;white-space:nowrap}
+.tn-stop-wx i{font-size:15px;width:18px;text-align:center}
+.tn-stop:not(.passed):not(.cur) .tn-stop-wx{color:#8A8A8A}
+
 .tn-stop.cur .tn-stop-name{background:var(--tn-blue);color:#fff;font-family:var(--font-md);font-weight:700;padding:1px 6px}
 @media(max-width:700px){
   .tn-hdr{grid-template-columns:auto 1fr auto;gap:8px;padding:8px 10px}
@@ -1555,13 +1563,75 @@ function fmtSimTime(t){
   const p=String(t).split(':');
   return p.length>=2 ? p[0].padStart(2,'0')+'.'+p[1].padStart(2,'0') : String(t);
 }
+// ── Meteo reale per stazione (Open-Meteo, senza chiave API; cache 15 min) ──
+const wxCache={};            // nome stazione -> {temp,code,day,ts}
+const wxPending=new Set();
+let wxFailTs=0;
+function wxIconHtml(w){
+  const c=w.code, day=w.day!==0;
+  let ico,col;
+  if(c===0){ico=day?'fa-sun':'fa-moon';col=day?'#F2A100':'#5B6B8C';}
+  else if(c===1||c===2){ico=day?'fa-cloud-sun':'fa-cloud-moon';col=day?'#F2A100':'#5B6B8C';}
+  else if(c===3){ico='fa-cloud';col='#8A9099';}
+  else if(c===45||c===48){ico='fa-smog';col='#8A9099';}
+  else if((c>=51&&c<=57)||(c>=61&&c<=65)){ico='fa-cloud-rain';col='#3B7DD8';}
+  else if(c===66||c===67||(c>=80&&c<=82)){ico='fa-cloud-showers-heavy';col='#2F68B8';}
+  else if((c>=71&&c<=77)||c===85||c===86){ico='fa-snowflake';col='#5BB5E8';}
+  else if(c>=95){ico='fa-cloud-bolt';col='#7A4FB5';}
+  else {ico='fa-cloud';col='#8A9099';}
+  return `<i class="fa-solid ${ico}" style="color:${col}"></i><span>${w.temp}°</span>`;
+}
+function wxFill(){
+  document.querySelectorAll('.tn-stop-wx[data-st]').forEach(sp=>{
+    const w=wxCache[sp.dataset.st];
+    if(w) sp.innerHTML=wxIconHtml(w);
+  });
+}
+async function loadStationWeather(stations){
+  const now=Date.now();
+  if(now-wxFailTs<120000) return;
+  const todo=[], seen=new Set();
+  (stations||[]).forEach(s=>{
+    const n=s.station_name;
+    if(!n||seen.has(n)) return; seen.add(n);
+    const c=wxCache[n];
+    if(c&&now-c.ts<900000) return;
+    if(wxPending.has(n)) return;
+    const co=(typeof getStationCoord==='function')?getStationCoord(n):null;
+    if(!co||co.lat==null||co.lon==null) return;
+    todo.push({n,lat:Number(co.lat),lon:Number(co.lon)});
+  });
+  if(!todo.length){ wxFill(); return; }
+  todo.forEach(x=>wxPending.add(x.n));
+  try{
+    const url='https://api.open-meteo.com/v1/forecast?latitude='+todo.map(x=>x.lat.toFixed(3)).join(',')
+      +'&longitude='+todo.map(x=>x.lon.toFixed(3)).join(',')
+      +'&current=temperature_2m,weather_code,is_day&timezone=auto';
+    const r=await fetch(url);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    let d=await r.json();
+    if(!Array.isArray(d)) d=[d];
+    d.forEach((o,i)=>{
+      const c=o&&o.current;
+      if(c&&todo[i]) wxCache[todo[i].n]={temp:Math.round(c.temperature_2m),code:c.weather_code,day:c.is_day,ts:Date.now()};
+    });
+  }catch(e){
+    wxFailTs=Date.now();
+    console.warn('[VTV] meteo non disponibile',e);
+  }finally{
+    todo.forEach(x=>wxPending.delete(x.n));
+    wxFill();
+  }
+}
+
 const tnStopsState={}; // per utente: {scrollTop, idx} per non perdere lo scroll ai refresh live
 function renderTnStops(stations,hiIdx){
   if(!stations.length) return '<div style="padding:12px;font-size:11px;color:var(--dimgrey);text-align:center">Nessuna fermata</div>';
   return stations.map((s,i)=>{
     const cls=(s.passed?'passed':'')+(i===hiIdx?' cur':'');
     const t=s.arrival||s.departure||'';
-    return `<div class="tn-stop ${cls}"><span class="tn-stop-dot"></span><span class="tn-stop-time">${t}</span><span class="tn-stop-name">${s.station_name}</span></div>`;
+    const w=wxCache[s.station_name];
+    return `<div class="tn-stop ${cls}"><span class="tn-stop-dot"></span><span class="tn-stop-time">${t}</span><span class="tn-stop-name">${s.station_name}</span><span class="tn-stop-wx" data-st="${String(s.station_name).replace(/"/g,'&quot;')}">${w?wxIconHtml(w):''}</span></div>`;
   }).join('');
 }
 
@@ -1649,6 +1719,7 @@ function renderPanel(u,el){
     tnStopsState[u.username]={idx:hiIdx,scrollTop:box.scrollTop};
     box.addEventListener('scroll',()=>{tnStopsState[u.username].scrollTop=box.scrollTop;},{passive:true});
   }
+  loadStationWeather(stations);
   requestAnimationFrame(()=>drawSpeedChart(u));
 }
 
