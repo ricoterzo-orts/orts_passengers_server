@@ -11,26 +11,38 @@
 <style>
 @font-face {
   font-family: 'Futura';
-  src: url('/static/FuturaCyrillicMedium.woff2') format('woff2'),
-       url('/static/FuturaCyrillicMedium.woff') format('woff'),
-       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicMedium.woff2') format('woff2');
-  font-weight: 400 500;
+  src: url('/static/FuturaCyrillicLight.ttf') format('truetype'),
+       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicLight.ttf') format('truetype');
+  font-weight: 100 300;
   font-style: normal;
 }
 @font-face {
   font-family: 'Futura';
-  src: url('/static/FuturaCyrillicBook.woff2') format('woff2'),
-       url('/static/FuturaCyrillicBook.woff') format('woff'),
-       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicBook.woff2') format('woff2');
-  font-weight: 600 900;
+  src: url('/static/FuturaCyrillicBook.ttf') format('truetype'),
+       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicBook.ttf') format('truetype');
+  font-weight: 400;
   font-style: normal;
 }
 @font-face {
-  font-family: 'FuturaBold';
+  font-family: 'Futura';
   src: url('/static/FuturaCyrillicMedium.woff2') format('woff2'),
        url('/static/FuturaCyrillicMedium.woff') format('woff'),
        url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicMedium.woff2') format('woff2');
-  font-weight: 400;
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Futura';
+  src: url('/static/FuturaCyrillicBold.ttf') format('truetype'),
+       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicBold.ttf') format('truetype');
+  font-weight: 600 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Futura';
+  src: url('/static/FuturaCyrillicExtraBold.ttf') format('truetype'),
+       url('https://raw.githubusercontent.com/ricoterzo-orts/orts_passengers_server/main/static/FuturaCyrillicExtraBold.ttf') format('truetype');
+  font-weight: 800 900;
   font-style: normal;
 }
 :root {
@@ -193,7 +205,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-board .tn-stop .tn-stop-time,
 .tn-board .tn-stop .tn-stop-wx,
 .tn-board .tn-stop .tn-stop-wx span,
-.tn-board .tn-stop .tn-stop-name{font-family:'FuturaBold','Futura',sans-serif!important;font-weight:700!important}
+.tn-board .tn-stop .tn-stop-name{font-family:'Futura',sans-serif!important;font-weight:700!important}
 @media(max-width:700px){
   .tn-hdr{grid-template-columns:auto 1fr auto;gap:8px;padding:8px 10px}
   .tn-hdr-name{font-size:13px}
