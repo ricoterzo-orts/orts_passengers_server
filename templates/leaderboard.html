@@ -149,7 +149,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-date{font-family:var(--font);font-size:10px;font-weight:700;color:var(--grey)}
 .tn-time{font-family:var(--font-md);font-size:22px;font-weight:700;color:var(--white);letter-spacing:.5px}
 .tn-hdr-center{display:flex;align-items:center;justify-content:center;gap:10px;min-width:0;text-align:center}
-.tn-hdr-name{font-family:var(--font-md);font-size:17px;font-weight:500;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.tn-hdr-name{font-family:var(--font-md);font-size:17px;font-weight:700!important;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .tn-hdr-name .treno-reale-link{font-size:10px}
 .tn-hdr-right{text-align:right;font-family:var(--font-md);font-size:22px;font-weight:700;line-height:1}
 .tn-body{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;align-items:stretch}
@@ -1727,16 +1727,16 @@ function renderPanel(u,el){
           <div class="tn-arrive-lbl">Siamo in arrivo a:</div>
           <div class="tn-arrive-name">${nextName}</div>
         </div>
-        <div class="tn-speed">
-          <span class="tn-gauge"><i class="fa-solid fa-gauge-high"></i></span>
-          <span class="tn-speed-txt">Stiamo viaggiando a:</span>
-          <span class="tn-speed-val"><span id="speed-val-${u.username}">${curSpeed}</span><span class="tn-speed-unit">Km/h</span></span>
-        </div>
         <div class="live-chart-wrap">
           <div class="live-chart-hdr">
             <div class="live-chart-title tn-chart-ttl">Velocità</div>
           </div>
           <canvas class="live-chart-canvas" id="speed-chart-${u.username}"></canvas>
+        </div>
+        <div class="tn-speed">
+          <span class="tn-gauge"><i class="fa-solid fa-gauge-high"></i></span>
+          <span class="tn-speed-txt">Stiamo viaggiando a:</span>
+          <span class="tn-speed-val"><span id="speed-val-${u.username}">${curSpeed}</span><span class="tn-speed-unit">Km/h</span></span>
         </div>
         <div class="tn-foot">
           ${u.consist?`<span>🚂 ${u.consist}</span>`:''}
