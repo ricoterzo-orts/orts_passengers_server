@@ -2135,7 +2135,10 @@ function startDeadReckoningLoop(){
 }
 
 // ── Avanzamento fermate dalla posizione GPS reale ──
-const gpsProgress = {}; // username -> {key, g}
+const gpsProgress = {}; // username -> {key, g, last}
+// Una fermata risulta superata solo dopo che il treno è PARTITO: deve essere
+// almeno GPS_DEPART_KM oltre la stazione lungo la tratta successiva.
+const GPS_DEPART_KM = 0.4;
 
 // distanza (km) punto→segmento + parametro t [0..1] lungo il segmento
 function gpsDistToSeg(p, a, b){
@@ -2146,7 +2149,7 @@ function gpsDistToSeg(p, a, b){
   const dx = bx - ax, dy = by - ay, L = dx*dx + dy*dy;
   let t = L > 0 ? (-(ax*dx + ay*dy)) / L : 0;
   t = Math.max(0, Math.min(1, t));
-  return { d: Math.hypot(ax + dx*t, ay + dy*t), t };
+  return { d: Math.hypot(ax + dx*t, ay + dy*t), t, len: Math.sqrt(L) };
 }
 
 function applyGpsProgress(u){
@@ -2165,29 +2168,37 @@ function applyGpsProgress(u){
   const p = { lat: Number(u.train_lat), lon: Number(u.train_lon) };
   const key = (u.activity_name || '') + '|' + st.length;
   let state = gpsProgress[u.username];
-  if(!state || state.key !== key) state = gpsProgress[u.username] = { key, g: 0 };
+  if(!state || state.key !== key) state = gpsProgress[u.username] = { key, g: 0, last: -1 };
 
   const best = (from, to) => {
     let b = null;
     for(let g = from; g <= to && g < geo.length - 1; g++){
       const r = gpsDistToSeg(p, geo[g], geo[g+1]);
-      if(!b || r.d < b.d - 1e-9) b = { g, d: r.d, t: r.t };
+      if(!b || r.d < b.d - 1e-9) b = { g, d: r.d, t: r.t, len: r.len };
     }
     return b;
   };
 
   // l'avanzamento è monotono: cerca solo in avanti (finestra di 3 tratte)
   let b = best(state.g, state.g + 3);
+  let jumped = false;
   // se il treno è lontano (>5 km) dalla finestra, ricerca globale (salto/teletrasporto)
   if(!b || b.d > 5){
     const f = best(0, geo.length - 2);
-    if(f && (!b || f.d < b.d)) b = f;
+    if(f && (!b || f.d < b.d)){ b = f; jumped = true; }
   }
   if(!b) return;
   state.g = b.g;
 
-  // ultima fermata superata (-1 = treno ancora all'origine)
-  const lastIdx = (b.g === 0 && b.t < 0.02) ? -1 : geo[b.g].i;
+  // ultima fermata superata (-1 = treno ancora all'origine).
+  // La stazione b.g conta come superata solo se il treno se n'è allontanato
+  // di almeno GPS_DEPART_KM; altrimenti è ferma/in partenza e resta "prossima".
+  const along = b.t * b.len;
+  const lastGeo = (along >= GPS_DEPART_KM) ? b.g : b.g - 1;
+  let lastIdx = lastGeo >= 0 ? geo[lastGeo].i : -1;
+  // monotono: non torna indietro per rumore GPS (salvo salto reale)
+  lastIdx = jumped ? lastIdx : Math.max(state.last, lastIdx);
+  state.last = lastIdx;
   let nextIdx = st.findIndex((s, i) => i > lastIdx);
   if(nextIdx < 0) nextIdx = st.length - 1;
 
