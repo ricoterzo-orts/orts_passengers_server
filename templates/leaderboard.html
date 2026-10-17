@@ -211,6 +211,13 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-left .live-chart-canvas{flex:1 1 auto;height:auto;min-height:130px}
 /* Fermata corrente: pallino nero, stessa dimensione degli altri; orario e nome +3px */
 .tn-stop.cur .tn-stop-dot{background:#000;box-shadow:none}
+/* Riga velocità live (al posto del riquadro logo Trenitalia) */
+.tn-speed{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--tn-line);border-radius:6px;background:linear-gradient(180deg,#FFFFFF 0%,#EDF1F3 100%);box-shadow:inset 0 1px 0 #fff,inset 0 -2px 4px rgba(0,0,0,.05)}
+.tn-speed .tn-gauge{width:34px;height:34px;font-size:16px;flex:none}
+.tn-speed-txt{font-family:var(--font);font-weight:400;font-size:15px;color:var(--grey);white-space:nowrap}
+.tn-speed-val{font-family:var(--font-md);font-weight:700!important;font-size:19px;color:var(--white);margin-left:4px}
+.tn-speed-val .tn-speed-unit{font-weight:700!important;font-size:19px;margin-left:3px}
+
 .tn-board .tn-stop.cur .tn-stop-time{font-size:18px}
 .tn-board .tn-stop.cur .tn-stop-name{font-size:19px}
 /* Grassetto: data, orario, stazione di arrivo, lista stazioni */
@@ -1078,7 +1085,6 @@ function switchLbPeriod(period){
   else{rangeEl.style.display='none';}
   loadLeaderboard();
 }
-const chartZoomState = {}; // persistenza zoom/pan per username
 
 // ── Merge utenti live in classifica ──
 // Garantisce che chi è online appaia sempre in cima a lbRows,
@@ -1692,6 +1698,11 @@ function renderPanel(u,el){
   const dColor=d<=5?'var(--green)':d<=30?'var(--amber)':'var(--red)';
   const dTxt=d>0?`+${d}m`:'';
 
+  // Velocità live dal monitor (fallback: ultimo punto dello storico)
+  const _hist=u.speed_history||[];
+  const _sp=(u.speed_kmh!=null)?u.speed_kmh:(_hist.length?_hist[_hist.length-1].speed_kmh:null);
+  const curSpeed=(_sp!=null&&isFinite(_sp))?Math.round(_sp):'—';
+
   // Data reale del PC
   const today=new Date().toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});
 
@@ -1716,18 +1727,14 @@ function renderPanel(u,el){
           <div class="tn-arrive-lbl">Siamo in arrivo a:</div>
           <div class="tn-arrive-name">${nextName}</div>
         </div>
+        <div class="tn-speed">
+          <span class="tn-gauge"><i class="fa-solid fa-gauge-high"></i></span>
+          <span class="tn-speed-txt">Stiamo viaggiando a:</span>
+          <span class="tn-speed-val"><span id="speed-val-${u.username}">${curSpeed}</span><span class="tn-speed-unit">Km/h</span></span>
+        </div>
         <div class="live-chart-wrap">
           <div class="live-chart-hdr">
             <div class="live-chart-title tn-chart-ttl">Velocità</div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <div class="chart-zoom-btns">
-                <button class="chart-zoom-btn" id="zoom-out-${u.username}" title="Zoom out (−)">−</button>
-                <span class="chart-zoom-label" id="zoom-lbl-${u.username}">1×</span>
-                <button class="chart-zoom-btn" id="zoom-in-${u.username}" title="Zoom in (+)">+</button>
-                <button class="chart-zoom-btn" id="zoom-rst-${u.username}" title="Reset zoom">⟳</button>
-              </div>
-              <div><span class="live-chart-speed" id="speed-val-${u.username}">—</span><span class="live-chart-speed-unit">km/h</span></div>
-            </div>
           </div>
           <canvas class="live-chart-canvas" id="speed-chart-${u.username}"></canvas>
         </div>
@@ -1818,23 +1825,6 @@ function drawSpeedChart(u){
 
   const pad={t:8,r:8,b:20,l:32};
   const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
-
-  // ── Zoom/pan state: persistente tra re-render ──
-  const MAX_ZOOM=8, ZOOM_STEP=1.5;
-  if(!chartZoomState[u.username]) chartZoomState[u.username]={zoomLevel:1,panOffset:0};
-  const zs = chartZoomState[u.username];
-
-  function clampPan(){
-    const maxPan=1-1/zs.zoomLevel;
-    zs.panOffset=Math.max(0,Math.min(maxPan,zs.panOffset));
-  }
-  function updateZoomLabel(){
-    const lbl=document.getElementById('zoom-lbl-'+u.username);
-    if(lbl) lbl.textContent=(zs.zoomLevel===1?'1':zs.zoomLevel%1===0?zs.zoomLevel+'':'×')+( zs.zoomLevel===1?'×':'');
-  }
-
-  let isDragging=false;
-  let dragStartX=0, dragStartPan=0;
   let crosshairX=null;
 
   function catmull(p0,p1,p2,p3,t){
@@ -1851,27 +1841,16 @@ function drawSpeedChart(u){
       ctx2.fillStyle='#AAAAAA';ctx2.font='10px Futura,sans-serif';ctx2.textAlign='center';
       ctx2.fillText('Dati non ancora disponibili',W/2,50);return;
     }
-    const n=history.length;
-    // visible window in data-index space
-    const winSize=n/zs.zoomLevel;
-    const iStart=zs.panOffset*(n-1);
-    const iEnd=iStart+winSize;
-    const visStart=Math.max(0,Math.floor(iStart));
-    const visEnd=Math.min(n-1,Math.ceil(iEnd));
-
-    const visHistory=history.slice(visStart,visEnd+1);
-    if(!visHistory.length) return;
+    const visHistory=history;
 
     const speeds=visHistory.map(h=>h.speed_kmh);
     const maxSpd=Math.max(...speeds,10);
     const minSpd=Math.max(0,Math.min(...speeds)-5);
     const range=maxSpd-minSpd||1;
 
-    // Map data-index (within visible slice) to canvas X
     const toX=i=>pad.l+(i/(visHistory.length-1||1))*cw;
     const toY=v=>pad.t+ch*(1-(v-minSpd)/range);
 
-    // Clip to chart area
     ctx2.save();
     ctx2.beginPath();
     ctx2.rect(pad.l,pad.t,cw,ch+1);
@@ -1916,7 +1895,7 @@ function drawSpeedChart(u){
     grad.addColorStop(1,'rgba(206,27,38,0.01)');
     ctx2.fillStyle=grad;ctx2.fill();
 
-    // dot on last visible point
+    // dot on last point
     const last=pts[pts.length-1];
     ctx2.beginPath();ctx2.arc(last.x,last.y,3,0,Math.PI*2);
     ctx2.fillStyle='#CE1B26';ctx2.fill();
@@ -1928,99 +1907,34 @@ function drawSpeedChart(u){
         ctx2.fillText(visHistory[i].sim_time,toX(i),H-4);
     });
 
-    // Pan hint when zoomed
-    if(zs.zoomLevel>1){
-      const barH=3, barY=H-3;
-      ctx2.fillStyle='rgba(170,170,170,0.2)';
-      ctx2.fillRect(pad.l,barY,cw,barH);
-      const thumbW=cw/zs.zoomLevel;
-      const maxPan=1-1/zs.zoomLevel;
-      const tX=pad.l+(maxPan>0?zs.panOffset/maxPan*(cw-thumbW):0);
-      ctx2.fillStyle='rgba(206,27,38,0.35)';
-      ctx2.fillRect(tX,barY,thumbW,barH);
-    }
-
-    // hover crosshair
-    const speedEl=document.getElementById('speed-val-'+u.username);
+    // hover crosshair (solo indicatore sul grafico: la riga "Stiamo viaggiando a" resta sempre la velocità live)
     if(cxhair!==null&&cxhair>=pad.l&&cxhair<=pad.l+cw){
       const ratio=(cxhair-pad.l)/cw;
       const idx=Math.max(0,Math.min(visHistory.length-1,Math.round(ratio*(visHistory.length-1))));
       const ptX=toX(idx), ptY=toY(visHistory[idx].speed_kmh);
-      if(speedEl) speedEl.textContent=Math.round(visHistory[idx].speed_kmh);
       ctx2.strokeStyle='rgba(170,170,170,0.4)';ctx2.lineWidth=1;ctx2.setLineDash([3,4]);
       ctx2.beginPath();ctx2.moveTo(ptX,pad.t);ctx2.lineTo(ptX,pad.t+ch);ctx2.stroke();
       ctx2.setLineDash([]);
       ctx2.beginPath();ctx2.arc(ptX,ptY,4,0,Math.PI*2);
       ctx2.fillStyle='#CE1B26';ctx2.strokeStyle='#ffffff';ctx2.lineWidth=1.5;
       ctx2.fill();ctx2.stroke();
-    } else {
-      if(speedEl) speedEl.textContent='—';
+      ctx2.fillStyle='#2B2B2B';ctx2.font='bold 10px Futura,sans-serif';
+      ctx2.textAlign=ptX>pad.l+cw-40?'right':'left';
+      ctx2.fillText(Math.round(visHistory[idx].speed_kmh)+' km/h',ptX+(ptX>pad.l+cw-40?-7:7),Math.max(pad.t+10,ptY-7));
     }
 
     ctx2.restore();
-    updateZoomLabel();
-    // cursor
-    newCanvas.style.cursor= zs.zoomLevel>1 ? (isDragging?'grabbing':'grab') : 'crosshair';
+    newCanvas.style.cursor='crosshair';
   }
 
   drawBase2(null);
 
-  // ── Mouse events ──
   newCanvas.addEventListener('mousemove',e=>{
     const rect=newCanvas.getBoundingClientRect();
     crosshairX=e.clientX-rect.left;
-    if(isDragging){
-      const dx=(crosshairX-dragStartX)/cw;
-      const maxPan=1-1/zs.zoomLevel;
-      zs.panOffset=Math.max(0,Math.min(maxPan, dragStartPan - dx));
-    }
-    drawBase2(isDragging?null:crosshairX);
-  });
-  newCanvas.addEventListener('mouseleave',()=>{crosshairX=null;isDragging=false;drawBase2(null);});
-  newCanvas.addEventListener('mousedown',e=>{
-    if(zs.zoomLevel>1){isDragging=true;dragStartX=e.clientX-newCanvas.getBoundingClientRect().left;dragStartPan=zs.panOffset;}
-  });
-  newCanvas.addEventListener('mouseup',()=>{isDragging=false;});
-
-  // ── Wheel zoom ──
-  newCanvas.addEventListener('wheel',e=>{
-    e.preventDefault();
-    const rect=newCanvas.getBoundingClientRect();
-    const mx=(e.clientX-rect.left-pad.l)/cw;
-    const oldZoom=zs.zoomLevel;
-    if(e.deltaY<0) zs.zoomLevel=Math.min(MAX_ZOOM,zs.zoomLevel*ZOOM_STEP);
-    else            zs.zoomLevel=Math.max(1,zs.zoomLevel/ZOOM_STEP);
-    zs.zoomLevel=Math.round(zs.zoomLevel*100)/100;
-    const dataFrac=mx/oldZoom+zs.panOffset;
-    zs.panOffset=dataFrac-mx/zs.zoomLevel;
-    clampPan();
     drawBase2(crosshairX);
-  },{passive:false});
-
-  // ── Double-click reset ──
-  newCanvas.addEventListener('dblclick',()=>{
-    zs.zoomLevel=1;zs.panOffset=0;drawBase2(null);
   });
-
-  // ── Button wiring ──
-  const btnIn =document.getElementById('zoom-in-' +u.username);
-  const btnOut=document.getElementById('zoom-out-'+u.username);
-  const btnRst=document.getElementById('zoom-rst-'+u.username);
-  if(btnIn)  btnIn.addEventListener('click',()=>{
-    const cx=0.5;
-    const old=zs.zoomLevel;
-    zs.zoomLevel=Math.min(MAX_ZOOM,Math.round(zs.zoomLevel*ZOOM_STEP*100)/100);
-    zs.panOffset+=(cx/old-cx/zs.zoomLevel);
-    clampPan();drawBase2(null);
-  });
-  if(btnOut) btnOut.addEventListener('click',()=>{
-    const cx=0.5;
-    const old=zs.zoomLevel;
-    zs.zoomLevel=Math.max(1,Math.round(zs.zoomLevel/ZOOM_STEP*100)/100);
-    zs.panOffset+=(cx/old-cx/zs.zoomLevel);
-    clampPan();drawBase2(null);
-  });
-  if(btnRst) btnRst.addEventListener('click',()=>{zs.zoomLevel=1;zs.panOffset=0;drawBase2(null);});
+  newCanvas.addEventListener('mouseleave',()=>{crosshairX=null;drawBase2(null);});
 }
 
 // ── Grafico andamento punteggio (profilo personale) ──
