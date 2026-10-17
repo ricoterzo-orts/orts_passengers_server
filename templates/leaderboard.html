@@ -2134,6 +2134,71 @@ function startDeadReckoningLoop(){
   tick();
 }
 
+// ── Avanzamento fermate dalla posizione GPS reale ──
+const gpsProgress = {}; // username -> {key, g}
+
+// distanza (km) punto→segmento + parametro t [0..1] lungo il segmento
+function gpsDistToSeg(p, a, b){
+  const k = Math.cos(p.lat * Math.PI / 180);
+  const X = o => (o.lon - p.lon) * k * 111.32;
+  const Y = o => (o.lat - p.lat) * 110.57;
+  const ax = X(a), ay = Y(a), bx = X(b), by = Y(b);
+  const dx = bx - ax, dy = by - ay, L = dx*dx + dy*dy;
+  let t = L > 0 ? (-(ax*dx + ay*dy)) / L : 0;
+  t = Math.max(0, Math.min(1, t));
+  return { d: Math.hypot(ax + dx*t, ay + dy*t), t };
+}
+
+function applyGpsProgress(u){
+  const st = u.stations || [];
+  if(!st.length) return;
+  if(!(u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1 && Math.abs(u.train_lon) > 0.1)) return;
+
+  // stazioni con coordinate note, mantenendo l'indice originale
+  const geo = [];
+  st.forEach((s, i) => {
+    const c = getStationCoord(s.station_name);
+    if(c && c.lat != null && c.lon != null) geo.push({ i, lat: Number(c.lat), lon: Number(c.lon) });
+  });
+  if(geo.length < 2) return;
+
+  const p = { lat: Number(u.train_lat), lon: Number(u.train_lon) };
+  const key = (u.activity_name || '') + '|' + st.length;
+  let state = gpsProgress[u.username];
+  if(!state || state.key !== key) state = gpsProgress[u.username] = { key, g: 0 };
+
+  const best = (from, to) => {
+    let b = null;
+    for(let g = from; g <= to && g < geo.length - 1; g++){
+      const r = gpsDistToSeg(p, geo[g], geo[g+1]);
+      if(!b || r.d < b.d - 1e-9) b = { g, d: r.d, t: r.t };
+    }
+    return b;
+  };
+
+  // l'avanzamento è monotono: cerca solo in avanti (finestra di 3 tratte)
+  let b = best(state.g, state.g + 3);
+  // se il treno è lontano (>5 km) dalla finestra, ricerca globale (salto/teletrasporto)
+  if(!b || b.d > 5){
+    const f = best(0, geo.length - 2);
+    if(f && (!b || f.d < b.d)) b = f;
+  }
+  if(!b) return;
+  state.g = b.g;
+
+  // ultima fermata superata (-1 = treno ancora all'origine)
+  const lastIdx = (b.g === 0 && b.t < 0.02) ? -1 : geo[b.g].i;
+  let nextIdx = st.findIndex((s, i) => i > lastIdx);
+  if(nextIdx < 0) nextIdx = st.length - 1;
+
+  st.forEach((s, i) => {
+    if(s._srvPassed === undefined) s._srvPassed = s.passed; // conserva il dato del server
+    s.passed = i <= lastIdx;
+    s.is_current = (i === nextIdx);
+  });
+  u.next_station = st[nextIdx].station_name;
+}
+
 // ── Load live data ──
 async function loadLive(){
   try{
@@ -2141,6 +2206,7 @@ async function loadLive(){
     if(!r.ok) return;
     const fresh=await r.json();
     const now = Date.now();
+    fresh.forEach(applyGpsProgress);
 
     // Aggiorna l'ordine: aggiungi nuovi, rimuovi chi non è più online
     fresh.forEach(u=>{
@@ -2582,7 +2648,8 @@ function parseTimeToToday(timeStr){
 // ── Helper: ricava il ritardo aggiornato dalla timetable delle fermate ──
 function getDelayFromStations(u){
   const stations = u.stations || [];
-  const passedWithDelay = stations.filter(s => s.passed && s.delay_min != null);
+  const passedWithDelay = stations.filter(s =>
+    (s._srvPassed !== undefined ? s._srvPassed : s.passed) && s.delay_min != null);
   if(passedWithDelay.length){
     return passedWithDelay[passedWithDelay.length - 1].delay_min;
   }
