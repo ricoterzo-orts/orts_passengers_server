@@ -1712,7 +1712,7 @@ function renderPanel(u,el){
   // Ritardo
   const d=Math.round(getDelayFromStations(u)||0);
   const dColor=d<=5?'var(--green)':d<=30?'var(--amber)':'var(--red)';
-  const dTxt=d>0?`+${d}m`:'';
+  const dTxt=d>0?`+${d}m`:'<span style="font-size:13px">In orario</span>';
 
   // Velocità live dal monitor (fallback: ultimo punto dello storico)
   const _hist=u.speed_history||[];
@@ -2134,12 +2134,15 @@ function startDeadReckoningLoop(){
   tick();
 }
 
-// ── Avanzamento fermate: stessa logica del dashboard di main.py ──
+// ── Avanzamento fermate e ritardo: stessa logica del dashboard di main.py ──
 // Prossima fermata = nextStation di OR (u.next_station), che avanza solo alla
-// partenza reale. Le fermate precedenti sono "passate". Se nextStation manca,
-// fallback come _next_station_from_timetable: una fermata è visitata solo quando
-// il treno è FERMO (<0.5 m/s) a simTime >= arrivo previsto; la successiva è la prossima.
-const lvProgress = {}; // username -> {key, last, next, rec}
+// partenza reale. Le fermate precedenti sono "passate".
+// Ritardo = quello dell'ULTIMA fermata in cui il treno è arrivato: viene fissato quando
+// il treno è FERMO (<0.5 m/s) in quella fermata a simTime >= arrivo previsto
+// (ritardo = simTime - arrivo previsto; <30 s = 0) e resta visibile e invariato
+// finché il treno non arriva alla fermata successiva.
+// Se nextStation manca: fallback come _next_station_from_timetable (fermate registrate a treno fermo).
+const lvProgress = {}; // username -> {key, last, next, rec, dly}
 const LV_STOP_KMH = 1.8; // 0.5 m/s
 function lvNorm(n){ return String(n == null ? '' : n).trim().toLowerCase(); }
 function lvSec(t){
@@ -2157,7 +2160,24 @@ function applyLiveProgress(u){
 
   const key = (u.activity_name || '') + '|' + st.length;
   let state = lvProgress[u.username];
-  if(!state || state.key !== key) state = lvProgress[u.username] = { key, last: -1, next: null, rec: {} };
+  if(!state || state.key !== key) state = lvProgress[u.username] = { key, last: -1, next: null, rec: {}, dly: {} };
+
+  // velocità e orario di simulazione live
+  const hist = u.speed_history || [];
+  const sp = (u.speed_kmh != null) ? Number(u.speed_kmh)
+           : (hist.length ? Number(hist[hist.length-1].speed_kmh) : null);
+  const stopped = (sp != null && isFinite(sp) && sp < LV_STOP_KMH);
+  const sim = lvSec(u.sim_time);
+
+  // registra e fissa il ritardo di una fermata (solo a treno fermo, una volta sola)
+  const record = i => {
+    if(!stopped || sim == null || i < 1 || i >= st.length || state.dly[i] !== undefined) return;
+    const a = lvSec(st[i].arrival);
+    if(a == null || sim < a) return;
+    const sec = sim - a;
+    state.dly[i] = sec < 30 ? 0 : Math.round(sec / 6) / 10;   // minuti, 1 decimale (come main.py)
+    state.rec[i] = true;
+  };
 
   const nn = lvNorm(u.next_station);
   let nextIdx = -1;
@@ -2171,24 +2191,16 @@ function applyLiveProgress(u){
     // non trovata in avanti: ricerca completa (corsa ricominciata)
     if(nextIdx < 0){
       const f = st.findIndex(s => lvNorm(s.station_name) === nn);
-      if(f >= 0){ nextIdx = f; state.rec = {}; }
+      if(f >= 0){ nextIdx = f; state.rec = {}; state.dly = {}; }
     }
     fromOr = nextIdx >= 0;
   }
 
-  // 2) fallback dal dashboard: fermate registrate solo a treno fermo
-  if(nextIdx < 0){
-    const hist = u.speed_history || [];
-    const sp = (u.speed_kmh != null) ? Number(u.speed_kmh)
-             : (hist.length ? Number(hist[hist.length-1].speed_kmh) : null);
-    const sim = lvSec(u.sim_time);
-    if(sim != null && sp != null && isFinite(sp) && sp < LV_STOP_KMH){
-      st.forEach((s, i) => {
-        if(i === 0 || state.rec[i]) return;
-        const a = lvSec(s.arrival);
-        if(a != null && sim >= a) state.rec[i] = true;
-      });
-    }
+  if(fromOr){
+    record(nextIdx);   // treno fermo sulla fermata che OR indica come prossima = arrivato
+  } else {
+    // 2) fallback dal dashboard: fermate registrate solo a treno fermo
+    for(let i = 1; i < st.length; i++) record(i);
     const ks = Object.keys(state.rec).map(Number);
     if(ks.length) nextIdx = Math.max(...ks) + 1;       // oltre l'ultima = corsa terminata
     else nextIdx = st.length > 1 ? 1 : 0;              // nessuna sosta ancora registrata
@@ -2206,6 +2218,19 @@ function applyLiveProgress(u){
   });
   if(nextIdx >= st.length) u.next_station = '';
   else if(!fromOr) u.next_station = st[nextIdx].station_name;
+
+  // Ritardo = ultima fermata raggiunta con ritardo registrato (sul client, o già fissato dal server).
+  // Resta fisso finché il treno non arriva alla fermata successiva.
+  let dly = 0;
+  for(let i = 1; i <= Math.min(nextIdx, st.length - 1); i++){
+    let v = state.dly[i];
+    if(v === undefined){
+      const sv = Number(st[i].delay_min);
+      if(isFinite(sv) && sv > 0) v = sv;
+    }
+    if(v !== undefined) dly = v;
+  }
+  u._lvDelay = dly;
 }
 
 // ── Load live data ──
@@ -2654,18 +2679,12 @@ function parseTimeToToday(timeStr){
   return now.getTime();
 }
 
-// ── Helper: ritardo reale (delayS di OR inviato dal monitor), come nel dashboard ──
+// ── Helper: ritardo dell'ultima fermata raggiunta (fissato all'arrivo, come nel dashboard) ──
 function getDelayFromStations(u){
+  if(u._lvDelay !== undefined) return u._lvDelay;
+  // senza fermate: ultimo ritardo noto dal server
   const live = Number(u.delay_min);
-  if(u.delay_min != null && isFinite(live)) return Math.max(0, live);
-  // fallback: ultimo ritardo fissato dal server su una fermata già superata
-  const stations = u.stations || [];
-  const passedWithDelay = stations.filter(s =>
-    (s._srvPassed !== undefined ? s._srvPassed : s.passed) && s.delay_min != null);
-  if(passedWithDelay.length){
-    return passedWithDelay[passedWithDelay.length - 1].delay_min;
-  }
-  return 0;
+  return (u.delay_min != null && isFinite(live)) ? Math.max(0, live) : 0;
 }
 
 // ── Drawer storico utente ──
