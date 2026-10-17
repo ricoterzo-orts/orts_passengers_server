@@ -2134,80 +2134,78 @@ function startDeadReckoningLoop(){
   tick();
 }
 
-// ── Avanzamento fermate dalla posizione GPS reale ──
-const gpsProgress = {}; // username -> {key, g, last}
-// Una fermata risulta superata solo dopo che il treno è PARTITO: deve essere
-// almeno GPS_DEPART_KM oltre la stazione lungo la tratta successiva.
-const GPS_DEPART_KM = 0.4;
-
-// distanza (km) punto→segmento + parametro t [0..1] lungo il segmento
-function gpsDistToSeg(p, a, b){
-  const k = Math.cos(p.lat * Math.PI / 180);
-  const X = o => (o.lon - p.lon) * k * 111.32;
-  const Y = o => (o.lat - p.lat) * 110.57;
-  const ax = X(a), ay = Y(a), bx = X(b), by = Y(b);
-  const dx = bx - ax, dy = by - ay, L = dx*dx + dy*dy;
-  let t = L > 0 ? (-(ax*dx + ay*dy)) / L : 0;
-  t = Math.max(0, Math.min(1, t));
-  return { d: Math.hypot(ax + dx*t, ay + dy*t), t, len: Math.sqrt(L) };
+// ── Avanzamento fermate: stessa logica del dashboard di main.py ──
+// Prossima fermata = nextStation di OR (u.next_station), che avanza solo alla
+// partenza reale. Le fermate precedenti sono "passate". Se nextStation manca,
+// fallback come _next_station_from_timetable: una fermata è visitata solo quando
+// il treno è FERMO (<0.5 m/s) a simTime >= arrivo previsto; la successiva è la prossima.
+const lvProgress = {}; // username -> {key, last, next, rec}
+const LV_STOP_KMH = 1.8; // 0.5 m/s
+function lvNorm(n){ return String(n == null ? '' : n).trim().toLowerCase(); }
+function lvSec(t){
+  if(!t) return null;
+  const p = String(t).split(':');
+  if(p.length < 2) return null;
+  const h = parseInt(p[0],10), m = parseInt(p[1],10), s = p.length > 2 ? parseInt(p[2],10) : 0;
+  if(isNaN(h) || isNaN(m)) return null;
+  return h*3600 + m*60 + (isNaN(s) ? 0 : s);
 }
 
-function applyGpsProgress(u){
+function applyLiveProgress(u){
   const st = u.stations || [];
   if(!st.length) return;
-  if(!(u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1 && Math.abs(u.train_lon) > 0.1)) return;
 
-  // stazioni con coordinate note, mantenendo l'indice originale
-  const geo = [];
-  st.forEach((s, i) => {
-    const c = getStationCoord(s.station_name);
-    if(c && c.lat != null && c.lon != null) geo.push({ i, lat: Number(c.lat), lon: Number(c.lon) });
-  });
-  if(geo.length < 2) return;
-
-  const p = { lat: Number(u.train_lat), lon: Number(u.train_lon) };
   const key = (u.activity_name || '') + '|' + st.length;
-  let state = gpsProgress[u.username];
-  if(!state || state.key !== key) state = gpsProgress[u.username] = { key, g: 0, last: -1 };
+  let state = lvProgress[u.username];
+  if(!state || state.key !== key) state = lvProgress[u.username] = { key, last: -1, next: null, rec: {} };
 
-  const best = (from, to) => {
-    let b = null;
-    for(let g = from; g <= to && g < geo.length - 1; g++){
-      const r = gpsDistToSeg(p, geo[g], geo[g+1]);
-      if(!b || r.d < b.d - 1e-9) b = { g, d: r.d, t: r.t, len: r.len };
+  const nn = lvNorm(u.next_station);
+  let nextIdx = -1;
+  let fromOr = false;
+
+  // 1) nextStation reale di OR: prima occorrenza dopo l'ultima fermata già lasciata
+  if(nn){
+    for(let i = Math.max(0, state.last + 1); i < st.length; i++){
+      if(lvNorm(st[i].station_name) === nn){ nextIdx = i; break; }
     }
-    return b;
-  };
-
-  // l'avanzamento è monotono: cerca solo in avanti (finestra di 3 tratte)
-  let b = best(state.g, state.g + 3);
-  let jumped = false;
-  // se il treno è lontano (>5 km) dalla finestra, ricerca globale (salto/teletrasporto)
-  if(!b || b.d > 5){
-    const f = best(0, geo.length - 2);
-    if(f && (!b || f.d < b.d)){ b = f; jumped = true; }
+    // non trovata in avanti: ricerca completa (corsa ricominciata)
+    if(nextIdx < 0){
+      const f = st.findIndex(s => lvNorm(s.station_name) === nn);
+      if(f >= 0){ nextIdx = f; state.rec = {}; }
+    }
+    fromOr = nextIdx >= 0;
   }
-  if(!b) return;
-  state.g = b.g;
 
-  // ultima fermata superata (-1 = treno ancora all'origine).
-  // La stazione b.g conta come superata solo se il treno se n'è allontanato
-  // di almeno GPS_DEPART_KM; altrimenti è ferma/in partenza e resta "prossima".
-  const along = b.t * b.len;
-  const lastGeo = (along >= GPS_DEPART_KM) ? b.g : b.g - 1;
-  let lastIdx = lastGeo >= 0 ? geo[lastGeo].i : -1;
-  // monotono: non torna indietro per rumore GPS (salvo salto reale)
-  lastIdx = jumped ? lastIdx : Math.max(state.last, lastIdx);
-  state.last = lastIdx;
-  let nextIdx = st.findIndex((s, i) => i > lastIdx);
-  if(nextIdx < 0) nextIdx = st.length - 1;
+  // 2) fallback dal dashboard: fermate registrate solo a treno fermo
+  if(nextIdx < 0){
+    const hist = u.speed_history || [];
+    const sp = (u.speed_kmh != null) ? Number(u.speed_kmh)
+             : (hist.length ? Number(hist[hist.length-1].speed_kmh) : null);
+    const sim = lvSec(u.sim_time);
+    if(sim != null && sp != null && isFinite(sp) && sp < LV_STOP_KMH){
+      st.forEach((s, i) => {
+        if(i === 0 || state.rec[i]) return;
+        const a = lvSec(s.arrival);
+        if(a != null && sim >= a) state.rec[i] = true;
+      });
+    }
+    const ks = Object.keys(state.rec).map(Number);
+    if(ks.length) nextIdx = Math.max(...ks) + 1;       // oltre l'ultima = corsa terminata
+    else nextIdx = st.length > 1 ? 1 : 0;              // nessuna sosta ancora registrata
+    // l'avanzamento non torna indietro per un buco momentaneo dell'API
+    if(state.next != null) nextIdx = Math.max(nextIdx, state.next);
+  }
+
+  state.next = nextIdx;
+  state.last = nextIdx - 1;
 
   st.forEach((s, i) => {
     if(s._srvPassed === undefined) s._srvPassed = s.passed; // conserva il dato del server
-    s.passed = i <= lastIdx;
+    s.passed = i < nextIdx;
     s.is_current = (i === nextIdx);
   });
-  u.next_station = st[nextIdx].station_name;
+  if(nextIdx >= st.length) u.next_station = '';
+  else if(!fromOr) u.next_station = st[nextIdx].station_name;
 }
 
 // ── Load live data ──
@@ -2217,7 +2215,7 @@ async function loadLive(){
     if(!r.ok) return;
     const fresh=await r.json();
     const now = Date.now();
-    fresh.forEach(applyGpsProgress);
+    fresh.forEach(applyLiveProgress);
 
     // Aggiorna l'ordine: aggiungi nuovi, rimuovi chi non è più online
     fresh.forEach(u=>{
@@ -2656,15 +2654,18 @@ function parseTimeToToday(timeStr){
   return now.getTime();
 }
 
-// ── Helper: ricava il ritardo aggiornato dalla timetable delle fermate ──
+// ── Helper: ritardo reale (delayS di OR inviato dal monitor), come nel dashboard ──
 function getDelayFromStations(u){
+  const live = Number(u.delay_min);
+  if(u.delay_min != null && isFinite(live)) return Math.max(0, live);
+  // fallback: ultimo ritardo fissato dal server su una fermata già superata
   const stations = u.stations || [];
   const passedWithDelay = stations.filter(s =>
     (s._srvPassed !== undefined ? s._srvPassed : s.passed) && s.delay_min != null);
   if(passedWithDelay.length){
     return passedWithDelay[passedWithDelay.length - 1].delay_min;
   }
-  return u.delay_min || 0;
+  return 0;
 }
 
 // ── Drawer storico utente ──
