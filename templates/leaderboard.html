@@ -155,7 +155,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-body{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;align-items:stretch}
 .tn-left{display:flex;flex-direction:column;gap:10px;min-width:0}
 .tn-arrive{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:10px 12px;text-align:center}
-.tn-arrive-lbl{font-family:var(--font);font-weight:400;font-size:12px;color:var(--grey);letter-spacing:.04em;text-transform:uppercase}
+.tn-arrive-lbl{font-family:var(--font);font-weight:400;font-size:15px;color:var(--grey);letter-spacing:.04em;text-transform:uppercase}
 .tn-arrive-name{font-family:var(--font-md);font-size:22px;font-weight:700!important;color:var(--white);margin-top:3px;line-height:1.15;text-transform:uppercase}
 .tn-logo-box{background:var(--accent);border-radius:4px;padding:16px 12px 10px;display:flex;flex-direction:column;align-items:center;gap:8px}
 .tn-logo-box img{height:46px;width:auto;max-width:80%;filter:brightness(0) invert(1)}
@@ -165,7 +165,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-foot strong{font-family:var(--font-md);font-weight:500}
 .tn-stops-wrap{position:relative;min-height:340px;background:var(--card);border:1px solid var(--border);border-radius:4px}
 .tn-stops{position:absolute;inset:0;overflow-y:auto;padding:12px 10px 12px 8px}
-.tn-stop{position:relative;display:flex;align-items:center;gap:10px;padding:5px 6px 5px 30px;font-family:var(--font);font-size:15px;color:var(--grey);min-height:30px}
+.tn-stop{position:relative;display:flex;align-items:center;gap:10px;padding:0 6px 0 30px;font-family:var(--font);font-size:15px;color:var(--grey);height:33px;min-height:33px;max-height:33px;box-sizing:border-box;flex:none}
 .tn-stop::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:3px;background:#C9C9C9;transform:translateX(-50%)}
 .tn-stop:first-child::before{top:50%}
 .tn-stop:last-child::before{bottom:50%}
@@ -215,11 +215,11 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-speed{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--tn-line);border-radius:6px;background:linear-gradient(180deg,#FFFFFF 0%,#EDF1F3 100%);box-shadow:inset 0 1px 0 #fff,inset 0 -2px 4px rgba(0,0,0,.05)}
 .tn-speed .tn-gauge{width:34px;height:34px;font-size:16px;flex:none}
 .tn-speed-txt{font-family:var(--font);font-weight:400;font-size:15px;color:var(--grey);white-space:nowrap}
-.tn-speed-val{font-family:var(--font-md);font-weight:700!important;font-size:19px;color:var(--white);margin-left:4px}
-.tn-speed-val .tn-speed-unit{font-weight:700!important;font-size:19px;margin-left:3px}
+.tn-speed-val{font-family:var(--font-md);font-weight:700!important;font-size:22px;color:var(--white);margin-left:4px}
+.tn-speed-val .tn-speed-unit{font-weight:700!important;font-size:22px;margin-left:3px}
 
-.tn-board .tn-stop.cur .tn-stop-time{font-size:18px}
-.tn-board .tn-stop.cur .tn-stop-name{font-size:19px}
+.tn-board .tn-stop.cur .tn-stop-time{font-size:16px}
+.tn-board .tn-stop.cur .tn-stop-name{font-size:17px}
 /* Grassetto: data, orario, stazione di arrivo, lista stazioni */
 .tn-board .tn-date,
 .tn-board .tn-time,
@@ -1683,6 +1683,19 @@ function renderTnStops(stations,hiIdx){
   }).join('');
 }
 
+// ── Etichette bilingue: IT/EN alternate ogni 15 secondi (fase globale, resiste ai re-render) ──
+const TN_LANG_MS=15000;
+function tnIsEn(){return Math.floor(Date.now()/TN_LANG_MS)%2===1;}
+function tnT(it,en){return tnIsEn()?en:it;}
+function tnApplyLang(){
+  const en=tnIsEn();
+  document.querySelectorAll('.tn-i18n').forEach(el=>{
+    const t=en?el.dataset.en:el.dataset.it;
+    if(el.textContent!==t) el.textContent=t;
+  });
+}
+if(!window._tnLangTimer) window._tnLangTimer=setInterval(tnApplyLang,500);
+
 function renderPanel(u,el){
   const stations=u.stations||[]; 
 
@@ -1724,7 +1737,7 @@ function renderPanel(u,el){
     <div class="tn-body">
       <div class="tn-left">
         <div class="tn-arrive">
-          <div class="tn-arrive-lbl">Siamo in arrivo a:</div>
+          <div class="tn-arrive-lbl tn-i18n" data-it="Siamo in arrivo a:" data-en="We are arriving in:">${tnT('Siamo in arrivo a:','We are arriving in:')}</div>
           <div class="tn-arrive-name">${nextName}</div>
         </div>
         <div class="live-chart-wrap">
@@ -1735,7 +1748,7 @@ function renderPanel(u,el){
         </div>
         <div class="tn-speed">
           <span class="tn-gauge"><i class="fa-solid fa-gauge-high"></i></span>
-          <span class="tn-speed-txt">Stiamo viaggiando a:</span>
+          <span class="tn-speed-txt tn-i18n" data-it="Stiamo viaggiando a:" data-en="We are travelling at">${tnT('Stiamo viaggiando a:','We are travelling at')}</span>
           <span class="tn-speed-val"><span id="speed-val-${u.username}">${curSpeed}</span><span class="tn-speed-unit">Km/h</span></span>
         </div>
         <div class="tn-foot">
