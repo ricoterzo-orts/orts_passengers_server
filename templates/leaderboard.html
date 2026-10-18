@@ -174,13 +174,14 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-stop.passed .tn-stop-dot{background:#4A4A4A}
 .tn-stop.cur .tn-stop-dot{background:var(--tn-blue);box-shadow:0 0 0 3px #fff,0 0 0 5px var(--tn-blue)}
 .tn-stop-time{font-family:var(--font-md);font-weight:500;min-width:44px;color:var(--white);font-size:14px}
-.tn-stop.passed{color:#4A4A4A}
-.tn-stop:not(.passed):not(.cur){color:#8A8A8A}
-.tn-stop:not(.passed):not(.cur) .tn-stop-time{color:#8A8A8A}
+.tn-stop.passed{color:#8A8A8A}
+.tn-stop.passed .tn-stop-time{color:#8A8A8A}
+.tn-stop:not(.passed):not(.cur){color:#1F1F1F}
+.tn-stop:not(.passed):not(.cur) .tn-stop-time{color:#1F1F1F}
 .tn-stop-name{text-transform:uppercase;letter-spacing:.01em;min-width:0}
 .tn-stop-wx{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-family:var(--font);font-size:12px;color:var(--grey);min-width:46px;justify-content:flex-end;white-space:nowrap}
 .tn-stop-wx i{font-size:15px;width:18px;text-align:center}
-.tn-stop:not(.passed):not(.cur) .tn-stop-wx{color:#8A8A8A}
+.tn-stop:not(.passed):not(.cur) .tn-stop-wx{color:#1F1F1F}
 
 .tn-stop.cur .tn-stop-name{background:var(--tn-blue);color:#fff;font-family:var(--font-md);font-weight:700;padding:1px 6px}
 /* ── Maschera del display: sfumature, contorni e doppia cornice ── */
