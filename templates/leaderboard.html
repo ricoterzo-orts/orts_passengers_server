@@ -229,6 +229,9 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-via .tn-via-list{font-weight:300!important;color:var(--white)}
 .tn-via .tn-via-list b{font-weight:300!important}
 @media(max-width:700px){.tn-via{margin:0 10px 10px;font-size:13px}}
+/* Etichetta "Fermate intermedie": bold e stessa grandezza del nome stazione in "Siamo in arrivo a" */
+.tn-board .tn-via .tn-via-lbl{font-family:'Futura',sans-serif!important;font-weight:700!important;font-size:22px;line-height:1.15}
+@media(max-width:700px){.tn-board .tn-via .tn-via-lbl{font-size:18px}}
 .tn-board .tn-stop.cur .tn-stop-time{font-size:16px}
 .tn-board .tn-stop.cur .tn-stop-name{font-size:17px}
 /* Grassetto: data, orario, stazione di arrivo, lista stazioni */
@@ -1733,9 +1736,8 @@ function renderPanel(u,el){
   const stations=u.stations||[]; 
 
   // Fermata evidenziata / prossima
-  let hiIdx=-1;
-  if(u.next_station) hiIdx=stations.findIndex(s=>s.station_name===u.next_station);
-  if(hiIdx<0) hiIdx=stations.findIndex(s=>s.is_current);
+  let hiIdx=stations.findIndex(s=>s.is_current);
+  if(hiIdx<0 && u.next_station) hiIdx=stations.findIndex(s=>s.station_name===u.next_station);
   if(hiIdx<0) hiIdx=stations.findIndex(s=>!s.passed);
   const nextName=u.next_station||(hiIdx>=0?stations[hiIdx].station_name:'—');
 
@@ -2174,12 +2176,10 @@ function startDeadReckoningLoop(){
 }
 
 // ── Avanzamento fermate e ritardo ──
-// Prossima fermata = la più avanzata tra:
-//   • nextStation di OR (u.next_station), che avanza solo alla partenza reale;
-//   • posizione GPS reale del treno (la stessa che disegna la mappa) proiettata sulla
-//     sequenza delle stazioni: la stazione conta come lasciata solo se il treno è già oltre.
-// Così, se nextStation manca, non coincide con i nomi della lista o è bloccato, la lista
-// segue comunque il treno. Senza nessuno dei due: fallback del dashboard (fermate registrate a treno fermo).
+// Prossima fermata = definita dalla posizione GPS reale del treno (la stessa che disegna la
+// mappa), proiettata sulla sequenza delle stazioni: la stazione conta come lasciata solo se il
+// treno è già oltre. Se il GPS non è disponibile si usa nextStation di OR (u.next_station);
+// senza nessuno dei due: fallback del dashboard (fermate registrate a treno fermo).
 // Ritardo = quello dell'ULTIMA fermata in cui il treno è arrivato: fissato quando il treno è
 // FERMO (<0.5 m/s) in stazione a simTime >= arrivo previsto (ritardo = simTime - arrivo;
 // <30 s = 0) e invariato finché il treno non arriva alla fermata successiva.
@@ -2300,7 +2300,8 @@ function applyLiveProgress(u){
 
   let nextIdx;
   if(orNext >= 0 || gpsNext >= 0){
-    nextIdx = Math.max(orNext, gpsNext);
+    // il GPS reale definisce la posizione; nextStation di OR solo se il GPS non c'è
+    nextIdx = (gpsNext >= 0) ? gpsNext : orNext;
     // non torna indietro per un buco momentaneo di una delle due fonti
     if(state.next != null) nextIdx = Math.max(nextIdx, state.next);
     record(nextIdx);                           // fermo sulla fermata successiva = arrivato
