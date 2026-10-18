@@ -224,6 +224,11 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-speed-val{font-family:var(--font-md);font-weight:700!important;font-size:22px;color:var(--white);margin-left:4px}
 .tn-speed-val .tn-speed-unit{font-weight:700!important;font-size:22px;margin-left:3px}
 
+.tn-via{margin:0 12px 12px;padding:8px 12px;border:1px solid var(--tn-line);border-radius:6px;background:linear-gradient(180deg,#FFFFFF 0%,#EDF1F3 100%);box-shadow:inset 0 1px 0 #fff,inset 0 -2px 4px rgba(0,0,0,.05);font-family:'Futura',sans-serif;font-weight:300!important;font-size:15px;line-height:1.35;color:var(--grey)}
+.tn-via .tn-via-lbl{font-weight:300!important;letter-spacing:.04em;text-transform:uppercase;color:var(--grey);margin-right:6px}
+.tn-via .tn-via-list{font-weight:300!important;color:var(--white)}
+.tn-via .tn-via-list b{font-weight:300!important}
+@media(max-width:700px){.tn-via{margin:0 10px 10px;font-size:13px}}
 .tn-board .tn-stop.cur .tn-stop-time{font-size:16px}
 .tn-board .tn-stop.cur .tn-stop-name{font-size:17px}
 /* Grassetto: data, orario, stazione di arrivo, lista stazioni */
@@ -1734,6 +1739,13 @@ function renderPanel(u,el){
   if(hiIdx<0) hiIdx=stations.findIndex(s=>!s.passed);
   const nextName=u.next_station||(hiIdx>=0?stations[hiIdx].station_name:'—');
 
+  // Fermate intermedie: dopo la prossima fermata (già mostrata sopra) fino alla penultima
+  const viaStops=(hiIdx>=0?stations.slice(hiIdx+1,stations.length-1):[]).filter(s=>!s.passed);
+  const viaHtml=viaStops.map(s=>{
+    const t=s.arrival||s.departure||'';
+    return `${s.station_name}${t?` (${t})`:''}`;
+  }).join(' - ');
+
   // Ritardo
   const d=Math.round(getDelayFromStations(u)||0);
   const dColor=d<=5?'var(--green)':d<=30?'var(--amber)':'var(--red)';
@@ -1785,6 +1797,7 @@ function renderPanel(u,el){
         <div class="tn-stops" id="tn-stops-${u.username}">${renderTnStops(stations,hiIdx)}</div>
       </div>
     </div>
+    ${viaHtml?`<div class="tn-via"><span class="tn-via-lbl tn-i18n" data-it="Fermate intermedie :" data-en="Intermediate stops :">${tnT('Fermate intermedie :','Intermediate stops :')}</span><span class="tn-via-list">${viaHtml}</span></div>`:''}
   </div>`;
 
   // Scroll: centra la fermata evidenziata, ma se l'utente ha scrollato a mano lo conserva
