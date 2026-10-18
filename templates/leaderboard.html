@@ -1742,8 +1742,8 @@ if(!window._tnLangTimer) window._tnLangTimer=setInterval(tnApplyLang,500);
 // Scorre da destra a sinistra; quando l'ultima stazione è uscita a sinistra, 3 s di vuoto, poi riparte.
 // La posizione dipende solo dall'orologio (t0 per utente), così il re-render del pannello a ogni
 // refresh live non azzera l'animazione.
-const TN_VIA_SPEED=35;   // px/s
-const TN_VIA_GAP_MS=0;
+const TN_VIA_SPEED=40;   // px/s
+const TN_VIA_GAP_MS=500;
 const tnViaT0={};
 function tnViaTick(){
   const now=performance.now();
