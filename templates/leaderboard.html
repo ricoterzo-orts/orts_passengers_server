@@ -164,8 +164,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-foot{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--font);font-size:10px;color:var(--dimgrey);padding:0 2px}
 .tn-foot strong{font-family:var(--font-md);font-weight:500}
 .tn-stops-wrap{position:relative;min-height:340px;background:var(--card);border:1px solid var(--border);border-radius:4px}
-.tn-stops{position:absolute;inset:0;overflow-y:hidden;overflow-x:hidden;scrollbar-width:none;-ms-overflow-style:none;padding:12px 10px 12px 8px}
-.tn-stops::-webkit-scrollbar{display:none;width:0;height:0}
+.tn-stops{position:absolute;inset:0;overflow-y:auto;padding:12px 10px 12px 8px}
 .tn-stop{position:relative;display:flex;align-items:center;gap:10px;padding:0 6px 0 30px;font-family:var(--font);font-size:15px;color:var(--grey);height:40px;min-height:40px;max-height:40px;box-sizing:border-box;flex:none}
 .tn-stop::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:3px;background:#C9C9C9;transform:translateX(-50%)}
 .tn-stop:first-child::before{top:50%}
@@ -1676,7 +1675,7 @@ async function loadStationWeather(stations){
   }
 }
 
-const tnStopsState={}; // per utente: {scrollTop, idx} per mantenere la posizione ai refresh live (scroll solo automatico)
+const tnStopsState={}; // per utente: {scrollTop, idx} per non perdere lo scroll ai refresh live
 function renderTnStops(stations,hiIdx){
   if(!stations.length) return '<div style="padding:12px;font-size:11px;color:var(--dimgrey);text-align:center">Nessuna fermata</div>';
   return stations.map((s,i)=>{
@@ -1704,8 +1703,9 @@ function renderPanel(u,el){
   const stations=u.stations||[]; 
 
   // Fermata evidenziata / prossima
-  let hiIdx=stations.findIndex(s=>s.is_current);
-  if(hiIdx<0 && u.next_station) hiIdx=stations.findIndex(s=>s.station_name===u.next_station);
+  let hiIdx=-1;
+  if(u.next_station) hiIdx=stations.findIndex(s=>s.station_name===u.next_station);
+  if(hiIdx<0) hiIdx=stations.findIndex(s=>s.is_current);
   if(hiIdx<0) hiIdx=stations.findIndex(s=>!s.passed);
   const nextName=u.next_station||(hiIdx>=0?stations[hiIdx].station_name:'—');
 
@@ -1721,6 +1721,9 @@ function renderPanel(u,el){
 
   // Data reale del PC
   const today=new Date().toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+  const prevScroll=el.querySelector('.tn-stops');
+  if(prevScroll && tnStopsState[u.username]) tnStopsState[u.username].scrollTop=prevScroll.scrollTop;
 
   el.innerHTML=`
   <div class="live-panel-main tn-board">
@@ -1759,21 +1762,18 @@ function renderPanel(u,el){
     </div>
   </div>`;
 
-  // Scroll automatico (nessuna barra, nessuno scroll manuale): la fermata evidenziata resta al centro.
-  // Il re-render riparte da 0, quindi si ripristina la posizione precedente e, se la fermata
-  // evidenziata è cambiata, si scorre in modo fluido fino alla nuova.
+  // Scroll: centra la fermata evidenziata, ma se l'utente ha scrollato a mano lo conserva
   const box=document.getElementById('tn-stops-'+u.username);
   if(box){
     const st=tnStopsState[u.username];
     const curEl=box.querySelector('.tn-stop.cur');
-    const target=curEl?Math.max(0,curEl.offsetTop-box.clientHeight/2+curEl.offsetHeight/2):0;
-    if(st && st.scrollTop!=null && st.idx!==hiIdx){
-      box.scrollTop=st.scrollTop;                       // riparte da dove era
-      box.scrollTo({top:target,behavior:'smooth'});     // scorre alla nuova fermata
-    } else {
-      box.scrollTop=target;
+    if(st && st.idx===hiIdx && st.scrollTop!=null){
+      box.scrollTop=st.scrollTop;
+    } else if(curEl){
+      box.scrollTop=curEl.offsetTop-box.clientHeight/2+curEl.offsetHeight/2;
     }
-    tnStopsState[u.username]={idx:hiIdx,scrollTop:target};
+    tnStopsState[u.username]={idx:hiIdx,scrollTop:box.scrollTop};
+    box.addEventListener('scroll',()=>{tnStopsState[u.username].scrollTop=box.scrollTop;},{passive:true});
   }
   loadStationWeather(stations);
   requestAnimationFrame(()=>drawSpeedChart(u));
@@ -2135,9 +2135,12 @@ function startDeadReckoningLoop(){
 }
 
 // ── Avanzamento fermate e ritardo ──
-// Prossima fermata = stessa logica del monitor (main.py): nextStation di OpenRails
-// (u.next_station), che avanza solo alla partenza reale; se manca, fermate registrate solo a
-// treno fermo (_next_station_from_timetable). GPS e orario non anticipano mai la fermata.
+// Prossima fermata = la più avanzata tra:
+//   • nextStation di OR (u.next_station), che avanza solo alla partenza reale;
+//   • posizione GPS reale del treno (la stessa che disegna la mappa) proiettata sulla
+//     sequenza delle stazioni: la stazione conta come lasciata solo se il treno è già oltre.
+// Così, se nextStation manca, non coincide con i nomi della lista o è bloccato, la lista
+// segue comunque il treno. Senza nessuno dei due: fallback del dashboard (fermate registrate a treno fermo).
 // Ritardo = quello dell'ULTIMA fermata in cui il treno è arrivato: fissato quando il treno è
 // FERMO (<0.5 m/s) in stazione a simTime >= arrivo previsto (ritardo = simTime - arrivo;
 // <30 s = 0) e invariato finché il treno non arriva alla fermata successiva.
@@ -2254,19 +2257,16 @@ function applyLiveProgress(u){
       if(f >= 0){ orNext = f; if(f <= state.last){ state.rec = {}; state.dly = {}; state.next = null; } }
     }
   }
-  // ── Stessa logica del monitor (main.py) ──
-  // La prossima fermata è quella indicata da OpenRails (nextStation), che avanza solo alla
-  // partenza reale dalla fermata precedente. Posizione GPS e orario NON la anticipano.
-  // Se nextStation manca (come _next_station_from_timetable in main.py): prima fermata dopo
-  // l'ultima in cui il treno si è fermato dopo l'orario di arrivo; senza soste registrate
-  // = la seconda fermata (la prima è la partenza); oltre l'ultima = corsa terminata.
+  const gpsNext = gps ? gps.next : -1;
+
   let nextIdx;
-  if(orNext >= 0){
-    nextIdx = orNext;
-    // non torna indietro per un buco momentaneo del dato
+  if(orNext >= 0 || gpsNext >= 0){
+    nextIdx = Math.max(orNext, gpsNext);
+    // non torna indietro per un buco momentaneo di una delle due fonti
     if(state.next != null) nextIdx = Math.max(nextIdx, state.next);
-    record(nextIdx);                           // fermo sulla fermata = arrivato (ritardo)
+    record(nextIdx);                           // fermo sulla fermata successiva = arrivato
   } else {
+    // fallback dal dashboard: fermate registrate solo a treno fermo
     for(let i = 1; i < st.length; i++) record(i);
     const ks = Object.keys(state.rec).map(Number);
     if(ks.length) nextIdx = Math.max(...ks) + 1;       // oltre l'ultima = corsa terminata
@@ -2282,7 +2282,7 @@ function applyLiveProgress(u){
     s.passed = i < nextIdx;
     s.is_current = (i === nextIdx);
   });
-  if(orNext >= 0 || !nn) u.next_station = (nextIdx < st.length) ? st[nextIdx].station_name : '';
+  u.next_station = (nextIdx < st.length) ? st[nextIdx].station_name : '';
 
   // Ritardo = ultima fermata raggiunta con ritardo registrato (sul client, o già fissato dal server).
   let dly = 0;
