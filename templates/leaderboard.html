@@ -2135,12 +2135,9 @@ function startDeadReckoningLoop(){
 }
 
 // ── Avanzamento fermate e ritardo ──
-// Prossima fermata = la più avanzata tra:
-//   • nextStation di OR (u.next_station), che avanza solo alla partenza reale;
-//   • posizione GPS reale del treno (la stessa che disegna la mappa) proiettata sulla
-//     sequenza delle stazioni: la stazione conta come lasciata solo se il treno è già oltre.
-// Così, se nextStation manca, non coincide con i nomi della lista o è bloccato, la lista
-// segue comunque il treno. Senza nessuno dei due: fallback del dashboard (fermate registrate a treno fermo).
+// Prossima fermata = stessa logica del monitor (main.py): nextStation di OpenRails
+// (u.next_station), che avanza solo alla partenza reale; se manca, fermate registrate solo a
+// treno fermo (_next_station_from_timetable). GPS e orario non anticipano mai la fermata.
 // Ritardo = quello dell'ULTIMA fermata in cui il treno è arrivato: fissato quando il treno è
 // FERMO (<0.5 m/s) in stazione a simTime >= arrivo previsto (ritardo = simTime - arrivo;
 // <30 s = 0) e invariato finché il treno non arriva alla fermata successiva.
@@ -2257,19 +2254,19 @@ function applyLiveProgress(u){
       if(f >= 0){ orNext = f; if(f <= state.last){ state.rec = {}; state.dly = {}; state.next = null; } }
     }
   }
-  const gpsNext = gps ? gps.next : -1;
-
+  // ── Stessa logica del monitor (main.py) ──
+  // La prossima fermata è quella indicata da OpenRails (nextStation), che avanza solo alla
+  // partenza reale dalla fermata precedente. Posizione GPS e orario NON la anticipano.
+  // Se nextStation manca (come _next_station_from_timetable in main.py): prima fermata dopo
+  // l'ultima in cui il treno si è fermato dopo l'orario di arrivo; senza soste registrate
+  // = la seconda fermata (la prima è la partenza); oltre l'ultima = corsa terminata.
   let nextIdx;
-  if(orNext >= 0 || gpsNext >= 0){
-    nextIdx = Math.max(orNext, gpsNext);
-    // non torna indietro per un buco momentaneo di una delle due fonti
+  if(orNext >= 0){
+    nextIdx = orNext;
+    // non torna indietro per un buco momentaneo del dato
     if(state.next != null) nextIdx = Math.max(nextIdx, state.next);
-    // Solo posizione/movimento (l'orario non conta): la fermata evidenziata resta quella
-    // finché il treno è fermo; passa alla successiva solo quando il treno RIPARTE.
-    if(state.next != null && nextIdx > state.next && stopped) nextIdx = state.next;
-    record(nextIdx);                           // fermo sulla fermata successiva = arrivato
+    record(nextIdx);                           // fermo sulla fermata = arrivato (ritardo)
   } else {
-    // fallback dal dashboard: fermate registrate solo a treno fermo
     for(let i = 1; i < st.length; i++) record(i);
     const ks = Object.keys(state.rec).map(Number);
     if(ks.length) nextIdx = Math.max(...ks) + 1;       // oltre l'ultima = corsa terminata
@@ -2285,7 +2282,7 @@ function applyLiveProgress(u){
     s.passed = i < nextIdx;
     s.is_current = (i === nextIdx);
   });
-  u.next_station = (nextIdx < st.length) ? st[nextIdx].station_name : '';
+  if(orNext >= 0 || !nn) u.next_station = (nextIdx < st.length) ? st[nextIdx].station_name : '';
 
   // Ritardo = ultima fermata raggiunta con ritardo registrato (sul client, o già fissato dal server).
   let dly = 0;
