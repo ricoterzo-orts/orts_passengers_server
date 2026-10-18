@@ -2209,9 +2209,9 @@ function startDeadReckoningLoop(){
 }
 
 // ── Avanzamento fermate e ritardo ──
-// Prossima fermata = definita dalla posizione GPS reale del treno (la stessa che disegna la
-// mappa), proiettata sulla sequenza delle stazioni: la stazione conta come lasciata solo se il
-// treno è già oltre. Se il GPS non è disponibile si usa nextStation di OR (u.next_station);
+// Prossima fermata = nextStation di OR (u.next_station), come nel monitor di main.py.
+// Se non è disponibile si usa la posizione GPS del treno proiettata sulla sequenza delle
+// stazioni (la stazione conta come lasciata solo se il treno è già oltre);
 // senza nessuno dei due: fallback del dashboard (fermate registrate a treno fermo).
 // Ritardo = quello dell'ULTIMA fermata in cui il treno è arrivato: fissato quando il treno è
 // FERMO (<0.5 m/s) in stazione a simTime >= arrivo previsto (ritardo = simTime - arrivo;
@@ -2333,8 +2333,8 @@ function applyLiveProgress(u){
 
   let nextIdx;
   if(orNext >= 0 || gpsNext >= 0){
-    // il GPS reale definisce la posizione; nextStation di OR solo se il GPS non c'è
-    nextIdx = (gpsNext >= 0) ? gpsNext : orNext;
+    // come in main.py: nextStation di OR è la fonte principale; il GPS solo se OR non è disponibile
+    nextIdx = (orNext >= 0) ? orNext : gpsNext;
     // non torna indietro per un buco momentaneo di una delle due fonti
     if(state.next != null) nextIdx = Math.max(nextIdx, state.next);
     record(nextIdx);                           // fermo sulla fermata successiva = arrivato
