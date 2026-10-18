@@ -230,13 +230,13 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-via .tn-via-list b{font-weight:300!important}
 @media(max-width:700px){.tn-via{margin:0 10px 10px;font-size:13px}}
 /* Riga "Fermate intermedie" più alta, con testo scorrevole da destra a sinistra (animato via JS: tnViaTick) */
-.tn-board .tn-via{display:flex;align-items:center;min-height:64px;padding:16px 16px;overflow:hidden}
+.tn-board .tn-via{display:flex;align-items:center;min-height:38px;padding:5px 16px;overflow:hidden}
 .tn-via-marquee{position:relative;width:100%;overflow:hidden;white-space:nowrap}
 .tn-via-track{display:inline-block;white-space:nowrap;will-change:transform;transform:translateX(100vw)}
-@media(max-width:700px){.tn-board .tn-via{min-height:54px;padding:12px 12px}}
+@media(max-width:700px){.tn-board .tn-via{min-height:34px;padding:4px 12px}}
 /* Etichetta "Fermate intermedie": bold e stessa grandezza del nome stazione in "Siamo in arrivo a" */
-.tn-board .tn-via .tn-via-lbl{font-family:'Futura',sans-serif!important;font-weight:700!important;font-size:22px;line-height:1.15}
-@media(max-width:700px){.tn-board .tn-via .tn-via-lbl{font-size:18px}}
+.tn-board .tn-via .tn-via-lbl{font-family:'Futura',sans-serif!important;font-weight:700!important;font-size:22px;line-height:1.15;color:#000!important}
+@media(max-width:700px){.tn-board .tn-via .tn-via-lbl{font-size:22px}}
 .tn-board .tn-stop.cur .tn-stop-time{font-size:16px}
 .tn-board .tn-stop.cur .tn-stop-name{font-size:17px}
 /* Grassetto: data, orario, stazione di arrivo, lista stazioni */
@@ -1741,7 +1741,7 @@ if(!window._tnLangTimer) window._tnLangTimer=setInterval(tnApplyLang,500);
 // Scorre da destra a sinistra; quando l'ultima stazione è uscita a sinistra, 3 s di vuoto, poi riparte.
 // La posizione dipende solo dall'orologio (t0 per utente), così il re-render del pannello a ogni
 // refresh live non azzera l'animazione.
-const TN_VIA_SPEED=70;   // px/s
+const TN_VIA_SPEED=35;   // px/s
 const TN_VIA_GAP_MS=3000;
 const tnViaT0={};
 function tnViaTick(){
@@ -1773,8 +1773,8 @@ function renderPanel(u,el){
   if(hiIdx<0) hiIdx=stations.findIndex(s=>!s.passed);
   const nextName=u.next_station||(hiIdx>=0?stations[hiIdx].station_name:'—');
 
-  // Fermate intermedie: dopo la prossima fermata (già mostrata sopra) fino alla penultima
-  const viaStops=(hiIdx>=0?stations.slice(hiIdx+1,stations.length-1):[]).filter(s=>!s.passed);
+  // Riga informativa: tutte le stazioni del percorso (anche già passate)
+  const viaStops=stations;
   const viaHtml=viaStops.map(s=>{
     const t=s.arrival||s.departure||'';
     return `${s.station_name}${t?` (${t})`:''}`;
