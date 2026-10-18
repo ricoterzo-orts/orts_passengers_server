@@ -2285,6 +2285,8 @@ function lvGpsNext(u, st, state){
 function applyLiveProgress(u){
   const st = u.stations || [];
   if(!st.length) return;
+  // main.py/orm_uploader inviano la chiave "name": se il server la passa invariata, la mappa su station_name
+  st.forEach(s => { if(s.station_name == null && s.name != null) s.station_name = s.name; });
 
   const key = (u.activity_name || '') + '|' + st.length;
   let state = lvProgress[u.username];
