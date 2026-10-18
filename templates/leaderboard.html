@@ -164,7 +164,8 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-foot{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--font);font-size:10px;color:var(--dimgrey);padding:0 2px}
 .tn-foot strong{font-family:var(--font-md);font-weight:500}
 .tn-stops-wrap{position:relative;min-height:340px;background:var(--card);border:1px solid var(--border);border-radius:4px}
-.tn-stops{position:absolute;inset:0;overflow-y:auto;padding:12px 10px 12px 8px}
+.tn-stops{position:absolute;inset:0;overflow-y:hidden;overflow-x:hidden;scrollbar-width:none;-ms-overflow-style:none;padding:12px 10px 12px 8px}
+.tn-stops::-webkit-scrollbar{display:none;width:0;height:0}
 .tn-stop{position:relative;display:flex;align-items:center;gap:10px;padding:0 6px 0 30px;font-family:var(--font);font-size:15px;color:var(--grey);height:40px;min-height:40px;max-height:40px;box-sizing:border-box;flex:none}
 .tn-stop::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:3px;background:#C9C9C9;transform:translateX(-50%)}
 .tn-stop:first-child::before{top:50%}
@@ -1675,7 +1676,7 @@ async function loadStationWeather(stations){
   }
 }
 
-const tnStopsState={}; // per utente: {scrollTop, idx} per non perdere lo scroll ai refresh live
+const tnStopsState={}; // per utente: {scrollTop, idx} per mantenere la posizione ai refresh live (scroll solo automatico)
 function renderTnStops(stations,hiIdx){
   if(!stations.length) return '<div style="padding:12px;font-size:11px;color:var(--dimgrey);text-align:center">Nessuna fermata</div>';
   return stations.map((s,i)=>{
@@ -1703,9 +1704,8 @@ function renderPanel(u,el){
   const stations=u.stations||[]; 
 
   // Fermata evidenziata / prossima
-  let hiIdx=-1;
-  if(u.next_station) hiIdx=stations.findIndex(s=>s.station_name===u.next_station);
-  if(hiIdx<0) hiIdx=stations.findIndex(s=>s.is_current);
+  let hiIdx=stations.findIndex(s=>s.is_current);
+  if(hiIdx<0 && u.next_station) hiIdx=stations.findIndex(s=>s.station_name===u.next_station);
   if(hiIdx<0) hiIdx=stations.findIndex(s=>!s.passed);
   const nextName=u.next_station||(hiIdx>=0?stations[hiIdx].station_name:'—');
 
@@ -1721,9 +1721,6 @@ function renderPanel(u,el){
 
   // Data reale del PC
   const today=new Date().toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});
-
-  const prevScroll=el.querySelector('.tn-stops');
-  if(prevScroll && tnStopsState[u.username]) tnStopsState[u.username].scrollTop=prevScroll.scrollTop;
 
   el.innerHTML=`
   <div class="live-panel-main tn-board">
@@ -1762,18 +1759,21 @@ function renderPanel(u,el){
     </div>
   </div>`;
 
-  // Scroll: centra la fermata evidenziata, ma se l'utente ha scrollato a mano lo conserva
+  // Scroll automatico (nessuna barra, nessuno scroll manuale): la fermata evidenziata resta al centro.
+  // Il re-render riparte da 0, quindi si ripristina la posizione precedente e, se la fermata
+  // evidenziata è cambiata, si scorre in modo fluido fino alla nuova.
   const box=document.getElementById('tn-stops-'+u.username);
   if(box){
     const st=tnStopsState[u.username];
     const curEl=box.querySelector('.tn-stop.cur');
-    if(st && st.idx===hiIdx && st.scrollTop!=null){
-      box.scrollTop=st.scrollTop;
-    } else if(curEl){
-      box.scrollTop=curEl.offsetTop-box.clientHeight/2+curEl.offsetHeight/2;
+    const target=curEl?Math.max(0,curEl.offsetTop-box.clientHeight/2+curEl.offsetHeight/2):0;
+    if(st && st.scrollTop!=null && st.idx!==hiIdx){
+      box.scrollTop=st.scrollTop;                       // riparte da dove era
+      box.scrollTo({top:target,behavior:'smooth'});     // scorre alla nuova fermata
+    } else {
+      box.scrollTop=target;
     }
-    tnStopsState[u.username]={idx:hiIdx,scrollTop:box.scrollTop};
-    box.addEventListener('scroll',()=>{tnStopsState[u.username].scrollTop=box.scrollTop;},{passive:true});
+    tnStopsState[u.username]={idx:hiIdx,scrollTop:target};
   }
   loadStationWeather(stations);
   requestAnimationFrame(()=>drawSpeedChart(u));
@@ -2264,6 +2264,9 @@ function applyLiveProgress(u){
     nextIdx = Math.max(orNext, gpsNext);
     // non torna indietro per un buco momentaneo di una delle due fonti
     if(state.next != null) nextIdx = Math.max(nextIdx, state.next);
+    // Solo posizione/movimento (l'orario non conta): la fermata evidenziata resta quella
+    // finché il treno è fermo; passa alla successiva solo quando il treno RIPARTE.
+    if(state.next != null && nextIdx > state.next && stopped) nextIdx = state.next;
     record(nextIdx);                           // fermo sulla fermata successiva = arrivato
   } else {
     // fallback dal dashboard: fermate registrate solo a treno fermo
