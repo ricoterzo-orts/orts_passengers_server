@@ -232,16 +232,11 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 /* Riga "Fermate intermedie" più alta, con testo scorrevole da destra a sinistra (animato via JS: tnViaTick) */
 .tn-board .tn-via{display:flex;align-items:center;min-height:64px;padding:16px 16px;overflow:hidden}
 .tn-via-marquee{position:relative;width:100%;overflow:hidden;white-space:nowrap}
-.tn-via-track{display:inline-flex;white-space:nowrap;will-change:transform;transform:translateX(0)}
-.tn-via-seg{display:inline-block;flex:none;white-space:nowrap;padding-right:70px}
+.tn-via-track{display:inline-block;white-space:nowrap;will-change:transform;transform:translateX(100vw)}
 @media(max-width:700px){.tn-board .tn-via{min-height:54px;padding:12px 12px}}
 /* Etichetta "Fermate intermedie": bold e stessa grandezza del nome stazione in "Siamo in arrivo a" */
 .tn-board .tn-via .tn-via-lbl{font-family:'Futura',sans-serif!important;font-weight:700!important;font-size:22px;line-height:1.15}
 @media(max-width:700px){.tn-board .tn-via .tn-via-lbl{font-size:18px}}
-/* Nomi stazione: font leggero; spazio di 5px ai lati del separatore */
-.tn-board .tn-via .tn-via-list,
-.tn-board .tn-via .tn-via-list .tn-via-st{font-family:'Futura',sans-serif!important;font-weight:300!important}
-.tn-board .tn-via .tn-via-sep{margin:0 5px;font-weight:300!important}
 .tn-board .tn-stop.cur .tn-stop-time{font-size:16px}
 .tn-board .tn-stop.cur .tn-stop-name{font-size:17px}
 /* Grassetto: data, orario, stazione di arrivo, lista stazioni */
@@ -1743,25 +1738,24 @@ function tnApplyLang(){
 if(!window._tnLangTimer) window._tnLangTimer=setInterval(tnApplyLang,500);
 
 // ── Testo scorrevole "Fermate intermedie" ──
-// Scorre da destra a sinistra in loop continuo, senza vuoti: il segmento (etichetta + stazioni) viene
-// ripetuto quanto basta per coprire sempre l'intera larghezza. La posizione dipende solo dall'orologio
-// (t0 per utente), così il re-render del pannello a ogni refresh live non azzera l'animazione.
+// Scorre da destra a sinistra; quando l'ultima stazione è uscita a sinistra, 3 s di vuoto, poi riparte.
+// La posizione dipende solo dall'orologio (t0 per utente), così il re-render del pannello a ogni
+// refresh live non azzera l'animazione.
 const TN_VIA_SPEED=70;   // px/s
+const TN_VIA_GAP_MS=3000;
 const tnViaT0={};
 function tnViaTick(){
   const now=performance.now();
   document.querySelectorAll('.tn-via-track').forEach(tr=>{
     const box=tr.parentElement;
-    const seg=tr.querySelector('.tn-via-seg');
-    if(!box||!seg) return;
+    if(!box) return;
     const user=tr.dataset.user||'';
     if(tnViaT0[user]===undefined) tnViaT0[user]=now;
-    const cw=box.clientWidth, sw=seg.offsetWidth;
-    if(!cw||!sw) return;
-    const need=Math.ceil(cw/sw)+1;
-    while(tr.children.length<need){ const c=seg.cloneNode(true); c.setAttribute('aria-hidden','true'); tr.appendChild(c); }
-    while(tr.children.length>need) tr.removeChild(tr.lastChild);
-    const x=-(((now-tnViaT0[user])*TN_VIA_SPEED/1000)%sw);
+    const cw=box.clientWidth, tw=tr.offsetWidth;
+    if(!cw||!tw) return;
+    const moveMs=(cw+tw)/TN_VIA_SPEED*1000;
+    const ph=(now-tnViaT0[user])%(moveMs+TN_VIA_GAP_MS);
+    const x=ph<moveMs?cw-TN_VIA_SPEED*ph/1000:cw; // fuori a destra durante la pausa
     tr.style.transform='translateX('+x.toFixed(1)+'px)';
   });
 }
@@ -1779,13 +1773,12 @@ function renderPanel(u,el){
   if(hiIdx<0) hiIdx=stations.findIndex(s=>!s.passed);
   const nextName=u.next_station||(hiIdx>=0?stations[hiIdx].station_name:'—');
 
-  // Striscia informativa: tutte le fermate dopo la stazione di partenza, capolinea incluso.
-  // Non dipende dall'andamento del treno (nessun filtro su fermata corrente / già superate).
-  const viaStops=stations.slice(1);
+  // Fermate intermedie: dopo la prossima fermata (già mostrata sopra) fino alla penultima
+  const viaStops=(hiIdx>=0?stations.slice(hiIdx+1,stations.length-1):[]).filter(s=>!s.passed);
   const viaHtml=viaStops.map(s=>{
     const t=s.arrival||s.departure||'';
-    return `<span class="tn-via-st">${s.station_name}${t?` (${t})`:''}</span>`;
-  }).join('<span class="tn-via-sep">-</span>');
+    return `${s.station_name}${t?` (${t})`:''}`;
+  }).join(' - ');
 
   // Ritardo
   const d=Math.round(getDelayFromStations(u)||0);
@@ -1838,7 +1831,7 @@ function renderPanel(u,el){
         <div class="tn-stops" id="tn-stops-${u.username}">${renderTnStops(stations,hiIdx)}</div>
       </div>
     </div>
-    ${viaHtml?`<div class="tn-via"><div class="tn-via-marquee"><div class="tn-via-track" data-user="${String(u.username).replace(/"/g,'&quot;')}"><span class="tn-via-seg"><span class="tn-via-lbl tn-i18n" data-it="Fermate intermedie :" data-en="Intermediate stops :">${tnT('Fermate intermedie :','Intermediate stops :')}</span><span class="tn-via-list">${viaHtml}</span></span></div></div></div>`:''}
+    ${viaHtml?`<div class="tn-via"><div class="tn-via-marquee"><div class="tn-via-track" data-user="${String(u.username).replace(/"/g,'&quot;')}"><span class="tn-via-lbl tn-i18n" data-it="Fermate intermedie :" data-en="Intermediate stops :">${tnT('Fermate intermedie :','Intermediate stops :')}</span><span class="tn-via-list">${viaHtml}</span></div></div></div>`:''}
   </div>`;
 
   // Scroll: centra la fermata evidenziata, ma se l'utente ha scrollato a mano lo conserva
