@@ -1743,7 +1743,7 @@ if(!window._tnLangTimer) window._tnLangTimer=setInterval(tnApplyLang,500);
 // La posizione dipende solo dall'orologio (t0 per utente), così il re-render del pannello a ogni
 // refresh live non azzera l'animazione.
 const TN_VIA_SPEED=40;   // px/s
-const TN_VIA_GAP_MS=500;
+const TN_VIA_GAP_MS=0;
 const tnViaT0={};
 function tnViaTick(){
   const now=performance.now();
