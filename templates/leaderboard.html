@@ -197,6 +197,9 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-gauge{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#6B6F73,#3A3D40);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)}
 .tn-stops{inset:10px;padding:10px 10px 10px 8px;border-radius:4px;background:linear-gradient(100deg,#F6F8F9 0%,#E4E8EA 55%,#CDD3D3 100%);box-shadow:inset 0 0 6px rgba(0,0,0,.12)}
 .tn-stop.passed::before{background:#7D2F2F}
+/* Lista stazioni: nessuna barra di scorrimento (scorrimento automatico via JS) */
+.tn-stops{scrollbar-width:none;-ms-overflow-style:none}
+.tn-stops::-webkit-scrollbar{display:none;width:0;height:0}
 /* Targhetta ritardo: pannello sfumato con taglio diagonale a sinistra */
 .tn-hdr::after{display:none}
 .tn-board .tn-hdr-right{position:relative;justify-self:end;align-self:stretch;margin:-8px -14px -8px 0;padding:0 18px 0 38px;min-width:104px;display:flex;align-items:center;justify-content:flex-end;font-weight:700;text-shadow:0 1px 0 rgba(255,255,255,.75)}
@@ -1675,6 +1678,27 @@ async function loadStationWeather(stations){
   }
 }
 
+// ── Scorrimento automatico lista stazioni: ogni 15 s alterna "fino all'ultima stazione" e "ritorno alla stazione evidenziata" ──
+const TN_SCROLL_MS=15000;
+let tnScrollPhase='cur'; // 'cur' = posizione sulla fermata evidenziata, 'end' = in fondo alla lista
+function tnScrollTarget(box,phase){
+  const max=Math.max(0,box.scrollHeight-box.clientHeight);
+  if(phase==='end') return max;
+  const curEl=box.querySelector('.tn-stop.cur');
+  if(!curEl) return 0;
+  const t=curEl.offsetTop-box.clientHeight/2+curEl.offsetHeight/2;
+  return Math.min(max,Math.max(0,t));
+}
+function tnScrollTo(box,phase,smooth){
+  const top=tnScrollTarget(box,phase);
+  if(Math.abs(box.scrollTop-top)<2) return;
+  box.scrollTo({top,behavior:smooth?'smooth':'auto'});
+}
+if(!window._tnScrollTimer) window._tnScrollTimer=setInterval(()=>{
+  tnScrollPhase=(tnScrollPhase==='cur')?'end':'cur';
+  document.querySelectorAll('.tn-stops').forEach(box=>tnScrollTo(box,tnScrollPhase,true));
+},TN_SCROLL_MS);
+
 const tnStopsState={}; // per utente: {scrollTop, idx} per non perdere lo scroll ai refresh live
 function renderTnStops(stations,hiIdx){
   if(!stations.length) return '<div style="padding:12px;font-size:11px;color:var(--dimgrey);text-align:center">Nessuna fermata</div>';
@@ -1769,6 +1793,7 @@ function renderPanel(u,el){
     const curEl=box.querySelector('.tn-stop.cur');
     if(st && st.idx===hiIdx && st.scrollTop!=null){
       box.scrollTop=st.scrollTop;
+      tnScrollTo(box,tnScrollPhase,true); // riprende lo scorrimento automatico interrotto dal refresh
     } else if(curEl){
       box.scrollTop=curEl.offsetTop-box.clientHeight/2+curEl.offsetHeight/2;
     }
