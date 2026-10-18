@@ -1779,8 +1779,9 @@ function renderPanel(u,el){
   if(hiIdx<0) hiIdx=stations.findIndex(s=>!s.passed);
   const nextName=u.next_station||(hiIdx>=0?stations[hiIdx].station_name:'—');
 
-  // Fermate intermedie: dopo la prossima fermata (già mostrata sopra) fino alla penultima
-  const viaStops=(hiIdx>=0?stations.slice(hiIdx+1,stations.length-1):[]).filter(s=>!s.passed);
+  // Striscia informativa: tutte le fermate dopo la stazione di partenza, capolinea incluso.
+  // Non dipende dall'andamento del treno (nessun filtro su fermata corrente / già superate).
+  const viaStops=stations.slice(1);
   const viaHtml=viaStops.map(s=>{
     const t=s.arrival||s.departure||'';
     return `<span class="tn-via-st">${s.station_name}${t?` (${t})`:''}</span>`;
