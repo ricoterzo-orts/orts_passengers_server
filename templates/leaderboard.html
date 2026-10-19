@@ -157,8 +157,6 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-arrive{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:10px 12px;text-align:center}
 .tn-arrive-lbl{font-family:var(--font);font-weight:400;font-size:15px;color:var(--grey);letter-spacing:.04em;text-transform:uppercase}
 .tn-arrive-name{font-family:var(--font-md);font-size:22px;font-weight:700!important;color:var(--white);margin-top:3px;line-height:1.15;text-transform:uppercase}
-.tn-arrive-dist{font-family:var(--font);font-size:14px;color:var(--grey);margin-top:3px;line-height:1.2}
-.tn-arrive-dist.arr{color:var(--green);font-weight:700}
 .tn-logo-box{background:var(--accent);border-radius:4px;padding:16px 12px 10px;display:flex;flex-direction:column;align-items:center;gap:8px}
 .tn-logo-box img{height:46px;width:auto;max-width:80%;filter:brightness(0) invert(1)}
 .tn-left .live-chart-wrap{border-radius:4px;background:var(--card)}
@@ -1823,7 +1821,6 @@ function renderPanel(u,el){
         <div class="tn-arrive">
           <div class="tn-arrive-lbl tn-i18n" data-it="Siamo in arrivo a:" data-en="We are arriving in:">${tnT('Siamo in arrivo a:','We are arriving in:')}</div>
           <div class="tn-arrive-name">${nextName}</div>
-          ${lvDistHtml(u)}
         </div>
         <div class="live-chart-wrap">
           <div class="live-chart-hdr">
@@ -2293,84 +2290,6 @@ function lvGpsNext(u, st, state){
   return { next: (lastGeo >= 0 ? geo[lastGeo].i : -1) + 1, p, jumped };
 }
 
-// ── Distanza dalla prossima fermata (come main.py: percorso → TRACKMONITOR → haversine) ──
-// Soglie e scarto identici a main.py: _ARRDISTCAB_THRESHOLD_M, _ARRDIST_THRESHOLD_M, _PATH_MAX_PERP_M.
-const LV_NEXT_KM     = 1.5;  // "prossima fermata" (< 1,5 km)
-const LV_ARR_KM      = 0.5;  // "in arrivo" (< 500 m)
-const LV_MAX_PERP_KM = 0.8;  // oltre, la proiezione sulla tratta non è affidabile → si passa al fallback
-
-// proiezione NON limitata del punto sul segmento a→b: t<0 prima di a, t>1 oltre b
-function lvAlongSeg(p, a, b){
-  const k = Math.cos(p.lat * Math.PI / 180);
-  const X = o => (o.lon - p.lon) * k * 111.32;
-  const Y = o => (o.lat - p.lat) * 110.57;
-  const ax = X(a), ay = Y(a), dx = X(b) - ax, dy = Y(b) - ay, L = dx*dx + dy*dy;
-  if(!(L > 0)) return null;
-  const t = -(ax*dx + ay*dy) / L;
-  const tc = Math.max(0, Math.min(1, t));
-  return { t, len: Math.sqrt(L), perp: Math.hypot(ax + dx*tc, ay + dy*tc) };
-}
-
-// Ritorna {km, src, phase} per la prossima fermata nextIdx, oppure null se nessuna fonte è disponibile.
-// Fonti in ordine di priorità:
-//   'OR'      distanza reale StationStops[0].DistanceToTrainM (solo se il server inoltra next_station_dist_m);
-//             vale solo per la prossima fermata, come in main.py
-//   'tratta'  distanza residua lungo la tratta fermata precedente → prossima (proiezione del GPS);
-//             scartata se il GPS è a più di 800 m dalla tratta o se la fermata risulta già superata
-//   'gps'     haversine dal GPS alle coordinate della stazione (fallback)
-function lvStationDistance(u, st, nextIdx, pos, stopped){
-  if(nextIdx < 0 || nextIdx >= st.length) return null;
-  let km = null, src = null;
-
-  const raw = u.next_station_dist_m;
-  const od = (raw === null || raw === undefined || raw === '') ? NaN : Number(raw);
-  if(isFinite(od) && od >= 0){ km = od / 1000; src = 'OR'; }
-
-  const nc = getStationCoord(st[nextIdx].station_name);
-  if(km === null && pos && nc && nc.lat != null && nc.lon != null){
-    const b = { lat: Number(nc.lat), lon: Number(nc.lon) };
-    let a = null;
-    for(let j = nextIdx - 1; j >= 0 && !a; j--){
-      const c = getStationCoord(st[j].station_name);
-      if(c && c.lat != null && c.lon != null) a = { lat: Number(c.lat), lon: Number(c.lon) };
-    }
-    if(a){
-      const r = lvAlongSeg(pos, a, b);
-      if(r && r.perp <= LV_MAX_PERP_KM){
-        const rem = (1 - r.t) * r.len;
-        if(rem >= 0){ km = rem; src = 'tratta'; }   // rem < 0: stazione già superata → scarta
-      }
-    }
-  }
-  if(km === null){
-    const h = lvNearStation(pos, st[nextIdx].station_name);
-    if(h != null){ km = h; src = 'gps'; }
-  }
-  if(km === null) return null;
-
-  const phase = (stopped && km <= LV_NEAR_KM) ? 'station'
-              : km <= LV_ARR_KM  ? 'arriving'
-              : km <= LV_NEXT_KM ? 'next' : 'far';
-  return { km, src, phase };
-}
-
-// riga "a 1,2 km" / "In stazione" sotto il nome della prossima fermata
-function lvDistHtml(u){
-  const d = u._lvDist;
-  if(!d) return '';
-  let it, en, cls = '';
-  if(d.phase === 'station'){ it = 'In stazione'; en = 'At the station'; cls = ' arr'; }
-  else {
-    const m = Math.round(d.km * 100) * 10;
-    const itD = d.km < 1 ? m + ' m' : d.km.toFixed(1).replace('.', ',') + ' km';
-    const enD = d.km < 1 ? m + ' m' : d.km.toFixed(1) + ' km';
-    it = 'a ' + itD; en = enD + ' away';
-    if(d.phase === 'arriving') cls = ' arr';
-  }
-  const srcLbl = d.src === 'OR' ? 'distanza reale OR' : d.src === 'tratta' ? 'lungo la tratta' : 'distanza GPS';
-  return `<div class="tn-arrive-dist tn-i18n${cls}" data-it="${it}" data-en="${en}" title="Fonte: ${srcLbl}">${tnT(it, en)}</div>`;
-}
-
 function applyLiveProgress(u){
   const st = u.stations || [];
   if(!st.length) return;
@@ -2447,7 +2366,6 @@ function applyLiveProgress(u){
     s.is_current = (i === nextIdx);
   });
   u.next_station = (nextIdx < st.length) ? st[nextIdx].station_name : '';
-  u._lvDist = lvStationDistance(u, st, nextIdx, pos, stopped);   // distanza/fase rispetto alla prossima fermata
 
   // Ritardo = ultima fermata raggiunta con ritardo registrato (sul client, o già fissato dal server).
   let dly = 0;
