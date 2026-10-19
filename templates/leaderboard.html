@@ -1705,10 +1705,30 @@ function tnScrollTarget(box,phase){
   const t=curEl.offsetTop-box.clientHeight/2+curEl.offsetHeight/2;
   return Math.min(max,Math.max(0,t));
 }
+// Scorrimento lento: velocità costante (TN_SCROLL_PXS px/s) con rallentamento finale; sui percorsi
+// lunghi la velocità sale quanto basta per arrivare entro ~10 s (la fase cambia ogni TN_SCROLL_MS).
+// L'animazione è per elemento: se il pannello viene ridisegnato (nuovo box) si ferma da sola e
+// riparte dalla posizione corrente. Un gesto dell'utente (rotella/tocco) la interrompe.
+const TN_SCROLL_PXS=28;
 function tnScrollTo(box,phase,smooth){
-  const top=tnScrollTarget(box,phase);
-  if(Math.abs(box.scrollTop-top)<2) return;
-  box.scrollTo({top,behavior:smooth?'smooth':'auto'});
+  if(box._tnAnim){cancelAnimationFrame(box._tnAnim);box._tnAnim=0;}
+  const top0=tnScrollTarget(box,phase);
+  if(Math.abs(box.scrollTop-top0)<2) return;
+  if(!smooth){box.scrollTop=top0;return;}
+  let pos=box.scrollTop, last=null;
+  const v0=Math.max(TN_SCROLL_PXS,Math.abs(top0-pos)/10);
+  const step=ts=>{
+    if(!box.isConnected){box._tnAnim=0;return;}
+    if(last===null) last=ts;
+    const dt=Math.min(0.1,(ts-last)/1000); last=ts;
+    const diff=tnScrollTarget(box,phase)-pos;      // ricalcolato: segue la fermata se cambia
+    if(Math.abs(diff)<0.5){box.scrollTop=pos+diff;box._tnAnim=0;return;}
+    const v=Math.min(v0,Math.max(6,Math.abs(diff)*0.8)); // rallenta in prossimità del bersaglio
+    pos+=Math.sign(diff)*Math.min(Math.abs(diff),v*dt);
+    box.scrollTop=pos;
+    box._tnAnim=requestAnimationFrame(step);
+  };
+  box._tnAnim=requestAnimationFrame(step);
 }
 if(!window._tnScrollTimer) window._tnScrollTimer=setInterval(()=>{
   tnScrollPhase=(tnScrollPhase==='cur')?'end':'cur';
@@ -1851,9 +1871,16 @@ function renderPanel(u,el){
     if(st && st.idx===hiIdx && st.scrollTop!=null){
       box.scrollTop=st.scrollTop;
       tnScrollTo(box,tnScrollPhase,true); // riprende lo scorrimento automatico interrotto dal refresh
+    } else if(st && st.scrollTop!=null && curEl){
+      // fermata evidenziata cambiata (es. arrivo in stazione): scorre lentamente verso la nuova
+      box.scrollTop=st.scrollTop;
+      tnScrollTo(box,'cur',true);
     } else if(curEl){
       box.scrollTop=curEl.offsetTop-box.clientHeight/2+curEl.offsetHeight/2;
     }
+    ['wheel','touchstart','pointerdown'].forEach(ev=>box.addEventListener(ev,()=>{
+      if(box._tnAnim){cancelAnimationFrame(box._tnAnim);box._tnAnim=0;}
+    },{passive:true}));
     tnStopsState[u.username]={idx:hiIdx,scrollTop:box.scrollTop};
     box.addEventListener('scroll',()=>{tnStopsState[u.username].scrollTop=box.scrollTop;},{passive:true});
   }
