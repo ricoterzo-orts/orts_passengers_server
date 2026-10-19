@@ -1780,6 +1780,7 @@ function renderPanel(u,el){
   if(hiIdx<0 && u.next_station) hiIdx=stations.findIndex(s=>s.station_name===u.next_station);
   if(hiIdx<0) hiIdx=stations.findIndex(s=>!s.passed);
   const nextName=u.next_station||(hiIdx>=0?stations[hiIdx].station_name:'—');
+  const wel=!!u._lvWelcome; // fermo alla prima stazione → "Benvenuti a bordo"
 
   // Riga informativa: tutte le stazioni del percorso (anche già passate)
   const viaStops=stations;
@@ -1819,8 +1820,8 @@ function renderPanel(u,el){
     <div class="tn-body">
       <div class="tn-left">
         <div class="tn-arrive">
-          <div class="tn-arrive-lbl tn-i18n" data-it="Siamo in arrivo a:" data-en="We are arriving in:">${tnT('Siamo in arrivo a:','We are arriving in:')}</div>
-          <div class="tn-arrive-name">${nextName}</div>
+          <div class="tn-arrive-lbl tn-i18n" data-it="${wel?'Benvenuti a bordo':'Siamo in arrivo a:'}" data-en="${wel?'Welcome aboard':'We are arriving in:'}">${wel?tnT('Benvenuti a bordo','Welcome aboard'):tnT('Siamo in arrivo a:','We are arriving in:')}</div>
+          <div class="tn-arrive-name"${wel?' style="visibility:hidden"':''}>${nextName}</div>
         </div>
         <div class="live-chart-wrap">
           <div class="live-chart-hdr">
@@ -2228,7 +2229,7 @@ const lvProgress = {}; // username -> {key, g, last, next, rec, dly}
 const LV_STOP_KMH = 1.8; // 0.5 m/s
 const LV_PASS_KM  = 0.15; // oltre la stazione lungo la tratta = fermata lasciata
 const LV_NEAR_KM  = 0.8;  // raggio entro cui il treno fermo è "in stazione"
-const LV_ARR_KM   = 0.2;  // arrivo: treno fermo entro questo raggio dalla fermata → si evidenzia la successiva
+const LV_ARR_KM   = 0.3;  // arrivo: treno fermo entro questo raggio dalla fermata → si evidenzia la successiva
 function lvNorm(n){ return String(n == null ? '' : n).trim().toLowerCase(); }
 function lvSec(t){
   if(!t) return null;
@@ -2299,7 +2300,7 @@ function applyLiveProgress(u){
 
   const key = (u.activity_name || '') + '|' + st.length;
   let state = lvProgress[u.username];
-  if(!state || state.key !== key) state = lvProgress[u.username] = { key, g: 0, last: -1, next: null, rec: {}, dly: {}, arr: -1 };
+  if(!state || state.key !== key) state = lvProgress[u.username] = { key, g: 0, last: -1, next: null, rec: {}, dly: {}, arr: -1, dep: false };
 
   // velocità e orario di simulazione live
   const hist = u.speed_history || [];
@@ -2312,7 +2313,7 @@ function applyLiveProgress(u){
   const pos = gps ? gps.p : null;
   // corsa ricominciata: il GPS torna indietro rispetto a quanto già registrato
   if(gps && gps.jumped && state.next != null && gps.next < state.next - 1){
-    state.next = null; state.last = -1; state.rec = {}; state.dly = {}; state.arr = -1;
+    state.next = null; state.last = -1; state.rec = {}; state.dly = {}; state.arr = -1; state.dep = false;
   }
 
   // registra e fissa il ritardo di una fermata (a treno fermo, una volta sola;
@@ -2337,7 +2338,7 @@ function applyLiveProgress(u){
     }
     if(orNext < 0){                            // non trovata in avanti: ricerca completa
       const f = st.findIndex(s => lvNorm(s.station_name) === nn);
-      if(f >= 0){ orNext = f; if(f <= state.last){ state.rec = {}; state.dly = {}; state.next = null; state.arr = -1; } }
+      if(f >= 0){ orNext = f; if(f <= state.last){ state.rec = {}; state.dly = {}; state.next = null; state.arr = -1; state.dep = false; } }
     }
   }
   const gpsNext = gps ? gps.next : -1;
@@ -2371,6 +2372,15 @@ function applyLiveProgress(u){
     if(dArr != null ? dArr <= LV_ARR_KM : state.rec[nextIdx]) state.arr = nextIdx;
   }
   const showIdx = (state.arr === nextIdx) ? nextIdx + 1 : nextIdx;
+
+  // "Benvenuti a bordo": finché il treno è fermo alla prima stazione. Appena parte (o se si entra
+  // a corsa già in corso: oltre la 2ª fermata o lontano dalla prima) torna "Siamo in arrivo a".
+  if(!state.dep){
+    const d0 = lvNearStation(pos, st[0].station_name);
+    const moving = (sp != null && isFinite(sp) && sp >= LV_STOP_KMH);
+    if(moving || nextIdx >= 2 || (d0 != null && d0 > 2)) state.dep = true;
+  }
+  u._lvWelcome = !state.dep;
 
   st.forEach((s, i) => {
     if(s._srvPassed === undefined) s._srvPassed = s.passed; // conserva il dato del server
