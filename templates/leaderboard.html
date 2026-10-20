@@ -2257,6 +2257,7 @@ function startDeadReckoningLoop(){
 const lvProgress = {}; // username -> {key, g, last, next, rec, dly}
 const LV_STOP_KMH = 1.8; // 0.5 m/s
 const LV_DEP_KMH  = 30;  // velocità da raggiungere per togliere "Benvenuti a bordo"
+const LV_ADV_KMH  = 20;  // dopo la partenza da una fermata: sopra questa velocità si evidenzia la stazione successiva
 const LV_WELCOME_MS = 60000; // e minimo 1 minuto dall'inizio del movimento
 const LV_PASS_KM  = 0.15; // oltre la stazione lungo la tratta = fermata lasciata
 const LV_NEAR_KM  = 0.8;  // raggio entro cui il treno fermo è "in stazione"
@@ -2331,7 +2332,7 @@ function applyLiveProgress(u){
 
   const key = (u.activity_name || '') + '|' + st.length;
   let state = lvProgress[u.username];
-  if(!state || state.key !== key) state = lvProgress[u.username] = { key, g: 0, last: -1, next: null, rec: {}, dly: {}, arr: -1, dep: false, mv: null, v30: false };
+  if(!state || state.key !== key) state = lvProgress[u.username] = { key, g: 0, last: -1, next: null, rec: {}, dly: {}, arr: -1, dep: false, mv: null, v30: false, shown: null };
 
   // velocità e orario di simulazione live
   const hist = u.speed_history || [];
@@ -2344,7 +2345,7 @@ function applyLiveProgress(u){
   const pos = gps ? gps.p : null;
   // corsa ricominciata: il GPS torna indietro rispetto a quanto già registrato
   if(gps && gps.jumped && state.next != null && gps.next < state.next - 1){
-    state.next = null; state.last = -1; state.rec = {}; state.dly = {}; state.arr = -1; state.dep = false; state.mv = null; state.v30 = false;
+    state.next = null; state.last = -1; state.rec = {}; state.dly = {}; state.arr = -1; state.dep = false; state.mv = null; state.v30 = false; state.shown = null;
   }
 
   // registra e fissa il ritardo di una fermata (a treno fermo, una volta sola;
@@ -2369,7 +2370,7 @@ function applyLiveProgress(u){
     }
     if(orNext < 0){                            // non trovata in avanti: ricerca completa
       const f = st.findIndex(s => lvNorm(s.station_name) === nn);
-      if(f >= 0){ orNext = f; if(f <= state.last){ state.rec = {}; state.dly = {}; state.next = null; state.arr = -1; state.dep = false; state.mv = null; state.v30 = false; } }
+      if(f >= 0){ orNext = f; if(f <= state.last){ state.rec = {}; state.dly = {}; state.next = null; state.arr = -1; state.dep = false; state.mv = null; state.v30 = false; state.shown = null; } }
     }
   }
   const gpsNext = gps ? gps.next : -1;
@@ -2393,21 +2394,11 @@ function applyLiveProgress(u){
   state.next = nextIdx;
   state.last = nextIdx - 1;
 
-  // Arrivo in stazione: treno fermo (<0.5 m/s) vicino alla fermata verso cui sta andando
-  // (senza GPS: fermata registrata a treno fermo) → la fermata evidenziata passa subito alla
-  // successiva, senza aspettare la ripartenza. L'arrivo resta memorizzato in state.arr, così la
-  // lista non torna indietro quando il treno riparte (OR/GPS avanzano solo dopo la partenza).
-  // nextIdx/state.next/state.last restano quelli di OR/GPS: ritardo e logica di avanzamento invariati.
-  if(nextIdx < st.length && state.arr !== nextIdx && stopped){
-    const dArr = lvNearStation(pos, st[nextIdx].station_name);
-    if(dArr != null ? dArr <= LV_ARR_KM : state.rec[nextIdx]) state.arr = nextIdx;
-  }
-  const showIdx = (state.arr === nextIdx) ? nextIdx + 1 : nextIdx;
-
   // "Benvenuti a bordo": resta finché il treno è fermo alla prima stazione e anche dopo la partenza,
   // fino a quando sono passati almeno 60 s dall'inizio del movimento E il treno ha raggiunto i
   // 30 km/h; solo allora torna "Siamo in arrivo a". Una volta tolto non ricompare (fino a nuova corsa).
   // Fallback: treno lontanissimo (>15 km) dalla prima stazione = corsa già avanzata.
+  const wasDep = state.dep;
   if(!state.dep){
     const d0 = lvNearStation(pos, st[0].station_name);
     const okSp = (sp != null && isFinite(sp));
@@ -2420,6 +2411,24 @@ function applyLiveProgress(u){
     }
   }
   u._lvWelcome = !state.dep;
+
+  // Fermata evidenziata (showIdx):
+  // - con "Benvenuti a bordo" (treno fermo/in partenza dalla prima stazione) → la PRIMA stazione;
+  // - tolto il benvenuto (1 min + 30 km/h) → passa alla successiva;
+  // - nelle fermate successive l'evidenziazione resta sulla stazione (anche da fermo, all'arrivo)
+  //   e passa alla successiva solo dopo che il treno è ripartito e supera i 20 km/h.
+  // nextIdx/state.next/state.last restano quelli di OR/GPS: ritardo e logica di avanzamento invariati.
+  let showIdx;
+  if(!state.dep){
+    state.shown = 0;
+  } else if(!wasDep || state.shown == null){
+    state.shown = nextIdx;                                   // fine benvenuto / ingresso a corsa in corso
+  } else if(nextIdx > state.shown && sp != null && isFinite(sp) && sp >= LV_ADV_KMH){
+    state.shown = nextIdx;                                   // ripartito e oltre i 20 km/h
+  } else if(nextIdx < state.shown){
+    state.shown = nextIdx;
+  }
+  showIdx = state.shown;
 
   st.forEach((s, i) => {
     if(s._srvPassed === undefined) s._srvPassed = s.passed; // conserva il dato del server
