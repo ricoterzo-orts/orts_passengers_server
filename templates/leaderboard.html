@@ -2261,7 +2261,7 @@ const LV_ADV_KMH  = 20;  // dopo la partenza da una fermata: sopra questa veloci
 const LV_WELCOME_MS = 60000; // e minimo 1 minuto dall'inizio del movimento
 const LV_PASS_KM  = 0.15; // oltre la stazione lungo la tratta = fermata lasciata
 const LV_NEAR_KM  = 0.8;  // raggio entro cui il treno fermo è "in stazione"
-const LV_SKIP_KM  = 0.6;  // stazione senza sosta: GPS oltre la stazione di almeno questa distanza = superata
+const LV_SKIP_KM  = 1.5;  // fallback: solo se il GPS dice che sei oltre la stazione di almeno questa distanza (sosta saltata)
 const LV_ARR_KM   = 0.3;  // arrivo: treno fermo entro questo raggio dalla fermata → si evidenzia la successiva
 function lvNorm(n){ return String(n == null ? '' : n).trim().toLowerCase(); }
 function lvSec(t){
@@ -2437,11 +2437,10 @@ function applyLiveProgress(u){
   } else if(nextIdx > state.shown && sp != null && isFinite(sp) && sp >= LV_ADV_KMH){
     // ripartito e oltre i 20 km/h, ma solo se la stazione evidenziata è stata raggiunta davvero:
     // - arrivo registrato (fermo entro LV_ARR_KM, via GPS), oppure
-    // - stazione senza sosta: GPS già oltre di LV_SKIP_KM, o OR/GPS avanti di 2+ fermate
+    // - fallback solo GPS (posizione fisica, mai l'orario/nextStation: con il treno in ritardo
+    //   OR/orario vanno avanti ma il treno no): oltre la stazione di LV_SKIP_KM o già oltre la successiva.
     const arrived = !!state.ar[state.shown];
-    const skipped = nextIdx > state.shown + 1
-                 || (gps && gps.next > state.shown + 1)
-                 || (gps && gps.next > state.shown && gps.pastKm >= LV_SKIP_KM);
+    const skipped = !!(gps && gps.next > state.shown && (gps.next > state.shown + 1 || gps.pastKm >= LV_SKIP_KM));
     if(arrived || skipped){
       console.info('[VTV] avanza evidenziazione', st[state.shown].station_name, '->', st[nextIdx] && st[nextIdx].station_name, {arrived, skipped, sp});
       state.shown = nextIdx;
