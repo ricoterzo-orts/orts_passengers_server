@@ -2261,6 +2261,7 @@ const LV_ADV_KMH  = 20;  // dopo la partenza da una fermata: sopra questa veloci
 const LV_WELCOME_MS = 60000; // e minimo 1 minuto dall'inizio del movimento
 const LV_PASS_KM  = 0.15; // oltre la stazione lungo la tratta = fermata lasciata
 const LV_NEAR_KM  = 0.8;  // raggio entro cui il treno fermo è "in stazione"
+const LV_SKIP_KM  = 0.6;  // stazione senza sosta: GPS oltre la stazione di almeno questa distanza = superata
 const LV_ARR_KM   = 0.3;  // arrivo: treno fermo entro questo raggio dalla fermata → si evidenzia la successiva
 function lvNorm(n){ return String(n == null ? '' : n).trim().toLowerCase(); }
 function lvSec(t){
@@ -2321,7 +2322,7 @@ function lvGpsNext(u, st, state){
   state.g = b.g;
   const along = b.t * b.len;                   // km oltre la stazione geo[b.g]
   const lastGeo = (along >= LV_PASS_KM) ? b.g : b.g - 1;
-  return { next: (lastGeo >= 0 ? geo[lastGeo].i : -1) + 1, p, jumped };
+  return { next: (lastGeo >= 0 ? geo[lastGeo].i : -1) + 1, p, jumped, pastKm: (along >= LV_PASS_KM ? along : 0) };
 }
 
 function applyLiveProgress(u){
@@ -2332,7 +2333,7 @@ function applyLiveProgress(u){
 
   const key = (u.activity_name || '') + '|' + st.length;
   let state = lvProgress[u.username];
-  if(!state || state.key !== key) state = lvProgress[u.username] = { key, g: 0, last: -1, next: null, rec: {}, dly: {}, arr: -1, dep: false, mv: null, v30: false, shown: null };
+  if(!state || state.key !== key) state = lvProgress[u.username] = { key, g: 0, last: -1, next: null, rec: {}, dly: {}, arr: -1, dep: false, mv: null, v30: false, shown: null, ar: {} };
 
   // velocità e orario di simulazione live
   const hist = u.speed_history || [];
@@ -2345,7 +2346,7 @@ function applyLiveProgress(u){
   const pos = gps ? gps.p : null;
   // corsa ricominciata: il GPS torna indietro rispetto a quanto già registrato
   if(gps && gps.jumped && state.next != null && gps.next < state.next - 1){
-    state.next = null; state.last = -1; state.rec = {}; state.dly = {}; state.arr = -1; state.dep = false; state.mv = null; state.v30 = false; state.shown = null;
+    state.next = null; state.last = -1; state.rec = {}; state.dly = {}; state.arr = -1; state.dep = false; state.mv = null; state.v30 = false; state.shown = null; state.ar = {};
   }
 
   // registra e fissa il ritardo di una fermata (a treno fermo, una volta sola;
@@ -2370,7 +2371,7 @@ function applyLiveProgress(u){
     }
     if(orNext < 0){                            // non trovata in avanti: ricerca completa
       const f = st.findIndex(s => lvNorm(s.station_name) === nn);
-      if(f >= 0){ orNext = f; if(f <= state.last){ state.rec = {}; state.dly = {}; state.next = null; state.arr = -1; state.dep = false; state.mv = null; state.v30 = false; state.shown = null; } }
+      if(f >= 0){ orNext = f; if(f <= state.last){ state.rec = {}; state.dly = {}; state.next = null; state.arr = -1; state.dep = false; state.mv = null; state.v30 = false; state.shown = null; state.ar = {}; } }
     }
   }
   const gpsNext = gps ? gps.next : -1;
@@ -2418,13 +2419,33 @@ function applyLiveProgress(u){
   // - nelle fermate successive l'evidenziazione resta sulla stazione (anche da fermo, all'arrivo)
   //   e passa alla successiva solo dopo che il treno è ripartito e supera i 20 km/h.
   // nextIdx/state.next/state.last restano quelli di OR/GPS: ritardo e logica di avanzamento invariati.
+  // Arrivo reale alla fermata evidenziata: treno FERMO e, con GPS, entro LV_ARR_KM dalla stazione
+  // (senza GPS/coordinate basta essere fermi). Solo dopo l'arrivo l'evidenziazione può passare oltre.
+  if(state.dep && state.shown != null && stopped && st[state.shown] && !state.ar[state.shown]){
+    const dS = lvNearStation(pos, st[state.shown].station_name);
+    if(dS == null || dS <= LV_ARR_KM){
+      state.ar[state.shown] = true;
+      console.info('[VTV] arrivo a', st[state.shown].station_name, {dS});
+    }
+  }
+
   let showIdx;
   if(!state.dep){
     state.shown = 0;
   } else if(!wasDep || state.shown == null){
     state.shown = nextIdx;                                   // fine benvenuto / ingresso a corsa in corso
   } else if(nextIdx > state.shown && sp != null && isFinite(sp) && sp >= LV_ADV_KMH){
-    state.shown = nextIdx;                                   // ripartito e oltre i 20 km/h
+    // ripartito e oltre i 20 km/h, ma solo se la stazione evidenziata è stata raggiunta davvero:
+    // - arrivo registrato (fermo entro LV_ARR_KM, via GPS), oppure
+    // - stazione senza sosta: GPS già oltre di LV_SKIP_KM, o OR/GPS avanti di 2+ fermate
+    const arrived = !!state.ar[state.shown];
+    const skipped = nextIdx > state.shown + 1
+                 || (gps && gps.next > state.shown + 1)
+                 || (gps && gps.next > state.shown && gps.pastKm >= LV_SKIP_KM);
+    if(arrived || skipped){
+      console.info('[VTV] avanza evidenziazione', st[state.shown].station_name, '->', st[nextIdx] && st[nextIdx].station_name, {arrived, skipped, sp});
+      state.shown = nextIdx;
+    }
   } else if(nextIdx < state.shown){
     state.shown = nextIdx;
   }
@@ -2842,12 +2863,19 @@ async function loadStationCoords(){
 function getStationCoord(name){
   if(!name) return null;
   if(stationCoords[name]) return stationCoords[name];
-  const nl = name.toLowerCase().replace(/[.\-]/g,'').trim();
-  for(const [k,v] of Object.entries(stationCoords)){
-    const kl = k.toLowerCase().replace(/[.\-]/g,'').trim();
-    if(kl === nl || kl.includes(nl) || nl.includes(kl)) return v;
+  const norm = x => String(x).toLowerCase().replace(/[.\-]/g,'').replace(/\s+/g,' ').trim();
+  const nl = norm(name);
+  const entries = Object.entries(stationCoords);
+  for(const [k,v] of entries){ if(norm(k) === nl) return v; }          // corrispondenza esatta
+  let best = null, bestDiff = Infinity;                                 // altrimenti la più simile (es. "Canicattì" vs "Canicattì Bagni")
+  for(const [k,v] of entries){
+    const kl = norm(k);
+    if(kl.includes(nl) || nl.includes(kl)){
+      const diff = Math.abs(kl.length - nl.length);
+      if(diff < bestDiff){ best = v; bestDiff = diff; }
+    }
   }
-  return null;
+  return best;
 }
 
 function interpolatePosition(stations, nextStation, speedKmh){
