@@ -2256,7 +2256,8 @@ function startDeadReckoningLoop(){
 // <30 s = 0) e invariato finché il treno non arriva alla fermata successiva.
 const lvProgress = {}; // username -> {key, g, last, next, rec, dly}
 const LV_STOP_KMH = 1.8; // 0.5 m/s
-const LV_DEP_KMH  = 5;   // partenza dalla prima stazione: velocità minima per togliere "Benvenuti a bordo"
+const LV_DEP_KMH  = 30;  // velocità da raggiungere per togliere "Benvenuti a bordo"
+const LV_WELCOME_MS = 60000; // e minimo 1 minuto dall'inizio del movimento
 const LV_PASS_KM  = 0.15; // oltre la stazione lungo la tratta = fermata lasciata
 const LV_NEAR_KM  = 0.8;  // raggio entro cui il treno fermo è "in stazione"
 const LV_ARR_KM   = 0.3;  // arrivo: treno fermo entro questo raggio dalla fermata → si evidenzia la successiva
@@ -2330,7 +2331,7 @@ function applyLiveProgress(u){
 
   const key = (u.activity_name || '') + '|' + st.length;
   let state = lvProgress[u.username];
-  if(!state || state.key !== key) state = lvProgress[u.username] = { key, g: 0, last: -1, next: null, rec: {}, dly: {}, arr: -1, dep: false };
+  if(!state || state.key !== key) state = lvProgress[u.username] = { key, g: 0, last: -1, next: null, rec: {}, dly: {}, arr: -1, dep: false, mv: null, v30: false };
 
   // velocità e orario di simulazione live
   const hist = u.speed_history || [];
@@ -2343,7 +2344,7 @@ function applyLiveProgress(u){
   const pos = gps ? gps.p : null;
   // corsa ricominciata: il GPS torna indietro rispetto a quanto già registrato
   if(gps && gps.jumped && state.next != null && gps.next < state.next - 1){
-    state.next = null; state.last = -1; state.rec = {}; state.dly = {}; state.arr = -1; state.dep = false;
+    state.next = null; state.last = -1; state.rec = {}; state.dly = {}; state.arr = -1; state.dep = false; state.mv = null; state.v30 = false;
   }
 
   // registra e fissa il ritardo di una fermata (a treno fermo, una volta sola;
@@ -2368,7 +2369,7 @@ function applyLiveProgress(u){
     }
     if(orNext < 0){                            // non trovata in avanti: ricerca completa
       const f = st.findIndex(s => lvNorm(s.station_name) === nn);
-      if(f >= 0){ orNext = f; if(f <= state.last){ state.rec = {}; state.dly = {}; state.next = null; state.arr = -1; state.dep = false; } }
+      if(f >= 0){ orNext = f; if(f <= state.last){ state.rec = {}; state.dly = {}; state.next = null; state.arr = -1; state.dep = false; state.mv = null; state.v30 = false; } }
     }
   }
   const gpsNext = gps ? gps.next : -1;
@@ -2403,16 +2404,19 @@ function applyLiveProgress(u){
   }
   const showIdx = (state.arr === nextIdx) ? nextIdx + 1 : nextIdx;
 
-  // "Benvenuti a bordo": finché il treno è fermo alla prima stazione. Appena parte torna
-  // "Siamo in arrivo a". La partenza si rileva SOLO dal movimento reale (velocità sostenuta):
-  // le coordinate delle stazioni (calibrazione TDB) e il nextStation di OR non sono abbastanza
-  // affidabili per dedurla a treno fermo. Unico fallback: treno lontanissimo (>15 km) dalla prima.
+  // "Benvenuti a bordo": resta finché il treno è fermo alla prima stazione e anche dopo la partenza,
+  // fino a quando sono passati almeno 60 s dall'inizio del movimento E il treno ha raggiunto i
+  // 30 km/h; solo allora torna "Siamo in arrivo a". Una volta tolto non ricompare (fino a nuova corsa).
+  // Fallback: treno lontanissimo (>15 km) dalla prima stazione = corsa già avanzata.
   if(!state.dep){
     const d0 = lvNearStation(pos, st[0].station_name);
-    const moving = (sp != null && isFinite(sp) && sp >= LV_DEP_KMH);
-    if(moving || (d0 != null && d0 > 15)){
+    const okSp = (sp != null && isFinite(sp));
+    if(okSp && sp >= LV_STOP_KMH && state.mv == null) state.mv = Date.now();   // inizio movimento
+    if(okSp && sp >= LV_DEP_KMH) state.v30 = true;                              // raggiunti i 30 km/h
+    const minOk = (state.mv != null && Date.now() - state.mv >= LV_WELCOME_MS);
+    if((state.v30 && minOk) || (d0 != null && d0 > 15)){
       state.dep = true;
-      console.info('[VTV] partenza rilevata', u.username, {sp, d0, nextIdx});
+      console.info('[VTV] fine benvenuto', u.username, {sp, d0, nextIdx});
     }
   }
   u._lvWelcome = !state.dep;
