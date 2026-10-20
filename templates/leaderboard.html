@@ -2254,6 +2254,7 @@ function startDeadReckoningLoop(){
 // <30 s = 0) e invariato finché il treno non arriva alla fermata successiva.
 const lvProgress = {}; // username -> {key, g, last, next, rec, dly}
 const LV_STOP_KMH = 1.8; // 0.5 m/s
+const LV_DEP_KMH  = 5;   // partenza dalla prima stazione: velocità minima per togliere "Benvenuti a bordo"
 const LV_PASS_KM  = 0.15; // oltre la stazione lungo la tratta = fermata lasciata
 const LV_NEAR_KM  = 0.8;  // raggio entro cui il treno fermo è "in stazione"
 const LV_ARR_KM   = 0.3;  // arrivo: treno fermo entro questo raggio dalla fermata → si evidenzia la successiva
@@ -2400,12 +2401,17 @@ function applyLiveProgress(u){
   }
   const showIdx = (state.arr === nextIdx) ? nextIdx + 1 : nextIdx;
 
-  // "Benvenuti a bordo": finché il treno è fermo alla prima stazione. Appena parte (o se si entra
-  // a corsa già in corso: oltre la 2ª fermata o lontano dalla prima) torna "Siamo in arrivo a".
+  // "Benvenuti a bordo": finché il treno è fermo alla prima stazione. Appena parte torna
+  // "Siamo in arrivo a". La partenza si rileva SOLO dal movimento reale (velocità sostenuta):
+  // le coordinate delle stazioni (calibrazione TDB) e il nextStation di OR non sono abbastanza
+  // affidabili per dedurla a treno fermo. Unico fallback: treno lontanissimo (>15 km) dalla prima.
   if(!state.dep){
     const d0 = lvNearStation(pos, st[0].station_name);
-    const moving = (sp != null && isFinite(sp) && sp >= LV_STOP_KMH);
-    if(moving || nextIdx >= 2 || (d0 != null && d0 > 2)) state.dep = true;
+    const moving = (sp != null && isFinite(sp) && sp >= LV_DEP_KMH);
+    if(moving || (d0 != null && d0 > 15)){
+      state.dep = true;
+      console.info('[VTV] partenza rilevata', u.username, {sp, d0, nextIdx});
+    }
   }
   u._lvWelcome = !state.dep;
 
