@@ -2242,12 +2242,18 @@ function startDeadReckoningLoop(){
       const marker = trainMarkers[username];
       if(!marker) continue;
       const dr = drState[username];
-      const elapsed = now - dr.fetchedAt;
-      // t in [0,1]: 0 = posizione al momento del poll, 1 = posizione stimata al prossimo poll
-      const t = Math.min(1, elapsed / dr.pollInterval);
-      const lat = dr.fromPos[0] + (dr.toPos[0] - dr.fromPos[0]) * t;
-      const lon = dr.fromPos[1] + (dr.toPos[1] - dr.fromPos[1]) * t;
-      marker.setLatLng([lat, lon]);
+      // il fix GPS arriva ogni ~30 s: la posizione si stima = fix + velocità × età del fix, lungo la tratta
+      let km = Math.max(0, dr.speed) * Math.min(40000, now - dr.fixAt) / 3600000;
+      if(dr.limit != null) km = Math.min(km, Math.max(0, dr.limit));   // mai oltre la stazione evidenziata
+      let tgt = dr.fix;
+      if(km > 0.005){
+        if(!dr.a0) dr.a0 = lvAdvance(dr.poly, dr.fix, 0);
+        const a1 = lvAdvance(dr.poly, dr.fix, km);
+        tgt = [dr.fix[0] + a1[0] - dr.a0[0], dr.fix[1] + a1[1] - dr.a0[1]];
+      }
+      dr.cur = dr.cur || tgt;
+      dr.cur = [dr.cur[0] + (tgt[0]-dr.cur[0])*0.08, dr.cur[1] + (tgt[1]-dr.cur[1])*0.08];   // morbido, niente salti
+      marker.setLatLng(dr.cur);
     }
   }
   tick();
@@ -2270,7 +2276,8 @@ const LV_PASS_KM  = 0.15; // oltre la stazione lungo la tratta = fermata lasciat
 const LV_NEAR_KM  = 0.8;  // raggio entro cui il treno fermo è "in stazione"
 const LV_SKIP_KM  = 1.5;  // fallback: solo se il GPS dice che sei oltre la stazione di almeno questa distanza (sosta saltata)
 const LV_AWAY_KM  = 0.03; // partenza: il treno deve allontanarsi di almeno 30 m dal punto più vicino alla stazione
-const LV_ARR_KM   = 0.3;  // arrivo: treno fermo entro questo raggio dalla fermata → si evidenzia la successiva
+const LV_SLOW_KMH = 15;   // arrivo: sotto questa velocità (i dati arrivano ogni ~30 s: un treno fermo può non essere mai campionato a 0)
+const LV_ARR_KM   = 0.5;  // arrivo: treno fermo entro questo raggio dalla fermata → si evidenzia la successiva
 function lvNorm(n){ return String(n == null ? '' : n).trim().toLowerCase(); }
 function lvSec(t){
   if(!t) return null;
@@ -2291,6 +2298,24 @@ function lvDistToSeg(p, a, b){
   let t = L > 0 ? (-(ax*dx + ay*dy)) / L : 0;
   t = Math.max(0, Math.min(1, t));
   return { d: Math.hypot(ax + dx*t, ay + dy*t), t, len: Math.sqrt(L) };
+}
+
+// punto raggiunto avanzando di km lungo la spezzata delle stazioni (ordine di corsa) dal punto p=[lat,lon]
+function lvAdvance(poly, p, km){
+  if(!poly || poly.length < 2) return p;
+  let bi = 0, bd = Infinity, bt = 0;
+  for(let i = 0; i < poly.length - 1; i++){
+    const r = lvDistToSeg({lat:p[0], lon:p[1]}, {lat:poly[i][0], lon:poly[i][1]}, {lat:poly[i+1][0], lon:poly[i+1][1]});
+    if(r.d < bd - 1e-9){ bd = r.d; bi = i; bt = r.t; }
+  }
+  let i = bi, a = [poly[i][0] + (poly[i+1][0]-poly[i][0])*bt, poly[i][1] + (poly[i+1][1]-poly[i][1])*bt], left = km;
+  while(i < poly.length - 1){
+    const b = poly[i+1], k = Math.cos(a[0]*Math.PI/180);
+    const seg = Math.hypot((b[1]-a[1])*k*111.32, (b[0]-a[0])*110.57);
+    if(seg >= left){ const f = seg > 0 ? left/seg : 0; return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f]; }
+    left -= seg; a = [b[0], b[1]]; i++;
+  }
+  return a;
 }
 
 // distanza (km) tra il treno e una stazione, null se non calcolabile
@@ -2429,7 +2454,7 @@ function applyLiveProgress(u){
   // nextIdx/state.next/state.last restano quelli di OR/GPS: ritardo e logica di avanzamento invariati.
   // Arrivo reale alla fermata evidenziata: treno FERMO e, con GPS, entro LV_ARR_KM dalla stazione
   // (senza GPS/coordinate basta essere fermi). Solo dopo l'arrivo l'evidenziazione può passare oltre.
-  if(state.dep && state.shown != null && stopped && st[state.shown] && !state.ar[state.shown]){
+  if(state.dep && state.shown != null && (sp != null && isFinite(sp) && sp < LV_SLOW_KMH) && st[state.shown] && !state.ar[state.shown]){
     const dS = lvNearStation(pos, st[state.shown].station_name);
     if(dS == null || dS <= LV_ARR_KM){
       state.ar[state.shown] = true;
@@ -2457,9 +2482,10 @@ function applyLiveProgress(u){
     //   ALLONTANANDOSI dalla stazione (una sosta a un segnale prima della banchina non conta:
     //   avvicinandosi la distanza cala, quindi non è una ripartenza); senza GPS basta la velocità;
     // - fallback solo GPS (posizione fisica, mai orario/nextStation): sosta saltata.
-    const arrived = !!state.ar[state.shown];
+    const beyond = !!(gps && gps.next > state.shown);          // GPS: il treno è oltre la stazione evidenziata
+    const arrived = !!state.ar[state.shown] || beyond;         // arrivato = campionato lento in stazione OPPURE già oltre
     const md = state.md[state.shown];
-    const away = (dShown == null) || (md !== undefined && dShown > md + LV_AWAY_KM);
+    const away = beyond || (dShown == null) || (md !== undefined && dShown > md + LV_AWAY_KM);
     const departed = arrived && away;
     const skipped = !!(gps && gps.next > state.shown && (gps.next > state.shown + 1 || gps.pastKm >= LV_SKIP_KM));
     if(departed || skipped){
@@ -2807,32 +2833,14 @@ function updateMap(users, pollTimestamp){
     // Il loop rAF legge drState ogni frame: aggiornandolo prima di setLatLng
     // evitiamo che sovrascriva la posizione appena ricevuta dal poll.
     const prevDr = drState[u.username];
-    let toPos = pos; // default: rimane fermo (posizione di fallback o GPS statico)
-    if(posSource !== 'default_italia'){
-      const nextCoord = u.next_station ? getStationCoord(u.next_station) : null;
-      if(nextCoord){
-        const distLat = nextCoord.lat - pos[0];
-        const distLon = nextCoord.lon - pos[1];
-        const distDeg = Math.sqrt(distLat*distLat + distLon*distLon);
-        const speedKmh = u.speed_kmh || 0;
-        const intervalH = POLL_INTERVAL_MS / 3600000;
-        const travelDeg = speedKmh > 0 ? Math.min(distDeg, (speedKmh * intervalH) / 111) : 0;
-        if(distDeg > 0.0001 && travelDeg > 0){
-          const ratio = travelDeg / distDeg;
-          toPos = [pos[0] + distLat * ratio, pos[1] + distLon * ratio];
-        }
-      }
-    }
-    // fromPos: parte dalla posizione interpolata corrente (evita salti bruschi)
-    const fromPos = prevDr
-      ? [
-          prevDr.fromPos[0] + (prevDr.toPos[0] - prevDr.fromPos[0]) * Math.min(1, (now - prevDr.fetchedAt) / prevDr.pollInterval),
-          prevDr.fromPos[1] + (prevDr.toPos[1] - prevDr.fromPos[1]) * Math.min(1, (now - prevDr.fetchedAt) / prevDr.pollInterval),
-        ]
-      : pos;
-    // Scrivi drState PRIMA di creare/aggiornare il marker, così il loop rAF
-    // legge subito il nuovo stato e non sovrascrive la posizione del poll
-    drState[u.username] = { fromPos, toPos, fetchedAt: now, pollInterval: POLL_INTERVAL_MS };
+    const isGps = (posSource === 'gps');
+    const sameFix = !!(prevDr && prevDr.fix && prevDr.fix[0] === pos[0] && prevDr.fix[1] === pos[1]);
+    // eta' del fix: se il server manda gps_ts (epoch s) si usa quello, altrimenti il momento in cui il fix nuovo è stato visto
+    const fixAt = sameFix ? prevDr.fixAt : (u.gps_ts ? Math.min(now, u.gps_ts*1000) : now);
+    const poly = stations.map(s2 => getStationCoord(s2.station_name)).filter(c => c && c.lat != null && c.lon != null).map(c => [Number(c.lat), Number(c.lon)]);
+    const limit = isGps ? lvNearStation({lat:pos[0], lon:pos[1]}, u.next_station) : null;
+    drState[u.username] = { fix: pos, fixAt, speed: isGps ? (Number(u.speed_kmh) || 0) : 0, poly, limit, a0: sameFix ? prevDr.a0 : null, cur: prevDr ? prevDr.cur : null };
+    const fromPos = (prevDr && prevDr.cur) ? prevDr.cur : pos;
 
     if(trainMarkers[u.username]){
       const m = trainMarkers[u.username];
