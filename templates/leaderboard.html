@@ -2244,10 +2244,15 @@ function startDeadReckoningLoop(){
       const dr = drState[username];
       // il fix GPS arriva ogni ~30 s: la posizione si stima = fix + velocità × età del fix, lungo la tratta
       let km = Math.max(0, dr.speed) * Math.min(40000, now - dr.fixAt) / 3600000;
-      if(dr.limit != null) km = Math.min(km, Math.max(0, dr.limit));   // mai oltre la stazione evidenziata
       let tgt = dr.fix;
       if(km > 0.005){
         if(!dr.a0) dr.a0 = lvAdvance(dr.poly, dr.fix, 0);
+        if(dr.limitPt){                                              // mai oltre la stazione evidenziata, se è davanti al treno
+          const d1 = lvAdvance(dr.poly, dr.fix, 0.05), kx = Math.cos(dr.fix[0]*Math.PI/180);
+          const sx = (dr.limitPt[1]-dr.fix[1])*kx*111.32, sy = (dr.limitPt[0]-dr.fix[0])*110.57;
+          const mx = (d1[1]-dr.a0[1])*kx*111.32,          my = (d1[0]-dr.a0[0])*110.57;
+          if(sx*mx + sy*my > 0) km = Math.min(km, Math.hypot(sx, sy));
+        }
         const a1 = lvAdvance(dr.poly, dr.fix, km);
         tgt = [dr.fix[0] + a1[0] - dr.a0[0], dr.fix[1] + a1[1] - dr.a0[1]];
       }
@@ -2835,9 +2840,11 @@ function updateMap(users, pollTimestamp){
     const sameFix = !!(prevDr && prevDr.fix && prevDr.fix[0] === pos[0] && prevDr.fix[1] === pos[1]);
     // eta' del fix: se il server manda gps_ts (epoch s) si usa quello, altrimenti il momento in cui il fix nuovo è stato visto
     const fixAt = sameFix ? prevDr.fixAt : (u.gps_ts ? Math.min(now, u.gps_ts*1000) : now);
-    const poly = stations.map(s2 => getStationCoord(s2.station_name)).filter(c => c && c.lat != null && c.lon != null).map(c => [Number(c.lat), Number(c.lon)]);
-    const limit = isGps ? lvNearStation({lat:pos[0], lon:pos[1]}, u.next_station) : null;
-    drState[u.username] = { fix: pos, fixAt, speed: isGps ? (Number(u.speed_kmh) || 0) : 0, poly, limit, a0: sameFix ? prevDr.a0 : null, cur: prevDr ? prevDr.cur : null };
+    let poly = stations.map(s2 => getStationCoord(s2.station_name)).filter(c => c && c.lat != null && c.lon != null).map(c => [Number(c.lat), Number(c.lon)]);
+    const nsC = getStationCoord(u.next_station);
+    if(poly.length < 2 && nsC) poly = [pos, [Number(nsC.lat), Number(nsC.lon)]];   // senza tratta: direzione verso la prossima stazione
+    const limitPt = (isGps && nsC) ? [Number(nsC.lat), Number(nsC.lon)] : null;
+    drState[u.username] = { fix: pos, fixAt, speed: isGps ? (Number(u.speed_kmh) || 0) : 0, poly, limitPt, a0: sameFix ? prevDr.a0 : null, cur: prevDr ? prevDr.cur : null };
     const fromPos = (prevDr && prevDr.cur) ? prevDr.cur : pos;
 
     if(trainMarkers[u.username]){
