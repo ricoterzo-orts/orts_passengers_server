@@ -266,7 +266,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .lb-section{margin-bottom:24px}
 .online-section{margin-bottom:24px}
 .online-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
-.online-card{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:2px;padding:9px 12px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.online-card{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:9px 12px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
 .online-card:hover{border-color:var(--accent)}
 .online-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .online-card-num{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -274,7 +274,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .online-card-delay{font-family:var(--font-md);font-size:10px;font-weight:500;letter-spacing:.04em;padding:2px 7px;border-radius:2px;color:#fff;white-space:nowrap}
 .online-card-row{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--dimgrey)}
 .online-card-row b{font-weight:500;color:var(--white);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.online-card-btn{align-self:flex-start;background:none;border:1px solid var(--border);color:var(--accent);font-family:var(--font-md);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:2px;cursor:pointer}
+.online-card-btn{align-self:flex-start;background:none;border:1px solid var(--border);color:var(--accent);font-family:var(--font-md);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:2px;cursor:pointer}
 .online-card-btn:hover{border-color:var(--accent)}
 .online-empty{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:12px;font-size:11px;color:var(--dimgrey)}
 .lb-tabs{display:flex;gap:4px;margin-bottom:0;flex-wrap:wrap}
@@ -2586,7 +2586,7 @@ function renderOnlineTrains(users){
     const sp  = (u.speed_kmh != null && isFinite(u.speed_kmh)) ? Math.round(u.speed_kmh) + ' km/h' : '—';
     const un  = JSON.stringify(u.username).replace(/"/g,'&quot;');
     const open = onlineOpen.has(u.username);
-    return `<div class="online-card" style="border-left-color:${col}" onclick="zoomToOnlineTrain(${un})" title="Zoom sulla mappa">
+    return `<div class="online-card" style="border-top:6px solid ${getUserColor(u.username)}" onclick="zoomToOnlineTrain(${un})" title="Zoom sulla mappa">
       <div class="online-card-top">
         <div style="min-width:0"><div class="online-card-num">${esc(u.activity_name || u.username)}</div><div class="online-card-user">${esc(u.username)}</div></div>
         <span class="online-card-delay" style="background:${col}">${lbl}</span>
