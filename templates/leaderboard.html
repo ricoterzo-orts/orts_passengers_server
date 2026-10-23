@@ -2276,8 +2276,7 @@ const LV_PASS_KM  = 0.15; // oltre la stazione lungo la tratta = fermata lasciat
 const LV_NEAR_KM  = 0.8;  // raggio entro cui il treno fermo è "in stazione"
 const LV_SKIP_KM  = 1.5;  // fallback: solo se il GPS dice che sei oltre la stazione di almeno questa distanza (sosta saltata)
 const LV_AWAY_KM  = 0.03; // partenza: il treno deve allontanarsi di almeno 30 m dal punto più vicino alla stazione
-const LV_SLOW_KMH = 15;   // arrivo: sotto questa velocità (i dati arrivano ogni ~30 s: un treno fermo può non essere mai campionato a 0)
-const LV_ARR_KM   = 0.5;  // arrivo: treno fermo entro questo raggio dalla fermata → si evidenzia la successiva
+const LV_ARR_KM   = 0.3;  // arrivo: treno fermo entro questo raggio dalla fermata → si evidenzia la successiva
 function lvNorm(n){ return String(n == null ? '' : n).trim().toLowerCase(); }
 function lvSec(t){
   if(!t) return null;
@@ -2454,7 +2453,7 @@ function applyLiveProgress(u){
   // nextIdx/state.next/state.last restano quelli di OR/GPS: ritardo e logica di avanzamento invariati.
   // Arrivo reale alla fermata evidenziata: treno FERMO e, con GPS, entro LV_ARR_KM dalla stazione
   // (senza GPS/coordinate basta essere fermi). Solo dopo l'arrivo l'evidenziazione può passare oltre.
-  if(state.dep && state.shown != null && (sp != null && isFinite(sp) && sp < LV_SLOW_KMH) && st[state.shown] && !state.ar[state.shown]){
+  if(state.dep && state.shown != null && stopped && st[state.shown] && !state.ar[state.shown]){
     const dS = lvNearStation(pos, st[state.shown].station_name);
     if(dS == null || dS <= LV_ARR_KM){
       state.ar[state.shown] = true;
@@ -2482,10 +2481,9 @@ function applyLiveProgress(u){
     //   ALLONTANANDOSI dalla stazione (una sosta a un segnale prima della banchina non conta:
     //   avvicinandosi la distanza cala, quindi non è una ripartenza); senza GPS basta la velocità;
     // - fallback solo GPS (posizione fisica, mai orario/nextStation): sosta saltata.
-    const beyond = !!(gps && gps.next > state.shown);          // GPS: il treno è oltre la stazione evidenziata
-    const arrived = !!state.ar[state.shown] || beyond;         // arrivato = campionato lento in stazione OPPURE già oltre
+    const arrived = !!state.ar[state.shown];
     const md = state.md[state.shown];
-    const away = beyond || (dShown == null) || (md !== undefined && dShown > md + LV_AWAY_KM);
+    const away = (dShown == null) || (md !== undefined && dShown > md + LV_AWAY_KM);
     const departed = arrived && away;
     const skipped = !!(gps && gps.next > state.shown && (gps.next > state.shown + 1 || gps.pastKm >= LV_SKIP_KM));
     if(departed || skipped){
