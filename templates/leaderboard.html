@@ -264,6 +264,17 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 
 /* ── CLASSIFICA AFFIDABILITÀ ── */
 .lb-section{margin-bottom:24px}
+.online-section{margin-bottom:24px}
+.online-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.online-card{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:2px;padding:9px 12px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.online-card:hover{border-color:var(--accent)}
+.online-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.online-card-num{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.online-card-user{font-size:10px;color:var(--dimgrey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.online-card-delay{font-family:var(--font-md);font-size:10px;font-weight:500;letter-spacing:.04em;padding:2px 7px;border-radius:2px;color:#fff;white-space:nowrap}
+.online-card-row{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--dimgrey)}
+.online-card-row b{font-weight:500;color:var(--white);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.online-empty{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:12px;font-size:11px;color:var(--dimgrey)}
 .lb-tabs{display:flex;gap:4px;margin-bottom:0;flex-wrap:wrap}
 .lb-tabs-row{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
 .lb-tab{padding:5px 14px;background:var(--panel);border:1px solid var(--border);border-bottom:none;color:var(--grey);font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:2px 2px 0 0;transition:all .15s}
@@ -872,6 +883,15 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
         </button>
       </div>
     </div>
+  </div>
+
+  <!-- ══ SEZIONE: TRENI ONLINE ══ -->
+  <div class="online-section" id="online-section">
+    <div class="sec-hdr">
+      <div class="sec-title">Treni Online</div>
+      <div class="sec-badge"><span class="pulse"></span><span id="online-count">0 treni</span></div>
+    </div>
+    <div class="online-grid" id="online-grid"></div>
   </div>
 
   <!-- ══ SEZIONE 3: CLASSIFICA ══ -->
@@ -2519,6 +2539,30 @@ function applyLiveProgress(u){
   u._lvDelay = dly;
 }
 
+// ── Sezione "Treni Online" (tra mappa e classifica) ──
+function renderOnlineTrains(users){
+  const grid = document.getElementById('online-grid');
+  if(!grid) return;
+  const cnt = document.getElementById('online-count');
+  if(cnt) cnt.textContent = users.length + (users.length === 1 ? ' treno' : ' treni');
+  if(!users.length){ grid.innerHTML = '<div class="online-empty">Nessun treno online al momento.</div>'; return; }
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  grid.innerHTML = users.map(u => {
+    const d = getDelayFromStations(u);
+    const col = d <= 5 ? '#007A3D' : d <= 30 ? '#E07B00' : '#CE1B26';
+    const lbl = d <= 0 ? 'in orario' : '+' + Math.round(d) + ' min';
+    const sp  = (u.speed_kmh != null && isFinite(u.speed_kmh)) ? Math.round(u.speed_kmh) + ' km/h' : '—';
+    return `<div class="online-card" style="border-left-color:${col}" onclick="lbFlyToUser(${JSON.stringify(u.username).replace(/"/g,'&quot;')})" title="Mostra sulla mappa">
+      <div class="online-card-top">
+        <div style="min-width:0"><div class="online-card-num">${esc(u.activity_name || u.username)}</div><div class="online-card-user">${esc(u.username)}</div></div>
+        <span class="online-card-delay" style="background:${col}">${lbl}</span>
+      </div>
+      <div class="online-card-row"><span>Prossima fermata</span><b>${esc(u.next_station || '—')}</b></div>
+      <div class="online-card-row"><span>Velocità</span><b>${sp}</b></div>
+    </div>`;
+  }).join('');
+}
+
 // ── Load live data ──
 async function loadLive(){
   try{
@@ -2538,6 +2582,7 @@ async function loadLive(){
 
     // Chiama SEMPRE updateMap — anche con array vuoto, così rimuove i marker offline
     updateMap(liveData, now);
+    renderOnlineTrains(liveData);
 
     // Aggiorna la classifica per sincronizzare lo stato online/offline dei pin
     if(lbRows.length){ mergeLiveIntoLbRows(); renderLbPage(); }
