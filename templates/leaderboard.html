@@ -274,6 +274,8 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .online-card-delay{font-family:var(--font-md);font-size:10px;font-weight:500;letter-spacing:.04em;padding:2px 7px;border-radius:2px;color:#fff;white-space:nowrap}
 .online-card-row{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--dimgrey)}
 .online-card-row b{font-weight:500;color:var(--white);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.online-card-btn{align-self:flex-start;background:none;border:1px solid var(--border);color:var(--accent);font-family:var(--font-md);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:2px;cursor:pointer}
+.online-card-btn:hover{border-color:var(--accent)}
 .online-empty{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:12px;font-size:11px;color:var(--dimgrey)}
 .lb-tabs{display:flex;gap:4px;margin-bottom:0;flex-wrap:wrap}
 .lb-tabs-row{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
@@ -1617,6 +1619,7 @@ function toggleLbLivePanel(panelId,chevId,username){
   if(chev) chev.classList.toggle('open',!isOpen);
   if(!isOpen){
     lbOpenPanels.add(username);
+    if(onlineOpen.delete(username)) renderOnlineTrains(liveData);
     const u=liveData.find(u=>u.username===username);
     if(u){
       renderPanel(u,panel);
@@ -2540,9 +2543,30 @@ function applyLiveProgress(u){
 }
 
 // ── Sezione "Treni Online" (tra mappa e classifica) ──
+const onlineOpen = new Set();
+const ONLINE_ZOOM = 14;   // zoom sulla posizione del treno quando si clicca il banner
+function zoomToOnlineTrain(username){
+  document.querySelector('.map-section')?.scrollIntoView({behavior:'smooth', block:'start'});
+  setTimeout(() => {
+    if(!leafletMap) return;
+    leafletMap.invalidateSize();
+    const m = trainMarkers[username];
+    let ll = m ? m.getLatLng() : null;
+    if(!ll){
+      const u = liveData.find(x => x.username === username);
+      const c = u ? getStationCoord(u.next_station) : null;
+      if(u && u.train_lat && u.train_lon) ll = L.latLng(u.train_lat, u.train_lon);
+      else if(c) ll = L.latLng(c.lat, c.lon);
+    }
+    if(!ll) return;
+    leafletMap.flyTo(ll, Math.max(leafletMap.getZoom(), ONLINE_ZOOM), {animate:true, duration:.8});
+    if(m) setTimeout(() => m.openPopup(), 900);
+  }, 350);
+}
 function renderOnlineTrains(users){
   const grid = document.getElementById('online-grid');
   if(!grid) return;
+  [...onlineOpen].forEach(n => { if(!users.some(u => u.username === n)) onlineOpen.delete(n); });
   const cnt = document.getElementById('online-count');
   if(cnt) cnt.textContent = users.length + (users.length === 1 ? ' treno' : ' treni');
   if(!users.length){ grid.innerHTML = '<div class="online-empty">Nessun treno online al momento.</div>'; return; }
@@ -2552,15 +2576,39 @@ function renderOnlineTrains(users){
     const col = d <= 5 ? '#007A3D' : d <= 30 ? '#E07B00' : '#CE1B26';
     const lbl = d <= 0 ? 'in orario' : '+' + Math.round(d) + ' min';
     const sp  = (u.speed_kmh != null && isFinite(u.speed_kmh)) ? Math.round(u.speed_kmh) + ' km/h' : '—';
-    return `<div class="online-card" style="border-left-color:${col}" onclick="lbFlyToUser(${JSON.stringify(u.username).replace(/"/g,'&quot;')})" title="Mostra sulla mappa">
+    const un  = JSON.stringify(u.username).replace(/"/g,'&quot;');
+    const open = onlineOpen.has(u.username);
+    return `<div class="online-card" style="border-left-color:${col}" onclick="zoomToOnlineTrain(${un})" title="Zoom sulla mappa">
       <div class="online-card-top">
         <div style="min-width:0"><div class="online-card-num">${esc(u.activity_name || u.username)}</div><div class="online-card-user">${esc(u.username)}</div></div>
         <span class="online-card-delay" style="background:${col}">${lbl}</span>
       </div>
       <div class="online-card-row"><span>Prossima fermata</span><b>${esc(u.next_station || '—')}</b></div>
       <div class="online-card-row"><span>Velocità</span><b>${sp}</b></div>
-    </div>`;
+      <button class="online-card-btn" onclick="event.stopPropagation();toggleOnlineDetails(${un})">${open ? 'Nascondi dettagli' : 'Mostra dettagli'} <i class="fa-solid fa-chevron-${open ? 'up' : 'down'}"></i></button>
+    </div>` + (open ? `<div class="lb-live-panel open" id="online-panel-${u.username.replace(/\W/g,'_')}" style="grid-column:1/-1;border:1px solid var(--border)"></div>` : '');
   }).join('');
+  // pannello con statistiche e lista stazioni (lo stesso della classifica) per i treni con dettagli aperti
+  users.forEach(u => {
+    if(!onlineOpen.has(u.username)) return;
+    const el = document.getElementById('online-panel-' + u.username.replace(/\W/g,'_'));
+    if(el) renderPanel(u, el);
+  });
+}
+
+// apre/chiude i dettagli di un treno nella sezione Treni Online
+function toggleOnlineDetails(username){
+  if(onlineOpen.has(username)) onlineOpen.delete(username);
+  else {
+    onlineOpen.add(username);
+    if(lbOpenPanels.has(username)){            // lo stesso grafico non può stare in due pannelli (id duplicato)
+      lbOpenPanels.delete(username);
+      const k = username.replace(/\W/g,'_');
+      document.getElementById('lb-panel-' + k)?.classList.remove('open');
+      document.getElementById('lb-chev-' + k)?.classList.remove('open');
+    }
+  }
+  renderOnlineTrains(liveData);
 }
 
 // ── Load live data ──
