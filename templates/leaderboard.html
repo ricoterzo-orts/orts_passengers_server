@@ -2938,14 +2938,15 @@ function updateMap(users, pollTimestamp){
     // evitiamo che sovrascriva la posizione appena ricevuta dal poll.
     const prevDr = drState[u.username];
     const isGps = (posSource === 'gps');
+    const moves = (posSource === 'gps' || posSource === 'interpolata');   // GPS o stima tra due stazioni: il pin avanza di continuo
     const sameFix = !!(prevDr && prevDr.fix && prevDr.fix[0] === pos[0] && prevDr.fix[1] === pos[1]);
     // eta' del fix: se il server manda gps_ts (epoch s) si usa quello, altrimenti il momento in cui il fix nuovo è stato visto
     const fixAt = sameFix ? prevDr.fixAt : (u.gps_ts ? Math.min(now, u.gps_ts*1000) : now);
     let poly = stations.map(s2 => getStationCoord(s2.station_name)).filter(c => c && c.lat != null && c.lon != null).map(c => [Number(c.lat), Number(c.lon)]);
     const nsC = getStationCoord(u.next_station);
     if(poly.length < 2 && nsC) poly = [pos, [Number(nsC.lat), Number(nsC.lon)]];   // senza tratta: direzione verso la prossima stazione
-    const limitPt = (isGps && nsC) ? [Number(nsC.lat), Number(nsC.lon)] : null;
-    drState[u.username] = { fix: pos, fixAt, speed: isGps ? (Number(u.speed_kmh) || 0) : 0, poly, limitPt, a0: sameFix ? prevDr.a0 : null, cur: prevDr ? prevDr.cur : null };
+    const limitPt = (moves && nsC) ? [Number(nsC.lat), Number(nsC.lon)] : null;
+    drState[u.username] = { fix: pos, fixAt, speed: moves ? (Number(u.speed_kmh) || 0) : 0, poly, limitPt, a0: sameFix ? prevDr.a0 : null, cur: prevDr ? prevDr.cur : null };
     const fromPos = (prevDr && prevDr.cur) ? prevDr.cur : pos;
 
     if(trainMarkers[u.username]){
