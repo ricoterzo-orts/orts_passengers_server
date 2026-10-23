@@ -276,7 +276,6 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .online-card-row b{font-weight:500;color:var(--white);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .online-card-btn{align-self:flex-start;background:none;border:1px solid var(--border);color:var(--accent);font-family:var(--font-md);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:2px;cursor:pointer}
 .online-card-btn:hover{border-color:var(--accent)}
-.online-empty{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:12px;font-size:11px;color:var(--dimgrey)}
 .lb-tabs{display:flex;gap:4px;margin-bottom:0;flex-wrap:wrap}
 .lb-tabs-row{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
 .lb-tab{padding:5px 14px;background:var(--panel);border:1px solid var(--border);border-bottom:none;color:var(--grey);font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:2px 2px 0 0;transition:all .15s}
@@ -884,7 +883,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
   </div>
 
   <!-- ══ SEZIONE: TRENI ONLINE ══ -->
-  <div class="online-section" id="online-section">
+  <div class="online-section" id="online-section" style="display:none">
     <div class="sec-hdr">
       <div class="sec-title">Treni Online</div>
       <div class="sec-badge"><span class="pulse"></span><span id="online-count">0 treni</span></div>
@@ -2524,8 +2523,10 @@ function renderOnlineTrains(users){
   if(!grid) return;
   [...onlineOpen].forEach(n => { if(!users.some(u => u.username === n)) onlineOpen.delete(n); });
   const cnt = document.getElementById('online-count');
+  const sec = document.getElementById('online-section');
   if(cnt) cnt.textContent = users.length + (users.length === 1 ? ' treno' : ' treni');
-  if(!users.length){ grid.innerHTML = '<div class="online-empty">Nessun treno online al momento.</div>'; const d0 = document.getElementById('online-details'); if(d0) d0.innerHTML = ''; return; }
+  if(!users.length){ grid.innerHTML = ''; const d0 = document.getElementById('online-details'); if(d0) d0.innerHTML = ''; if(sec) sec.style.display = 'none'; return; }   // nessun treno online: sezione nascosta
+  if(sec) sec.style.display = '';
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   grid.innerHTML = users.map(u => {
     const d = getDelayFromStations(u);
