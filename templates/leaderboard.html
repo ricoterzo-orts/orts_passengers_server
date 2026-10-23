@@ -1633,6 +1633,7 @@ function toggleLbLivePanel(panelId,chevId,username){
 }
 
 function lbFlyToUser(username){
+  followUser = null;
   const mapSection=document.querySelector('.map-section');
   if(mapSection) mapSection.scrollIntoView({behavior:'smooth',block:'start'});
   setTimeout(()=>{
@@ -2252,6 +2253,7 @@ function drawProfileChart(sessions, platformAvg){
 // ── Dead-reckoning: stato per ogni utente ──
 // { username: { fromPos:[lat,lon], toPos:[lat,lon], fetchedAt:ms, pollInterval:ms } }
 const drState = {};
+let followUser = null;   // treno che la mappa tiene centrato (dopo il clic sul banner)
 const POLL_INTERVAL_MS = 7000; // intervallo polling (ms) — deve combaciare con setInterval sotto
 let drAnimFrame = null;
 
@@ -2261,6 +2263,7 @@ function startDeadReckoningLoop(){
   function tick(){
     drAnimFrame = requestAnimationFrame(tick);
     const now = Date.now();
+    if(followUser && !trainMarkers[followUser]) followUser = null;   // treno uscito
     for(const username in drState){
       const marker = trainMarkers[username];
       if(!marker) continue;
@@ -2282,6 +2285,7 @@ function startDeadReckoningLoop(){
       dr.cur = dr.cur || tgt;
       dr.cur = [dr.cur[0] + (tgt[0]-dr.cur[0])*0.08, dr.cur[1] + (tgt[1]-dr.cur[1])*0.08];   // morbido, niente salti
       marker.setLatLng(dr.cur);
+      if(followUser === username && leafletMap) leafletMap.panTo(dr.cur, {animate:false});   // pin sempre al centro
     }
   }
   tick();
@@ -2544,7 +2548,7 @@ function applyLiveProgress(u){
 
 // ── Sezione "Treni Online" (tra mappa e classifica) ──
 const onlineOpen = new Set();
-const ONLINE_ZOOM = 14;   // zoom sulla posizione del treno quando si clicca il banner
+const ONLINE_ZOOM = 12;   // zoom sulla posizione del treno quando si clicca il banner
 function zoomToOnlineTrain(username){
   document.querySelector('.map-section')?.scrollIntoView({behavior:'smooth', block:'start'});
   setTimeout(() => {
@@ -2559,7 +2563,11 @@ function zoomToOnlineTrain(username){
       else if(c) ll = L.latLng(c.lat, c.lon);
     }
     if(!ll) return;
+    followUser = null;
+    if(!leafletMap._vtvFollowHook){ leafletMap._vtvFollowHook = true; leafletMap.on('dragstart', () => { followUser = null; }); }   // se trascini la mappa smette di seguire
+    if(m && m.getPopup()) m.getPopup().options.autoPan = false;   // il popup non sposta la mappa dal centro
     leafletMap.flyTo(ll, Math.max(leafletMap.getZoom(), ONLINE_ZOOM), {animate:true, duration:.8});
+    setTimeout(() => { followUser = username; }, 1000);
     if(m) setTimeout(() => m.openPopup(), 900);
   }, 350);
 }
