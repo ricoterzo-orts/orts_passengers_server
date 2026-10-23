@@ -2559,10 +2559,8 @@ function renderOnlineTrains(users){
 
 // apre/chiude i dettagli di un treno nella sezione Treni Online
 function toggleOnlineDetails(username){
-  if(onlineOpen.has(username)) onlineOpen.delete(username);
-  else {
-    onlineOpen.add(username);
-  }
+  if(onlineOpen.has(username)) onlineOpen.clear();
+  else { onlineOpen.clear(); onlineOpen.add(username); }   // un solo pannello aperto alla volta
   renderOnlineTrains(liveData);
 }
 
