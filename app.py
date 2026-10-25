@@ -424,6 +424,9 @@ def migrate_db():
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS train_lat REAL DEFAULT 0""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS train_lon REAL DEFAULT 0""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS train_dir REAL DEFAULT 0""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS dist_next_m REAL""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS fast_at TIMESTAMPTZ""",
+        """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS gps_at TIMESTAMPTZ""",
         """ALTER TABLE users ADD COLUMN IF NOT EXISTS azienda TEXT DEFAULT ''""",
         """ALTER TABLE users ADD COLUMN IF NOT EXISTS compartimento TEXT DEFAULT ''""",
         """ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT""",
@@ -864,6 +867,8 @@ def api_regenerate_token():
                 (new_token, session["user_id"])
             )
         conn.commit()
+    with _fast_token_lock:
+        _fast_token_cache.clear()
     logger.info("API token rigenerato per user_id=%s", session["user_id"])
     return jsonify({"ok": True, "api_token": new_token})
 
@@ -1294,6 +1299,83 @@ def api_heartbeat():
     return jsonify({"ok": True})
 
 # ─────────────────────────────────────────────────────────
+#  API pacchetto veloce (dal .exe, ogni ~2.5s)
+#  Distanza residua dalla prossima fermata + posizione. Una sola UPDATE
+#  leggera (niente speed_history, niente heartbeat): la pagina interpola
+#  tra un pacchetto e l'altro.
+# ─────────────────────────────────────────────────────────
+
+_FAST_TOKEN_TTL   = 60.0
+_fast_token_cache = {}            # token -> (user_id, timestamp)
+_fast_token_lock  = threading.Lock()
+
+
+def _fast_user_id(token):
+    now = time.time()
+    with _fast_token_lock:
+        hit = _fast_token_cache.get(token)
+        if hit and now - hit[1] < _FAST_TOKEN_TTL:
+            return hit[0]
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE api_token=%s", (token,))
+            row = fetchone(cur)
+    if not row:
+        return None
+    with _fast_token_lock:
+        if len(_fast_token_cache) > 500:
+            _fast_token_cache.clear()
+        _fast_token_cache[token] = (row["id"], now)
+    return row["id"]
+
+
+def _as_float(v, default=None):
+    try:
+        f = float(v)
+        return f if f == f and abs(f) != float("inf") else default
+    except (TypeError, ValueError):
+        return default
+
+
+@app.route("/api/live_fast", methods=["POST"])
+@limiter.limit("120 per minute")
+def api_live_fast():
+    token = request.headers.get("X-API-Token", "").strip()
+    if not token:
+        return jsonify({"ok": False, "error": "Token mancante"}), 401
+    uid = _fast_user_id(token)
+    if not uid:
+        return jsonify({"ok": False, "error": "Token non valido"}), 401
+
+    data = request.get_json(silent=True) or {}
+    dist = _as_float(data.get("dist_next_m"))
+    if dist is not None and not (0 <= dist <= 1_000_000):
+        dist = None
+    speed = max(0.0, min(_as_float(data.get("speed_kmh"), 0.0), 500.0))
+    next_station = str(data.get("next_station", "") or "")[:100]
+    sim_time = str(data.get("sim_time", "") or "")[:10]
+    lat = _as_float(data.get("train_lat"), 0.0)
+    lon = _as_float(data.get("train_lon"), 0.0)
+    has_gps = bool(lat and lon) and -90 <= lat <= 90 and -180 <= lon <= 180
+
+    sets = ["speed_kmh=%s", "next_station=%s", "sim_time=%s",
+            "dist_next_m=%s", "fast_at=NOW()"]
+    params = [speed, next_station, sim_time, dist]
+    if has_gps:
+        sets += ["train_lat=%s", "train_lon=%s", "train_dir=%s", "gps_at=NOW()"]
+        params += [lat, lon, _as_float(data.get("train_dir"), 0.0)]
+    params.append(uid)
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE live_sessions SET " + ", ".join(sets) + " WHERE user_id=%s",
+                params)
+            updated = cur.rowcount
+        conn.commit()
+    return jsonify({"ok": True, "updated": bool(updated)})
+
+# ─────────────────────────────────────────────────────────
 #  API dati live
 # ─────────────────────────────────────────────────────────
 
@@ -1319,6 +1401,9 @@ def _fetch_live_data():
                     ls.train_lat,
                     ls.train_lon,
                     ls.train_dir,
+                    ls.dist_next_m,
+                    EXTRACT(EPOCH FROM (NOW() - ls.fast_at))::float8 AS fast_age_s,
+                    EXTRACT(EPOCH FROM (NOW() - ls.gps_at))::float8  AS gps_age_s,
                     ls.updated_at::text AS updated_at
                 FROM live_sessions ls
                 JOIN users u ON u.id = ls.user_id
@@ -1420,10 +1505,22 @@ def api_live():
             with _live_cache_lock:
                 _live_cache["data"] = data
                 _live_cache["updated"] = time.time()
+            age = 0.0
         except Exception:
             logger.exception("Fallback diretto /api/live fallito")
 
-    return jsonify(data)
+    # fast_age_s / gps_age_s sono misurate dal DB al momento della query:
+    # aggiungo il tempo passato in cache, così il client ricostruisce
+    # l'istante del campione senza dipendere dal proprio orologio.
+    out = []
+    for u in data:
+        if u.get("fast_age_s") is not None or u.get("gps_age_s") is not None:
+            u = dict(u)
+            for k in ("fast_age_s", "gps_age_s"):
+                if u.get(k) is not None:
+                    u[k] = round(max(0.0, u[k]) + age, 1)
+        out.append(u)
+    return jsonify(out)
 
 def _norm_station_name(name):
     """Normalizza il nome stazione per il confronto di deduplica."""
