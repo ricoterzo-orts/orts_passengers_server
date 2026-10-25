@@ -264,6 +264,18 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 
 /* ── CLASSIFICA AFFIDABILITÀ ── */
 .lb-section{margin-bottom:24px}
+.online-section{margin-bottom:24px}
+.online-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.online-card{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:9px 12px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.online-card:hover{border-color:var(--accent)}
+.online-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.online-card-num{font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.online-card-user{font-size:10px;color:var(--dimgrey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.online-card-delay{font-family:var(--font-md);font-size:10px;font-weight:500;letter-spacing:.04em;padding:2px 7px;border-radius:2px;color:#fff;white-space:nowrap}
+.online-card-row{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--dimgrey)}
+.online-card-row b{font-weight:500;color:var(--white);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.online-card-btn{align-self:flex-start;background:none;border:1px solid var(--border);color:var(--accent);font-family:var(--font-md);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:2px;cursor:pointer}
+.online-card-btn:hover{border-color:var(--accent)}
 .lb-tabs{display:flex;gap:4px;margin-bottom:0;flex-wrap:wrap}
 .lb-tabs-row{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
 .lb-tab{padding:5px 14px;background:var(--panel);border:1px solid var(--border);border-bottom:none;color:var(--grey);font-family:var(--font-md);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:2px 2px 0 0;transition:all .15s}
@@ -300,11 +312,9 @@ td.rank .username-btn:hover{color:var(--accent)}
 .map-loc-btn{font-size:13px;color:var(--green);background:none;border:none;cursor:pointer;padding:0 0 0 4px;vertical-align:middle;line-height:1;transition:color .15s;opacity:.85}
 .map-loc-btn:hover{color:var(--accent);opacity:1}
 /* ── INLINE LIVE ROW / ACCORDION ── */
-tr.lb-online-row td{padding:0!important;border-bottom:none!important}
 /* Main data row for online users */
 tr.lb-user-online td:first-child{border-left:3px solid var(--accent)!important}
 tr.lb-user-online td{background:rgba(206,27,38,.02)}
-tr.lb-user-online{cursor:pointer}
 tr.lb-user-online:hover td{background:rgba(206,27,38,.05)!important}
 .lb-live-bar{display:flex;align-items:center;gap:0;background:rgba(0,122,61,.04);border-top:1px solid rgba(0,122,61,.12);cursor:pointer;transition:background .12s;font-family:var(--font);font-size:11px;user-select:none}
 .lb-live-bar:hover{background:rgba(0,122,61,.09)}
@@ -316,8 +326,6 @@ tr.lb-user-online:hover td{background:rgba(206,27,38,.05)!important}
 .lb-live-treniamo{padding:6px 10px}
 .lb-live-treniamo a{color:var(--accent);font-size:10px;font-family:var(--font-md);text-decoration:none}
 .lb-live-treniamo a:hover{text-decoration:underline}
-.lb-live-chevron{padding:6px 12px;color:var(--dimgrey);font-size:10px;transition:transform .2s}
-.lb-live-chevron.open{transform:rotate(180deg)}
 /* panel expanded */
 .lb-live-panel{max-width:100%;overflow:hidden;display:none;background:var(--card);border-top:1px solid rgba(0,122,61,.15)}
 .lb-live-panel.open{display:block}
@@ -874,6 +882,16 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
     </div>
   </div>
 
+  <!-- ══ SEZIONE: TRENI ONLINE ══ -->
+  <div class="online-section" id="online-section" style="display:none">
+    <div class="sec-hdr">
+      <div class="sec-title">Treni Online</div>
+      <div class="sec-badge"><span class="pulse"></span><span id="online-count">0 treni</span></div>
+    </div>
+    <div class="online-grid" id="online-grid"></div>
+    <div id="online-details"></div>
+  </div>
+
   <!-- ══ SEZIONE 3: CLASSIFICA ══ -->
   <div class="lb-section">
     <div class="sec-hdr">
@@ -1069,7 +1087,6 @@ let lbRows = [];
 let lbPeriod = 'all';
 let lbPage = 1;
 let lbPerPage = 10;
-let lbOpenPanels = new Set();
 const LB_PERPAGE_OPTIONS = [10, 25, 50, 100];
 const LB_TITLES = {all:'Classifica Generale', month:'Classifica Mensile', week:'Classifica Settimanale'};
 const LB_SCORE_LABELS = {all:'Affidabilità', month:'Punteggio', week:'Punteggio'};
@@ -1482,10 +1499,8 @@ function renderLbPage(){
         <td class="lb-col-corse" style="font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white)">${row.corse}</td>
       </tr>`;
     }
-    // Online user: riga con accordion dettaglio
-    const panelId='lb-panel-'+row.username.replace(/\W/g,'_');
-    const chevId ='lb-chev-'+row.username.replace(/\W/g,'_');
-    return `<tr class="lb-user-online" onclick="toggleLbLivePanel('${panelId}','${chevId}','${row.username}')">
+    // Online user: solo il pin verde verso la mappa (i dettagli si aprono nella sezione Treni Online)
+    return `<tr class="lb-user-online">
         <td class="rank">
           <button class="username-btn" onclick="event.stopPropagation();openDrawer(${i})" title="Profilo"><i class="fa-solid fa-user"></i></button>
         </td>
@@ -1506,34 +1521,10 @@ function renderLbPage(){
         <td class="servizio"><span class="serv-pill" title="${row.ultimo_servizio||''}">${row.ultimo_servizio||'—'}</span></td>
         <td class="lb-col-corse" style="font-family:var(--font-md);font-size:13px;font-weight:500;color:var(--white)">
           ${row._liveOnly ? '<span style="color:var(--dimgrey)">—</span>' : row.corse}
-          <span class="lb-live-chevron" id="${chevId}" style="display:inline-block;margin-left:4px"><i class="fa-solid fa-chevron-down"></i></span>
         </td>
-      </tr>
-      <tr class="lb-online-row"><td colspan="8" style="border-left:3px solid var(--accent);padding:0!important">
-        <div class="lb-live-panel" id="${panelId}"></div>
-      </td></tr>`;
+      </tr>`;
   }).join('');
   renderLbPagination();
-  restoreLbOpenPanels();
-}
-
-function restoreLbOpenPanels(){
-  if(!lbOpenPanels.size) return;
-  const start=(lbPage-1)*lbPerPage;
-  const pageRows=lbRows.slice(start,start+lbPerPage);
-  pageRows.forEach(row=>{
-    if(!row.online || !lbOpenPanels.has(row.username)) return;
-    const panelId='lb-panel-'+row.username.replace(/\W/g,'_');
-    const chevId ='lb-chev-'+row.username.replace(/\W/g,'_');
-    const panel=document.getElementById(panelId);
-    const chev=document.getElementById(chevId);
-    if(!panel) return;
-    panel.classList.add('open');
-    if(chev) chev.classList.add('open');
-    const u=liveData.find(u=>u.username===row.username);
-    if(u) renderPanel(u,panel);
-    else panel.innerHTML='<div style="padding:14px;font-size:11px;color:var(--dimgrey)">Dati live non disponibili.</div>';
-  });
 }
 
 function goLbPage(p){
@@ -1586,27 +1577,6 @@ function renderLbPagination(){
 function comfortColor(c){
   if(c===null||c===undefined||c===100) return 'var(--grey)';
   return c>=70?'var(--green)':c>=40?'var(--amber)':'var(--red)';
-}
-
-function toggleLbLivePanel(panelId,chevId,username){
-  const panel=document.getElementById(panelId);
-  const chev=document.getElementById(chevId);
-  if(!panel) return;
-  const isOpen=panel.classList.contains('open');
-  panel.classList.toggle('open',!isOpen);
-  if(chev) chev.classList.toggle('open',!isOpen);
-  if(!isOpen){
-    lbOpenPanels.add(username);
-    const u=liveData.find(u=>u.username===username);
-    if(u){
-      renderPanel(u,panel);
-      setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}),80);
-    } else {
-      panel.innerHTML='<div style="padding:14px;font-size:11px;color:var(--dimgrey)">Dati live non disponibili.</div>';
-    }
-  } else {
-    lbOpenPanels.delete(username);
-  }
 }
 
 function lbFlyToUser(username){
@@ -2532,6 +2502,75 @@ function applyLiveProgress(u){
   u._lvDelay = dly;
 }
 
+// ── Sezione "Treni Online" (tra mappa e classifica) ──
+const onlineOpen = new Set();
+const ONLINE_ZOOM = 12;   // zoom sulla posizione del treno quando si clicca il banner
+function zoomToOnlineTrain(username){
+  document.querySelector('.map-section')?.scrollIntoView({behavior:'smooth', block:'start'});
+  setTimeout(() => {
+    if(!leafletMap) return;
+    leafletMap.invalidateSize();
+    const m = trainMarkers[username];
+    let ll = m ? m.getLatLng() : null;
+    if(!ll){
+      const u = liveData.find(x => x.username === username);
+      const c = u ? getStationCoord(u.next_station) : null;
+      if(u && u.train_lat && u.train_lon) ll = L.latLng(u.train_lat, u.train_lon);
+      else if(c) ll = L.latLng(c.lat, c.lon);
+    }
+    if(!ll) return;
+    if(m && m.getPopup()) m.getPopup().options.autoPan = false;   // il popup non sposta la mappa dal centro
+    leafletMap.flyTo(ll, Math.max(leafletMap.getZoom(), ONLINE_ZOOM), {animate:true, duration:.8});
+    if(m) setTimeout(() => m.openPopup(), 900);
+  }, 350);
+}
+function renderOnlineTrains(users){
+  const grid = document.getElementById('online-grid');
+  if(!grid) return;
+  [...onlineOpen].forEach(n => { if(!users.some(u => u.username === n)) onlineOpen.delete(n); });
+  const cnt = document.getElementById('online-count');
+  const sec = document.getElementById('online-section');
+  if(cnt) cnt.textContent = users.length + (users.length === 1 ? ' treno' : ' treni');
+  if(!users.length){ grid.innerHTML = ''; const d0 = document.getElementById('online-details'); if(d0) d0.innerHTML = ''; if(sec) sec.style.display = 'none'; return; }   // nessun treno online: sezione nascosta
+  if(sec) sec.style.display = '';
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  grid.innerHTML = users.map(u => {
+    const d = getDelayFromStations(u);
+    const col = d <= 5 ? '#007A3D' : d <= 30 ? '#E07B00' : '#CE1B26';
+    const lbl = d <= 0 ? 'in orario' : '+' + Math.round(d) + ' min';
+    const sp  = (u.speed_kmh != null && isFinite(u.speed_kmh)) ? Math.round(u.speed_kmh) + ' km/h' : '—';
+    const un  = JSON.stringify(u.username).replace(/"/g,'&quot;');
+    const open = onlineOpen.has(u.username);
+    return `<div class="online-card" style="border-top:6px solid ${getUserColor(u.username)}${open ? ';box-shadow:0 0 0 2px ' + getUserColor(u.username) : ''}" onclick="zoomToOnlineTrain(${un})" title="Zoom sulla mappa">
+      <div class="online-card-top">
+        <div style="min-width:0"><div class="online-card-num">${esc(u.activity_name || u.username)}</div><div class="online-card-user">${esc(u.username)}</div></div>
+        <span class="online-card-delay" style="background:${col}">${lbl}</span>
+      </div>
+      <div class="online-card-row"><span>Prossima fermata</span><b>${esc(u.next_station || '—')}</b></div>
+      <div class="online-card-row"><span>Velocità</span><b>${sp}</b></div>
+      <button class="online-card-btn" onclick="event.stopPropagation();toggleOnlineDetails(${un})">${open ? 'Nascondi dettagli' : 'Mostra dettagli'} <i class="fa-solid fa-chevron-${open ? 'up' : 'down'}"></i></button>
+    </div>`;
+  }).join('');
+  // pannelli con statistiche e lista stazioni: contenitore fisso SOTTO i badge (i badge restano sempre in alto)
+  const det = document.getElementById('online-details');
+  if(det){
+    det.innerHTML = users.filter(u => onlineOpen.has(u.username)).map(u =>
+      `<div class="lb-live-panel open" id="online-panel-${u.username.replace(/\W/g,'_')}" style="margin-top:8px;border:1px solid var(--border);border-top:6px solid ${getUserColor(u.username)}"></div>`).join('');
+  }
+  users.forEach(u => {
+    if(!onlineOpen.has(u.username)) return;
+    const el = document.getElementById('online-panel-' + u.username.replace(/\W/g,'_'));
+    if(el) renderPanel(u, el);
+  });
+}
+
+// apre/chiude i dettagli di un treno nella sezione Treni Online
+function toggleOnlineDetails(username){
+  if(onlineOpen.has(username)) onlineOpen.clear();
+  else { onlineOpen.clear(); onlineOpen.add(username); }   // un solo pannello aperto alla volta
+  renderOnlineTrains(liveData);
+}
+
 // ── Load live data ──
 async function loadLive(){
   try{
@@ -2556,6 +2595,7 @@ async function loadLive(){
 
     // Chiama SEMPRE updateMap — anche con array vuoto, così rimuove i marker offline
     updateMap(liveData, now);
+    renderOnlineTrains(liveData);
 
     // Aggiorna la classifica per sincronizzare lo stato online/offline dei pin
     if(lbRows.length){ mergeLiveIntoLbRows(); renderLbPage(); }
