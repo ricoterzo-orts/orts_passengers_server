@@ -2412,9 +2412,9 @@ function applyLiveProgress(u){
 
   let nextIdx;
   if(orNext >= 0 || gpsNext >= 0){
-    // treno online: la posizione esatta (API Open Rails, localhost:2150/Map) è la fonte principale;
-    // nextStation di OR serve solo se il GPS non è disponibile
-    nextIdx = (gpsNext >= 0) ? gpsNext : orNext;
+    // la SEQUENZA delle fermate la decide nextStation di OR (come main.py): non può saltarne una;
+    // la posizione GPS esatta serve per distanza/avviso "in arrivo" e come ripiego se OR non risponde
+    nextIdx = (orNext >= 0) ? orNext : gpsNext;
     // non torna indietro per un buco momentaneo di una delle due fonti
     if(state.next != null) nextIdx = Math.max(nextIdx, state.next);
     record(nextIdx);                           // fermo sulla fermata successiva = arrivato
@@ -2461,8 +2461,6 @@ function applyLiveProgress(u){
     if(dS == null || dS <= LV_ARR_KM){
       state.ar[state.shown] = true;
       console.info('[VTV] arrivo a', st[state.shown].station_name, {dS});
-      // fermo in stazione → indica subito la successiva (sull'ultima fermata resta quella)
-      if(state.shown < st.length - 1) state.shown++;
     }
   }
   // dopo l'arrivo: distanza minima raggiunta dalla stazione (serve a riconoscere la vera ripartenza)
@@ -2495,7 +2493,7 @@ function applyLiveProgress(u){
     const md = state.md[state.shown];
     const away = (dShown == null) || (md !== undefined && dShown > md + LV_AWAY_KM);
     const departed = arrived && away;   // ripartito da una fermata di cui non era stato registrato l'arrivo
-    const skipped = !!(gps && gps.next > state.shown && (gps.next > state.shown + 1 || gps.pastKm >= LV_SKIP_KM));
+    const skipped = !!(orNext < 0 && gps && gps.next > state.shown && (gps.next > state.shown + 1 || gps.pastKm >= LV_SKIP_KM));
     if(departed || skipped){
       const to = skipped && !departed ? Math.max(gps.next, state.shown + 1) : state.shown + 1;
       console.info('[VTV] ripartito: evidenzio', st[to] && st[to].station_name, 'dopo', st[state.shown].station_name, {departed, skipped, sp, dShown, md});
