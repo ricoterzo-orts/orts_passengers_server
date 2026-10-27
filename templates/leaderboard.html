@@ -2480,6 +2480,11 @@ function applyLiveProgress(u){
     state.shown = 0;
   } else if(!wasDep || state.shown == null){
     state.shown = nextIdx;                                   // fine benvenuto / ingresso a corsa in corso
+  } else if(orNext >= 0 && orNext > state.shown && st[state.shown]){
+    // Come main.py: appena OR passa alla fermata successiva (ripartenza dalla precedente) la evidenzio SUBITO,
+    // senza aspettare velocità, distanza o conferma di arrivo.
+    console.info('[VTV] OR avanza: evidenzio', st[orNext] && st[orNext].station_name, 'dopo', st[state.shown].station_name);
+    state.shown = Math.min(orNext, st.length);
   } else if(st[state.shown] && sp != null && isFinite(sp) && sp >= LV_ADV_KMH){
     // Scatta alla successiva SOLO alla ripartenza dalla fermata evidenziata:
     // - il treno è arrivato davvero (fermo entro LV_ARR_KM) e ora si muove oltre LV_ADV_KMH
@@ -2489,7 +2494,7 @@ function applyLiveProgress(u){
     const arrived = !!state.ar[state.shown];
     const md = state.md[state.shown];
     const away = (dShown == null) || (md !== undefined && dShown > md + LV_AWAY_KM);
-    const departed = false;   // l'avanzamento avviene già all'arrivo (treno fermo in stazione)
+    const departed = arrived && away;   // ripartito da una fermata di cui non era stato registrato l'arrivo
     const skipped = !!(gps && gps.next > state.shown && (gps.next > state.shown + 1 || gps.pastKm >= LV_SKIP_KM));
     if(departed || skipped){
       const to = skipped && !departed ? Math.max(gps.next, state.shown + 1) : state.shown + 1;
