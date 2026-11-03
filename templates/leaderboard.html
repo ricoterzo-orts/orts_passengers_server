@@ -420,6 +420,10 @@ td.servizio{text-align:left}
 .dly-kpi-val{font-family:var(--font-md);font-size:15px;font-weight:600;margin-top:2px;color:var(--white)}
 .dly-chart{width:100%;height:auto;display:block;background:var(--card);border:1px solid var(--border);border-radius:2px}
 .dly-break{font-size:9px;color:var(--grey);margin-top:6px;display:flex;gap:10px;flex-wrap:wrap}
+.drawer-item{border-bottom:none}
+.drawer-item .drawer-row{cursor:pointer}
+.drawer-item .sess-sub{margin:0 14px 8px}
+.drawer-row-serv .sess-chev{display:inline-block;margin-right:6px}
 .dly-empty{font-size:10px;color:var(--dimgrey);padding:6px 0}
 
 /* ── Grafico andamento profilo ── */
@@ -1330,20 +1334,21 @@ async function loadProfile(){
     }
     profileSessions=sessions;
     sl.innerHTML=sessions.map((s,i)=>`
-      <div class="sess-item" data-idx="${i}">
-        <div class="sess-row" onclick="toggleSessSub(${i})" title="Storico ritardi della tratta">
+      <div class="sess-item" data-key="p${i}">
+        <div class="sess-row" onclick="toggleSessSub('p',${i})" title="Storico ritardi della tratta">
           <i class="fa-solid fa-chevron-down sess-chev"></i>
           <span class="sess-score">${parseFloat(s.punteggio||0).toFixed(1)}/100</span>
           <span class="sess-serv">${dlyEsc(s.ultimo_servizio||'—')}</span>
           <span class="sess-date">${fmtDate(s.registrata_at)}</span>
         </div>
-        <div class="sess-sub" id="sess-sub-${i}"></div>
+        <div class="sess-sub" id="sess-sub-p${i}"></div>
       </div>`).join('');
   }catch{sl.innerHTML='<div style="color:var(--red)">Errore.</div>';}
 }
 
 // ── Storico ritardi per tratta (sottomenu di ogni activity nel profilo) ──
 let profileSessions = [];
+let drawerSessions = [];
 const DLY_DAYS = 30;
 function dlyEsc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 // ritardo (minuti) all'arrivo a destinazione di una corsa; null se il dato non c'è
@@ -1360,21 +1365,22 @@ function dlyFmt(v,dec){
   const t=Math.abs(r).toFixed(dec?1:0).replace('.',',');
   return (r<0?'-':'+')+t+' min';
 }
-function toggleSessSub(i){
-  const item=document.querySelector('.sess-item[data-idx="'+i+'"]');
+function toggleSessSub(src,i){
+  const item=document.querySelector('.sess-item[data-key="'+src+i+'"]');
   if(!item) return;
   const open=!item.classList.contains('open');
   if(open){
-    const sub=document.getElementById('sess-sub-'+i);
-    if(!sub.dataset.ready){ sub.innerHTML=renderDelaySub(profileSessions[i]); sub.dataset.ready='1'; }
+    const sub=document.getElementById('sess-sub-'+src+i);
+    const list=src==='p'?profileSessions:drawerSessions;
+    if(!sub.dataset.ready){ sub.innerHTML=renderDelaySub(list[i],list); sub.dataset.ready='1'; }
   }
   item.classList.toggle('open',open);
 }
 function dlyDayStart(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();}
-function renderDelaySub(sess){
+function renderDelaySub(sess,list){
   const serv=sess.ultimo_servizio||'—';
   const today0=dlyDayStart(new Date());
-  const runs=profileSessions.filter(s=>{
+  const runs=list.filter(s=>{
     if((s.ultimo_servizio||'—')!==serv || !s.registrata_at) return false;
     const t=new Date(s.registrata_at); if(isNaN(t)) return false;
     const ago=Math.round((today0-dlyDayStart(t))/86400000);
@@ -3209,6 +3215,7 @@ function openDrawer(idx){
         return;
       }
       sessions.sort((a,b)=>new Date(b.registrata_at||0)-new Date(a.registrata_at||0));
+      drawerSessions=sessions;
       const scores = sessions.map(s=>parseFloat(s.punteggio)).filter(v=>!isNaN(v));
       if(scores.length){
         document.getElementById('drawer-best').textContent = Math.max(...scores).toFixed(1);
@@ -3220,11 +3227,14 @@ function openDrawer(idx){
         const data = fmtDate(s.registrata_at||'');
         const serv = s.ultimo_servizio||'—';
         const age = idx===0 ? '<span style="font-size:8px;color:var(--green);font-family:var(--font-md);margin-left:4px">ULTIMA</span>' : '';
-        return `<div class="drawer-row">
-          <div class="drawer-row-serv" title="${serv}">${serv}${age}</div>
+        return `<div class="sess-item drawer-item" data-key="d${idx}">
+        <div class="drawer-row" onclick="toggleSessSub('d',${idx})" title="Storico ritardi della tratta">
+          <div class="drawer-row-serv" title="${dlyEsc(serv)}"><i class="fa-solid fa-chevron-down sess-chev"></i>${dlyEsc(serv)}${age}</div>
           <div class="drawer-row-date">${data}</div>
           <div class="drawer-row-score" style="color:${col}">${sc.toFixed(1)}<span style="font-size:9px;opacity:.5">/100</span></div>
-          <div class="drawer-row-vt">${vtLink(serv)}</div>
+          <div class="drawer-row-vt" onclick="event.stopPropagation()">${vtLink(serv)}</div>
+        </div>
+        <div class="sess-sub" id="sess-sub-d${idx}"></div>
         </div>`;
       }).join('');
     })
