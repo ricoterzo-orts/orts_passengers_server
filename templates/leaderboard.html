@@ -396,12 +396,31 @@ td.servizio{text-align:left}
 .stat-lbl{font-size:9px;font-family:var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--dimgrey);margin-top:2px}
 .token-display{background:var(--bg);border:1px solid var(--border);font-family:var(--font);font-size:10px;color:var(--accent2);padding:6px 8px;border-radius:1px;word-break:break-all;margin:6px 0 12px}
 .slbl{font-size:9px;font-weight:500;font-family:var(--font-md);letter-spacing:.1em;text-transform:uppercase;color:var(--dimgrey);margin-bottom:4px}
-.sessions-list{max-height:160px;overflow-y:auto;font-family:var(--font);font-size:10px;color:var(--white)}
+.sessions-list{max-height:380px;overflow-y:auto;font-family:var(--font);font-size:10px;color:var(--white)}
 .sess-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)}
 .sess-row:last-child{border-bottom:none}
 .sess-score{color:var(--white);font-weight:500;font-family:var(--font-md);min-width:50px}
 .sess-serv{color:var(--accent2);font-family:var(--font);flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
 .sess-date{color:var(--grey);font-family:var(--font)}
+.sess-item{border-bottom:1px solid var(--border)}
+.sess-item:last-child{border-bottom:none}
+.sess-item .sess-row{border-bottom:none;cursor:pointer;gap:6px;user-select:none}
+.sess-item .sess-row:hover .sess-serv{text-decoration:underline}
+.sess-chev{font-size:9px;color:var(--dimgrey);transition:transform .2s;width:10px;flex:none}
+.sess-item.open .sess-chev{transform:rotate(180deg);color:var(--accent)}
+.sess-sub{display:none;background:var(--bg);border:1px solid var(--border);border-radius:2px;padding:10px;margin:2px 0 8px}
+.sess-item.open .sess-sub{display:block}
+.dly-title{font-family:var(--font-md);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--white);display:flex;align-items:center;gap:6px}
+.dly-title i{color:var(--accent)}
+.dly-sub{font-size:9px;color:var(--grey);margin:3px 0 8px;line-height:1.35}
+.dly-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+@media(max-width:600px){.dly-kpis{grid-template-columns:repeat(2,1fr)}}
+.dly-kpi{background:var(--card);border:1px solid var(--border);border-radius:2px;padding:6px 8px}
+.dly-kpi-lbl{font-size:9px;color:var(--grey);display:flex;align-items:center;gap:4px}
+.dly-kpi-val{font-family:var(--font-md);font-size:15px;font-weight:600;margin-top:2px;color:var(--white)}
+.dly-chart{width:100%;height:auto;display:block;background:var(--card);border:1px solid var(--border);border-radius:2px}
+.dly-break{font-size:9px;color:var(--grey);margin-top:6px;display:flex;gap:10px;flex-wrap:wrap}
+.dly-empty{font-size:10px;color:var(--dimgrey);padding:6px 0}
 
 /* ── Grafico andamento profilo ── */
 .profile-chart-wrap{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:10px 12px;margin:10px 0}
@@ -775,7 +794,7 @@ footer span{color:var(--accent2);font-weight:500;font-family:var(--font-md)}
   .modal-body{padding:14px}
   .stat-grid{gap:4px}
   .stat-num{font-size:17px}
-  .sessions-list{max-height:140px}
+  .sessions-list{max-height:340px}
   footer{padding:10px 12px;font-size:9px}
   .footer-disclaimer{font-size:7.5px}
   .vt-link{font-size:8px;padding:1px 4px}
@@ -1309,14 +1328,124 @@ async function loadProfile(){
       sl.innerHTML='<div style="color:var(--dimgrey);padding:8px 0">Nessuna sessione ancora.</div>';
       return;
     }
-    sl.innerHTML=sessions.map(s=>`
-      <div class="sess-row">
-        <span class="sess-score">${parseFloat(s.punteggio||0).toFixed(1)}/100</span>
-        <span class="sess-serv">${s.ultimo_servizio||'—'}</span>
-        <span class="sess-date">${fmtDate(s.registrata_at)}</span>
+    profileSessions=sessions;
+    sl.innerHTML=sessions.map((s,i)=>`
+      <div class="sess-item" data-idx="${i}">
+        <div class="sess-row" onclick="toggleSessSub(${i})" title="Storico ritardi della tratta">
+          <i class="fa-solid fa-chevron-down sess-chev"></i>
+          <span class="sess-score">${parseFloat(s.punteggio||0).toFixed(1)}/100</span>
+          <span class="sess-serv">${dlyEsc(s.ultimo_servizio||'—')}</span>
+          <span class="sess-date">${fmtDate(s.registrata_at)}</span>
+        </div>
+        <div class="sess-sub" id="sess-sub-${i}"></div>
       </div>`).join('');
   }catch{sl.innerHTML='<div style="color:var(--red)">Errore.</div>';}
 }
+
+// ── Storico ritardi per tratta (sottomenu di ogni activity nel profilo) ──
+let profileSessions = [];
+const DLY_DAYS = 30;
+function dlyEsc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+// ritardo (minuti) all'arrivo a destinazione di una corsa; null se il dato non c'è
+function sessDelayMin(s){
+  const keys=['ritardo_arrivo_min','ritardo_arrivo','arrivo_delay_min','delay_arrivo_min','ritardo_finale_min','ritardo_min','delay_min','ritardo'];
+  for(const k of keys){
+    const v=s[k];
+    if(v!==null && v!==undefined && v!=='' && isFinite(Number(v))) return Number(v);
+  }
+  return null;
+}
+function dlyFmt(v,dec){
+  const r=dec?Math.round(v*10)/10:Math.round(v);
+  const t=Math.abs(r).toFixed(dec?1:0).replace('.',',');
+  return (r<0?'-':'+')+t+' min';
+}
+function toggleSessSub(i){
+  const item=document.querySelector('.sess-item[data-idx="'+i+'"]');
+  if(!item) return;
+  const open=!item.classList.contains('open');
+  if(open){
+    const sub=document.getElementById('sess-sub-'+i);
+    if(!sub.dataset.ready){ sub.innerHTML=renderDelaySub(profileSessions[i]); sub.dataset.ready='1'; }
+  }
+  item.classList.toggle('open',open);
+}
+function dlyDayStart(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();}
+function renderDelaySub(sess){
+  const serv=sess.ultimo_servizio||'—';
+  const today0=dlyDayStart(new Date());
+  const runs=profileSessions.filter(s=>{
+    if((s.ultimo_servizio||'—')!==serv || !s.registrata_at) return false;
+    const t=new Date(s.registrata_at); if(isNaN(t)) return false;
+    const ago=Math.round((today0-dlyDayStart(t))/86400000);
+    return ago>=0 && ago<DLY_DAYS;
+  });
+  const head=`<div class="dly-title"><i class="fa-solid fa-chart-column"></i>Storico ritardi</div>
+    <div class="dly-sub">Arrivo a destinazione per corsa, ultimi ${DLY_DAYS} giorni; il grafico è la media giornaliera dei rilevamenti</div>`;
+  if(!runs.length) return head+'<div class="dly-empty">Nessuna corsa di questa tratta negli ultimi '+DLY_DAYS+' giorni.</div>';
+  const pts=runs.map(s=>({d:sessDelayMin(s),t:new Date(s.registrata_at)})).filter(p=>p.d!==null);
+  if(!pts.length) return head+'<div class="dly-empty">Dati di ritardo all\'arrivo non ancora disponibili per questa tratta ('+runs.length+' '+(runs.length===1?'corsa':'corse')+').</div>';
+  const delays=pts.map(p=>p.d);
+  const onTime=delays.filter(d=>d<=5).length;
+  const lieve=delays.filter(d=>d>5&&d<=15).length;
+  const grave=delays.filter(d=>d>15).length;
+  const avg=delays.reduce((a,b)=>a+b,0)/delays.length;
+  const mx=Math.max(...delays);
+  const kpi=(ico,col,lbl,val)=>`<div class="dly-kpi"><div class="dly-kpi-lbl"><i class="fa-solid ${ico}" style="color:${col}"></i>${lbl}</div><div class="dly-kpi-val">${val}</div></div>`;
+  const kpis=`<div class="dly-kpis">
+    ${kpi('fa-clock','var(--green)','Entro 5 min',Math.round(onTime/delays.length*100)+'%')}
+    ${kpi('fa-arrow-trend-up','var(--accent)','Ritardo all\'arrivo',dlyFmt(avg,true))}
+    ${kpi('fa-triangle-exclamation','var(--accent)','Ritardo max',dlyFmt(mx,false))}
+    ${kpi('fa-chart-column','#5A6FD6','Arrivi/corse',delays.length+'/'+runs.length)}
+  </div>`;
+  // media giornaliera
+  const byDay={};
+  pts.forEach(p=>{
+    const ago=Math.round((today0-dlyDayStart(p.t))/86400000);
+    const idx=DLY_DAYS-1-ago;
+    (byDay[idx]=byDay[idx]||[]).push(p.d);
+  });
+  const series=Object.keys(byDay).map(k=>({i:+k,v:byDay[k].reduce((a,b)=>a+b,0)/byDay[k].length})).sort((a,b)=>a.i-b.i);
+  const W=600,H=180,L=36,R=12,T=10,B=24;
+  const vmax=Math.max(...series.map(p=>p.v)), vmin=Math.min(...series.map(p=>p.v));
+  let yMax=Math.max(15,Math.ceil(vmax/15)*15), yMin=Math.min(-15,Math.floor(vmin/15)*15);
+  const step=(yMax-yMin)>90?30:15;
+  const X=i=>L+(W-L-R)*i/(DLY_DAYS-1);
+  const Y=v=>T+(H-T-B)*(yMax-v)/(yMax-yMin);
+  let grid='';
+  for(let v=Math.ceil(yMin/step)*step; v<=yMax; v+=step){
+    grid+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#CCCCCC" stroke-dasharray="3 3"/><text x="${L-5}" y="${Y(v)+3}" text-anchor="end" font-size="9" fill="#5A5A5A">${v}m</text>`;
+  }
+  const xl=[];
+  for(let i=0;i<DLY_DAYS;i+=4) xl.push(i);
+  xl.forEach(i=>{
+    const d=new Date(today0-(DLY_DAYS-1-i)*86400000);
+    grid+=`<line x1="${X(i)}" x2="${X(i)}" y1="${T}" y2="${H-B}" stroke="#CCCCCC" stroke-dasharray="3 3"/><text x="${X(i)}" y="${H-8}" text-anchor="middle" font-size="9" fill="#5A5A5A">${d.getDate()}/${d.getMonth()+1}</text>`;
+  });
+  const P=series.map(p=>[X(p.i),Y(p.v)]);
+  let path='';
+  if(P.length===1){
+    path=`<circle cx="${P[0][0]}" cy="${P[0][1]}" r="3.5" fill="#E07B00"/>`;
+  }else{
+    let d=`M${P[0][0]},${P[0][1]}`;
+    for(let k=0;k<P.length-1;k++){
+      const p0=P[k-1]||P[k],p1=P[k],p2=P[k+1],p3=P[k+2]||p2;
+      const c1=[p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6];
+      const c2=[p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6];
+      d+=` C${c1[0]},${c1[1]} ${c2[0]},${c2[1]} ${p2[0]},${p2[1]}`;
+    }
+    const y0=Y(0);
+    path=`<path d="${d} L${P[P.length-1][0]},${y0} L${P[0][0]},${y0} Z" fill="url(#dlyGrad${dlyUid})" opacity=".9"/><path d="${d}" fill="none" stroke="#E07B00" stroke-width="2" stroke-linejoin="round"/>`;
+  }
+  const gid='dlyGrad'+dlyUid++;
+  path=path.replace(/dlyGrad\d+/,gid);
+  const svg=`<svg class="dly-chart" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E07B00" stop-opacity=".30"/><stop offset="1" stop-color="#E07B00" stop-opacity="0"/></linearGradient></defs>
+    ${grid}${path}</svg>`;
+  const brk=`<div class="dly-break"><span>Puntuali (≤5 min): <b>${onTime}</b></span><span>Lievi (6‑15 min): <b>${lieve}</b></span><span>Gravi (oltre 15 min): <b>${grave}</b></span></div>`;
+  return head+kpis+svg+brk;
+}
+let dlyUid=1;
 
 function renderProfileExtraChips(azienda, dipartimento){
   const wrap = document.getElementById('profile-extra-display');
