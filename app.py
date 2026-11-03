@@ -416,6 +416,7 @@ def migrate_db():
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS comfort_penalty REAL DEFAULT 0""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS speed_kmh REAL DEFAULT 0""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS delay_min REAL DEFAULT 0""",
+        """ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ritardo_arrivo_min REAL""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS next_station TEXT DEFAULT ''""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS consist TEXT DEFAULT ''""",
         """ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS sim_time TEXT DEFAULT ''""",
@@ -1074,7 +1075,7 @@ def api_my_sessions():
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT punteggio, ultimo_servizio, grade, frenate_brusche,
-                       accel_brusche, penalita, completamento,
+                       accel_brusche, penalita, completamento, ritardo_arrivo_min,
                        registrata_at::text AS registrata_at
                 FROM sessions WHERE user_id=%s
                 ORDER BY registrata_at DESC LIMIT 50
@@ -1116,7 +1117,7 @@ def api_user_sessions(username):
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT punteggio, ultimo_servizio, grade,
+                SELECT punteggio, ultimo_servizio, grade, ritardo_arrivo_min,
                        registrata_at::text AS registrata_at
                 FROM sessions WHERE user_id=%s
                 ORDER BY registrata_at DESC LIMIT 50
@@ -1160,13 +1161,24 @@ def api_submit():
 
     with get_db() as conn:
         with conn.cursor() as cur:
+            # Ritardo all'arrivo a destinazione: se l'EXE lo invia lo uso, altrimenti
+            # prendo l'ultimo ritardo live ricevuto (live_sessions.delay_min)
+            ritardo_arrivo = data.get("ritardo_arrivo_min")
+            try:
+                ritardo_arrivo = float(ritardo_arrivo) if ritardo_arrivo is not None else None
+            except (ValueError, TypeError):
+                ritardo_arrivo = None
+            if ritardo_arrivo is None:
+                cur.execute("SELECT delay_min FROM live_sessions WHERE user_id=%s", (user["id"],))
+                _r = fetchone(cur)
+                ritardo_arrivo = _r["delay_min"] if _r else None
             cur.execute("""
                 INSERT INTO sessions
                   (user_id, punteggio, ultimo_servizio, frenate_brusche, accel_brusche,
-                   penalita, completamento, durata_min, grade)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                   penalita, completamento, durata_min, grade, ritardo_arrivo_min)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (user["id"], punteggio, ultimo_servizio, frenate, accel,
-                  penalita, completamento, durata_min, grade))
+                  penalita, completamento, durata_min, grade, ritardo_arrivo))
             cur.execute("""
                 INSERT INTO user_stats (user_id, affidabilita, ultima_tratta, grade, updated_at)
                 SELECT
