@@ -251,6 +251,23 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px}
 .tn-board .tn-stop .tn-stop-wx,
 .tn-board .tn-stop .tn-stop-wx span,
 .tn-board .tn-stop .tn-stop-name{font-family:'Futura',sans-serif!important;font-weight:700!important}
+/* Riquadro "Transiteremo da": prossimi transiti, tra "prossima stazione" e velocità */
+.tn-pass-box{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--tn-line);border-radius:6px;background:linear-gradient(180deg,#FFFFFF 0%,#EDF1F3 100%);box-shadow:inset 0 1px 0 #fff,inset 0 -2px 4px rgba(0,0,0,.05);min-width:0}
+.tn-pass-box .tn-pass-ico{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#6B6F73,#3A3D40);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex:none}
+.tn-pass-txt{display:flex;flex-direction:column;min-width:0}
+.tn-pass-lbl{font-family:'Futura',sans-serif;font-weight:400;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--grey)}
+.tn-pass-list{font-family:'Futura',sans-serif;font-weight:700;font-size:15px;color:var(--white);text-transform:uppercase;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tn-pass-list .tn-pass-km{font-weight:400;color:var(--grey);text-transform:none;margin-left:4px}
+.tn-pass-list .tn-pass-more{font-weight:400;color:var(--grey)}
+/* Stazioni di transito (non comprese nell'activity): riga più bassa, pallino piccolo, etichetta "transito" */
+.tn-stop.tn-pass{height:26px;min-height:26px;max-height:26px}
+.tn-stop.tn-pass .tn-stop-dot{width:7px;height:7px}
+.tn-stop.tn-lead::before{background:#7D2F2F}
+.tn-pass-tag{margin-left:auto;font-size:10px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.tn-board .tn-stop.tn-pass .tn-stop-name{font-weight:400!important;font-size:12px}
+.tn-board .tn-stop.tn-pass .tn-pass-tag{font-family:'Futura',sans-serif;font-weight:400}
+.tn-board .tn-stop.tn-pass:not(.passed):not(.cur){color:#6F7377}
+.tn-board .tn-stop.tn-pass.passed{color:#8A8A8A}
 @media(max-width:700px){
   .tn-hdr{grid-template-columns:auto 1fr auto;gap:8px;padding:8px 10px}
   .tn-hdr-name{font-size:13px}
@@ -1844,14 +1861,24 @@ if(!window._tnScrollTimer) window._tnScrollTimer=setInterval(()=>{
 },TN_SCROLL_MS);
 
 const tnStopsState={}; // per utente: {scrollTop, idx} per non perdere lo scroll ai refresh live
-function renderTnStops(stations,hiIdx){
+function renderTnStops(stations,hiIdx,u){
   if(!stations.length) return '<div style="padding:12px;font-size:11px;color:var(--dimgrey);text-align:center">Nessuna fermata</div>';
-  return stations.map((s,i)=>{
+  const V=lvViaGet(u,stations);                       // stazioni di transito tra una fermata e l'altra
+  let sIdx=stations.findIndex(s=>!s.passed); if(sIdx<0) sIdx=stations.length;   // prima fermata non ancora passata
+  const escH=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const out=[];
+  stations.forEach((s,i)=>{
     const cls=(s.passed?'passed':'')+(i===hiIdx?' cur':'');
     const t=s.arrival||s.departure||'';
     const w=wxCache[s.station_name];
-    return `<div class="tn-stop ${cls}"><span class="tn-stop-dot"></span><span class="tn-stop-time">${t}</span><span class="tn-stop-name">${s.station_name}</span><span class="tn-stop-wx" data-st="${String(s.station_name).replace(/"/g,'&quot;')}">${w?wxIconHtml(w,s.passed):''}</span></div>`;
-  }).join('');
+    out.push(`<div class="tn-stop ${cls}"><span class="tn-stop-dot"></span><span class="tn-stop-time">${t}</span><span class="tn-stop-name">${s.station_name}</span><span class="tn-stop-wx" data-st="${String(s.station_name).replace(/"/g,'&quot;')}">${w?wxIconHtml(w,s.passed):''}</span></div>`);
+    (V.via[i]||[]).forEach(v=>{
+      const ps=lvViaPassed(u,V,sIdx,i,v);
+      const lead=(!ps && i+1===sIdx);                 // tratta verso la fermata evidenziata: striscia rossa continua
+      out.push(`<div class="tn-stop tn-pass${ps?' passed':''}${lead?' tn-lead':''}"><span class="tn-stop-dot"></span><span class="tn-stop-time"></span><span class="tn-stop-name">${escH(v.name)}</span><span class="tn-pass-tag tn-i18n" data-it="transito" data-en="passing">${tnT('transito','passing')}</span></div>`);
+    });
+  });
+  return out.join('');
 }
 
 // ── Etichette bilingue: IT/EN alternate ogni 15 secondi (fase globale, resiste ai re-render) ──
@@ -1918,6 +1945,12 @@ function renderPanel(u,el){
     return `${s.station_name}${t?` (${t})`:''}`;
   }).join(' - ');
 
+  // Prossimi transiti (stazioni non in activity) → riquadro tra "prossima stazione" e velocità
+  const tr=lvNextTransits(u,stations,3);
+  const escT=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const trKm=k=>k==null?'':` <span class="tn-pass-km">${k<1?Math.round(k*10)*100+' m':k.toFixed(1).replace('.',',')+' km'}</span>`;
+  const trHtml=tr.length?`<div class="tn-pass-box"><span class="tn-pass-ico"><i class="fa-solid fa-route"></i></span><div class="tn-pass-txt"><span class="tn-pass-lbl tn-i18n" data-it="Ultimo rilevamento:" data-en="Last survey:">${tnT('Ultimo rilevamento:','Last survey:')}</span><span class="tn-pass-list">${escT(tr[0].name)}${trKm(tr[0].km)}${tr.length>1?` <span class="tn-pass-more">· ${tr.slice(1).map(x=>escT(x.name)).join(' · ')}</span>`:''}</span></div></div>`:'';
+
   // Ritardo
   const d=Math.round(getDelayFromStations(u)||0);
   const dColor=d<=5?'var(--green)':d<=30?'var(--amber)':'var(--red)';
@@ -1952,6 +1985,7 @@ function renderPanel(u,el){
           <div class="tn-arrive-lbl tn-i18n${wel?' tn-welcome':''}" data-it="${wel?'Benvenuti a bordo':(arriving?'Siamo in arrivo a:':'Prossima stazione:')}" data-en="${wel?'Welcome aboard':(arriving?'We are arriving in:':'Next station:')}">${wel?tnT('Benvenuti a bordo','Welcome aboard'):(arriving?tnT('Siamo in arrivo a:','We are arriving in:'):tnT('Prossima stazione:','Next station:'))}</div>
           <div class="tn-arrive-name"${wel?' style="visibility:hidden"':''}>${nextName}</div>
         </div>
+        ${trHtml}
         <div class="live-chart-wrap">
           <div class="live-chart-hdr">
             <div class="live-chart-title tn-chart-ttl tn-chart-smcaps">andamento corsa</div>
@@ -1966,7 +2000,7 @@ function renderPanel(u,el){
         </div>
       </div>
       <div class="tn-stops-wrap">
-        <div class="tn-stops" id="tn-stops-${u.username}">${renderTnStops(stations,hiIdx)}</div>
+        <div class="tn-stops" id="tn-stops-${u.username}">${renderTnStops(stations,hiIdx,u)}</div>
       </div>
     </div>
     ${viaHtml?`<div class="tn-via"><div class="tn-via-marquee"><div class="tn-via-track" data-user="${String(u.username).replace(/"/g,'&quot;')}"><span class="tn-via-unit"><span class="tn-via-lbl tn-i18n" data-it="Fermate intermedie :" data-en="Intermediate stops :">${tnT('Fermate intermedie :','Intermediate stops :')}</span><span class="tn-via-list">${viaHtml}</span></span></div></div></div>`:''}
@@ -2462,6 +2496,80 @@ function lvRouteDistKm(p, st, idx){
   return km;
 }
 
+// ── Stazioni di TRANSITO: stazioni di /api/station_coords vicine alla tratta tra due fermate dell'activity ──
+// Solo grafica (righe "transito" nella lista): non entrano in u.stations, quindi indici, ritardo e
+// "Siamo in arrivo a" restano quelli dell'activity. Sono "passate" quando la posizione GPS (API map) le supera.
+const LV_VIA_KM     = 0.5;  // fascia attorno alla retta tra due fermate consecutive
+const LV_VIA_END_KM = 0.3;  // più vicine di così a una fermata dell'activity = stessa stazione, non è un transito
+const LV_VIA_DUP_KM = 0.2;  // due transiti più vicini di così = stessa stazione (varianti di nome)
+let lvStCoordsVer = 0;      // incrementato a ogni caricamento di stationCoords (invalida la cache)
+const lvViaCache = {};
+function lvViaCompute(st){
+  const via = st.map(() => []);
+  const geo = st.map(s => { const c = getStationCoord(s.station_name); return (c && c.lat != null && c.lon != null) ? { lat: Number(c.lat), lon: Number(c.lon) } : null; });
+  const norm = n => lvNorm(n).replace(/[.\-]/g, '').replace(/\s+/g, ' ');
+  const act = new Set(st.map(s => norm(s.station_name)));
+  Object.entries(stationCoords || {}).forEach(([name, c]) => {
+    if(!c || c.lat == null || c.lon == null || act.has(norm(name))) return;
+    const p = { lat: Number(c.lat), lon: Number(c.lon) };
+    let best = null;
+    for(let i = 0; i < st.length - 1; i++){
+      if(!geo[i] || !geo[i+1]) continue;
+      const r = lvDistToSeg(p, geo[i], geo[i+1]);
+      if(r.d > LV_VIA_KM) continue;
+      if(r.t * r.len < LV_VIA_END_KM || (1 - r.t) * r.len < LV_VIA_END_KM) continue;
+      if(!best || r.d < best.d) best = { i, d: r.d, t: r.t, len: r.len };
+    }
+    if(best) via[best.i].push({ name, lat: p.lat, lon: p.lon, t: best.t, len: best.len, d: best.d });
+  });
+  via.forEach((a, i) => {
+    a.sort((x, y) => x.t - y.t);
+    for(let k = a.length - 1; k > 0; k--){            // duplicati (varianti di nome): tengo la più vicina alla linea
+      if((a[k].t - a[k-1].t) * a[k].len < LV_VIA_DUP_KM){ if(a[k].d < a[k-1].d) a.splice(k-1, 1); else a.splice(k, 1); }
+    }
+  });
+  return { via, geo };
+}
+function lvViaGet(u, st){
+  const un = (u && u.username) || '_';
+  const key = ((u && u.activity_name) || '') + '|' + st.length + '|' + lvStCoordsVer;
+  const c = lvViaCache[un];
+  if(c && c.key === key) return c;
+  return (lvViaCache[un] = Object.assign({ key }, lvViaCompute(st)));
+}
+// il transito v (tra la fermata i e i+1) è già stato superato dal treno?
+function lvViaPassed(u, V, sIdx, i, v){
+  if(i + 1 < sIdx) return true;             // tratta già percorsa
+  if(i + 1 > sIdx) return false;            // tratta ancora davanti
+  if(!(u && u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1 && Math.abs(u.train_lon) > 0.1)) return false;
+  const A = V.geo[i], B = V.geo[i+1];
+  if(!A || !B) return false;
+  const r = lvDistToSeg({ lat: Number(u.train_lat), lon: Number(u.train_lon) }, A, B);
+  if(r.d > 5) return false;                 // GPS lontano dalla tratta: non decido
+  return (r.t - v.t) * r.len >= LV_PASS_KM;
+}
+
+// prossimi transiti non ancora superati (max n), con distanza in km dal treno per quelli sulla tratta corrente
+function lvNextTransits(u, st, n){
+  if(!st.length) return [];
+  const V = lvViaGet(u, st);
+  let sIdx = st.findIndex(x => !x.passed); if(sIdx < 0) sIdx = st.length;
+  const hasGps = !!(u && u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1 && Math.abs(u.train_lon) > 0.1);
+  const out = [];
+  for(let i = Math.max(0, sIdx - 1); i < st.length - 1 && out.length < n; i++){
+    for(const v of (V.via[i] || [])){
+      if(lvViaPassed(u, V, sIdx, i, v)) continue;
+      let km = null;
+      if(hasGps && i + 1 === sIdx && V.geo[i] && V.geo[i+1]){
+        const r = lvDistToSeg({ lat: Number(u.train_lat), lon: Number(u.train_lon) }, V.geo[i], V.geo[i+1]);
+        if(r.d <= 5) km = Math.max(0, (v.t - r.t) * r.len);
+      }
+      out.push({ name: v.name, km });
+      if(out.length >= n) break;
+    }
+  }
+  return out;
+}
 // prossima fermata dalla posizione GPS (stessa della mappa); null se non disponibile
 function lvGpsNext(u, st, state){
   if(!(u.train_lat && u.train_lon && Math.abs(u.train_lat) > 0.1 && Math.abs(u.train_lon) > 0.1)) return null;
@@ -3114,6 +3222,7 @@ async function loadStationCoords(){
   try{
     const r = await fetch('/api/station_coords');
     stationCoords = await r.json();
+    lvStCoordsVer++;   // ricalcola i transiti con le nuove coordinate
     // Se ci sono già dati live in memoria, aggiorna la mappa con le coordinate appena caricate
     // Nota: non aggiorniamo drState qui (nessun timestamp fresco), la mappa si aggiornerà
     // al prossimo poll di loadLive()
