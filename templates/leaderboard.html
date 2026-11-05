@@ -1412,14 +1412,14 @@ function renderDelaySub(sess,list){
   const pts=runs.map(s=>({d:sessDelayMin(s),t:new Date(s.registrata_at)})).filter(p=>p.d!==null);
   if(!pts.length) return head+'<div class="dly-empty">Dati di ritardo all\'arrivo non ancora disponibili per questa tratta ('+runs.length+' '+(runs.length===1?'corsa':'corse')+').</div>';
   const delays=pts.map(p=>p.d);
-  const onTime=delays.filter(d=>d<=5).length;
-  const lieve=delays.filter(d=>d>5&&d<=15).length;
-  const grave=delays.filter(d=>d>15).length;
+  const onTime=delays.filter(d=>delayLevel(d)==='ok').length;
+  const lieve=delays.filter(d=>delayLevel(d)==='warn').length;
+  const grave=delays.filter(d=>delayLevel(d)==='bad').length;
   const avg=delays.reduce((a,b)=>a+b,0)/delays.length;
   const mx=Math.max(...delays);
   const kpi=(ico,col,lbl,val)=>`<div class="dly-kpi"><div class="dly-kpi-lbl"><i class="fa-solid ${ico}" style="color:${col}"></i>${lbl}</div><div class="dly-kpi-val">${val}</div></div>`;
   const kpis=`<div class="dly-kpis">
-    ${kpi('fa-clock','var(--green)','Entro 5 min',Math.round(onTime/delays.length*100)+'%')}
+    ${kpi('fa-clock','var(--green)','Entro 4 min',Math.round(onTime/delays.length*100)+'%')}
     ${kpi('fa-arrow-trend-up','var(--accent)','Ritardo all\'arrivo',dlyFmt(avg,true))}
     ${kpi('fa-triangle-exclamation','var(--accent)','Ritardo max',dlyFmt(mx,false))}
     ${kpi('fa-chart-column','#5A6FD6','Arrivi/corse',delays.length+'/'+runs.length)}
@@ -1468,7 +1468,7 @@ function renderDelaySub(sess,list){
   const svg=`<svg class="dly-chart" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E07B00" stop-opacity=".30"/><stop offset="1" stop-color="#E07B00" stop-opacity="0"/></linearGradient></defs>
     ${grid}${path}</svg>`;
-  const brk=`<div class="dly-break"><span>Puntuali (≤5 min): <b>${onTime}</b></span><span>Lievi (6‑15 min): <b>${lieve}</b></span><span>Gravi (oltre 15 min): <b>${grave}</b></span></div>`;
+  const brk=`<div class="dly-break"><span>Puntuali (0‑4 min): <b>${onTime}</b></span><span>Lievi (5‑14 min): <b>${lieve}</b></span><span>Gravi (15+ min): <b>${grave}</b></span></div>`;
   return head+kpis+svg+brk;
 }
 let dlyUid=1;
@@ -1940,7 +1940,7 @@ function renderPanel(u,el){
 
   // Ritardo
   const d=Math.round(getDelayFromStations(u)||0);
-  const dColor=d<=5?'var(--green)':d<=30?'var(--amber)':'var(--red)';
+  const dColor=delayColor(d);
   const dTxt=d>0?`+${d}m`:'<span style="font-size:13px">In orario</span>';
 
   // Velocità live dal monitor (fallback: ultimo punto dello storico)
@@ -2059,7 +2059,7 @@ function renderStopsTable(stations){
     } else if(s.delay_min===0||s.delay_min===null){
       dlyHtml='<span class="dly-ok">In orario</span>';
     } else {
-      const dc=Math.abs(s.delay_min)>=2?'dly-bad':'dly-amber';
+      const dc={ok:'dly-ok',warn:'dly-amber',bad:'dly-bad'}[delayLevel(s.delay_min)];
       dlyHtml=`<span class="${dc}">+${Math.round(s.delay_min)} min</span>`;
     }
     return`<tr class="${cls}"><td>${s.station_name}</td><td>${s.arrival||'—'}</td><td>${s.departure||'—'}</td><td>${dlyHtml}</td></tr>`;
@@ -2731,7 +2731,7 @@ function renderOnlineTrains(users){
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   grid.innerHTML = users.map(u => {
     const d = getDelayFromStations(u);
-    const col = d <= 5 ? '#007A3D' : d <= 30 ? '#E07B00' : '#CE1B26';
+    const col = delayColor(d);
     const lbl = d <= 0 ? 'in orario' : '+' + Math.round(d) + ' min';
     const sp  = (u.speed_kmh != null && isFinite(u.speed_kmh)) ? Math.round(u.speed_kmh) + ' km/h' : '—';
     const un  = JSON.stringify(u.username).replace(/"/g,'&quot;');
@@ -3027,7 +3027,7 @@ function updateMap(users, pollTimestamp){
     }
 
     const delayMin = getDelayFromStations(u);
-    const markerColor = delayMin <= 5 ? '#007A3D' : delayMin <= 30 ? '#E07B00' : '#CE1B26';
+    const markerColor = delayColor(delayMin);
     const delayLabel = delayMin <= 0 ? 'in orario' : `+${Math.round(delayMin)} min`;
     const trainNum = u.activity_name || u.username;
     const hasGPS = posSource === 'gps';
@@ -3203,6 +3203,15 @@ function parseTimeToToday(timeStr){
   const now = new Date();
   now.setHours(parseInt(parts[0],10), parseInt(parts[1],10), parseInt(parts[2]||0,10), 0);
   return now.getTime();
+}
+
+// ── Soglie colore ritardo (minuti arrotondati): 0-4 verde, 5-14 arancione, 15+ rosso ──
+function delayLevel(min){
+  const m=Math.round(Number(min)||0);
+  return m<5?'ok':m<15?'warn':'bad';
+}
+function delayColor(min){
+  return {ok:'#007A3D',warn:'#E07B00',bad:'#CE1B26'}[delayLevel(min)];
 }
 
 // ── Helper: ritardo dell'ultima fermata raggiunta (fissato all'arrivo, come nel dashboard) ──
