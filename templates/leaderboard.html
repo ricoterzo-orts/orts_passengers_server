@@ -410,6 +410,7 @@ td.servizio{text-align:left}
 .sess-item.open .sess-chev{transform:rotate(180deg);color:var(--accent)}
 .sess-sub{display:none;background:var(--bg);border:1px solid var(--border);border-radius:2px;padding:10px;margin:2px 0 8px}
 .sess-item.open .sess-sub{display:block}
+.sess-n{font-family:var(--font-md);font-size:9px;color:var(--grey);margin-left:5px;white-space:nowrap}
 .dly-title{font-family:var(--font-md);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--white);display:flex;align-items:center;gap:6px}
 .dly-title i{color:var(--accent)}
 .dly-sub{font-size:9px;color:var(--grey);margin:3px 0 8px;line-height:1.35}
@@ -1333,12 +1334,13 @@ async function loadProfile(){
       return;
     }
     profileSessions=sessions;
-    sl.innerHTML=sessions.map((s,i)=>`
+    profileGroups=dlyGroup(sessions);
+    sl.innerHTML=profileGroups.map((s,i)=>`
       <div class="sess-item" data-key="p${i}">
         <div class="sess-row" onclick="toggleSessSub('p',${i})" title="Storico ritardi della tratta">
           <i class="fa-solid fa-chevron-down sess-chev"></i>
           <span class="sess-score">${parseFloat(s.punteggio||0).toFixed(1)}/100</span>
-          <span class="sess-serv">${dlyEsc(s.ultimo_servizio||'—')}</span>
+          <span class="sess-serv">${dlyEsc(s.ultimo_servizio||'—')}${s._n>1?'<span class="sess-n">×'+s._n+'</span>':''}</span>
           <span class="sess-date">${fmtDate(s.registrata_at)}</span>
         </div>
         <div class="sess-sub" id="sess-sub-p${i}"></div>
@@ -1349,6 +1351,22 @@ async function loadProfile(){
 // ── Storico ritardi per tratta (sottomenu di ogni activity nel profilo) ──
 let profileSessions = [];
 let drawerSessions = [];
+let profileGroups = [];
+let drawerGroups = [];
+// chiave di raggruppamento: stesso nome activity = stessa tratta (ignora maiuscole e spazi doppi)
+function dlyKey(name){return String(name==null||name===''?'—':name).replace(/\s+/g,' ').trim().toLowerCase();}
+// una riga per activity: l'ultima corsa fa da rappresentante, _n = numero di corse con quel nome
+function dlyGroup(sessions){
+  const map=new Map();
+  sessions.forEach(s=>{
+    const k=dlyKey(s.ultimo_servizio);
+    const t=s.registrata_at?new Date(s.registrata_at).getTime():0;
+    const g=map.get(k);
+    if(!g) map.set(k,{rep:s,t:t,n:1});
+    else{ g.n++; if(t>g.t){g.rep=s;g.t=t;} }
+  });
+  return Array.from(map.values()).sort((a,b)=>b.t-a.t).map(g=>Object.assign({},g.rep,{_n:g.n}));
+}
 const DLY_DAYS = 30;
 function dlyEsc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 // ritardo (minuti) all'arrivo a destinazione di una corsa; null se il dato non c'è
@@ -1372,16 +1390,18 @@ function toggleSessSub(src,i){
   if(open){
     const sub=document.getElementById('sess-sub-'+src+i);
     const list=src==='p'?profileSessions:drawerSessions;
-    if(!sub.dataset.ready){ sub.innerHTML=renderDelaySub(list[i],list); sub.dataset.ready='1'; }
+    const groups=src==='p'?profileGroups:drawerGroups;
+    if(!sub.dataset.ready){ sub.innerHTML=renderDelaySub(groups[i],list); sub.dataset.ready='1'; }
   }
   item.classList.toggle('open',open);
 }
 function dlyDayStart(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();}
 function renderDelaySub(sess,list){
   const serv=sess.ultimo_servizio||'—';
+  const key=dlyKey(serv);
   const today0=dlyDayStart(new Date());
   const runs=list.filter(s=>{
-    if((s.ultimo_servizio||'—')!==serv || !s.registrata_at) return false;
+    if(dlyKey(s.ultimo_servizio)!==key || !s.registrata_at) return false;
     const t=new Date(s.registrata_at); if(isNaN(t)) return false;
     const ago=Math.round((today0-dlyDayStart(t))/86400000);
     return ago>=0 && ago<DLY_DAYS;
@@ -3216,12 +3236,13 @@ function openDrawer(idx){
       }
       sessions.sort((a,b)=>new Date(b.registrata_at||0)-new Date(a.registrata_at||0));
       drawerSessions=sessions;
+      drawerGroups=dlyGroup(sessions);
       const scores = sessions.map(s=>parseFloat(s.punteggio)).filter(v=>!isNaN(v));
       if(scores.length){
         document.getElementById('drawer-best').textContent = Math.max(...scores).toFixed(1);
         document.getElementById('drawer-media').textContent = (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1);
       }
-      document.getElementById('drawer-body').innerHTML = sessions.map((s,idx)=>{
+      document.getElementById('drawer-body').innerHTML = drawerGroups.map((s,idx)=>{
         const sc = parseFloat(s.punteggio||0);
         const col = scoreColor(sc);
         const data = fmtDate(s.registrata_at||'');
@@ -3229,7 +3250,7 @@ function openDrawer(idx){
         const age = idx===0 ? '<span style="font-size:8px;color:var(--green);font-family:var(--font-md);margin-left:4px">ULTIMA</span>' : '';
         return `<div class="sess-item drawer-item" data-key="d${idx}">
         <div class="drawer-row" onclick="toggleSessSub('d',${idx})" title="Storico ritardi della tratta">
-          <div class="drawer-row-serv" title="${dlyEsc(serv)}"><i class="fa-solid fa-chevron-down sess-chev"></i>${dlyEsc(serv)}${age}</div>
+          <div class="drawer-row-serv" title="${dlyEsc(serv)}"><i class="fa-solid fa-chevron-down sess-chev"></i>${dlyEsc(serv)}${s._n>1?'<span class="sess-n">×'+s._n+'</span>':''}${age}</div>
           <div class="drawer-row-date">${data}</div>
           <div class="drawer-row-score" style="color:${col}">${sc.toFixed(1)}<span style="font-size:9px;opacity:.5">/100</span></div>
           <div class="drawer-row-vt" onclick="event.stopPropagation()">${vtLink(serv)}</div>
